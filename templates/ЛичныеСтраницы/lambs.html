@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Городской гид - {{title}}</title>
+    <!-- Подключение CSS файла -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/PersonalPage.css') }}">
+    <!-- Украшаем вкладку вашим логотипом -->
+    <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
+    <!-- Шапка -->
+    <nav class="bd-subnavbar py-2" aria-label="Secondary navigation">
+        <div class="container-xxl d-flex align-items-md-center">
+            <div class="logo" onclick="window.location.href='/';">
+<!-- Новое лого height="60px" width="80px" "style: left: -10px; margin-top: -10px" -->
+                <img height="50px" width="70px" src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" class="img-logo" alt="Иконка лого.png">
+                <span class="text-logo">Городской Гид</span>
+            </div>
+            <form class="bd-search position-relative me-auto" action="/search" method="POST">
+                <span class="algolia-autocomplete" style="top:-10px;">
+                    <label for="search-input"></label><input class="form-control ds-input" id="search-input" name="query" placeholder="Поиск в документации..." aria-autocomplete="list">
+                </span>
+            </form>
+            <button id="header-favorites-btn" class="visible" onclick="window.location.href='/favorites'">
+                ❤ Избранное (<span id="favorites-count">0</span>)
+            </button>
+            <div class="dropdown">
+                <div id="overlay" style="display: none;"></div>
+                <button id="loginButton" class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="showWindow()">
+                    <span class="d-none d-lg-inline">Вход</span>
+                </button>
+                   <div id="content_window" class="popup-window">
+                    <form id="loginForm" method="POST" action="/login">
+                        <h1>Вход</h1>
+                        <span class="btnX" onclick="hideWindow()">x</span>
+                        <div class="form-group">
+                            <label for="username">Логин</label>
+                            <input type="text" class="form-control" id="username" name="username" placeholder="Введите логин" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Пароль</label>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Введите пароль" required>
+                        </div>
+                        <button type="submit" class="btnA">Войти</button>
+                    </form>
+                </div>
+                <button id="registerButton" class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="showWindow1()">
+                    <span class="d-none d-lg-inline">Регистрация</span>
+                </button>
+                <div id="content_window2" class="popup-window">
+                    <form id="regForm" method="POST" action="/register">
+                        <h1>Регистрация</h1>
+                        <span class="btnX" onclick="hideWindow1()">x</span>
+                        <div class="form-group">
+                            <label for="username1">Логин</label>
+                            <input type="text" id="username1" name="username" class="form-control" placeholder="Введите логин" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password1">Пароль</label>
+                            <input type="password" id="password1" name="password" class="form-control" placeholder="Введите пароль" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password2">Подтвердите пароль</label>
+                            <input type="password" id="password2" name="confirm_password" class="form-control" placeholder="Подтвердите пароль" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="secret_key">Секретный ключ</label>
+                            <input type="password" id="secret_key" name="secret_key" class="form-control" placeholder="Введите секретный ключ" required>
+                        </div>
+                        <input type="submit" class="btnB" value="Зарегистрироваться">
+                    </form>
+                </div>
+            </div>
+            <div id="userInfo" style="display: none;">
+                <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar" style="width: 30px; height: 30px;">
+                <span id="welcomeUser"></span>
+                <button class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="logout()">
+                    <span class="d-none d-lg-inline">Выход</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+    <script src="{{ url_for('static', filename='js/RegistrationLogin.js') }}"></script>
+</head>
+<body>
+    <!-- Задний фон -->
+    <div class="image-container">
+        <img src="{{ url_for('static', filename='Фотки зданий/РесторанФон.jpg') }}" class="img-top-center" alt="РесторанФон.jpg">
+    </div>
+    <div class="box">
+        <div class="container">
+            <!-- Левая часть: картинка -->
+            <div class="image-section">
+                <div class="image-flip-container">
+                    <!-- Передняя сторона (картинка) -->
+                    <div class="image-front" >
+                        <img src="{{ url_for('static', filename='Фотки зданий/Барашки.png') }}" alt="Ресторан Барашки">
+                        <!-- Кнопка на карточке заведения -->
+                        <button class="favorite-btn js-favorite-btn"
+                            data-item='{
+                                "id": "lambs",
+                                "name": "Ресторан Lambs",
+                                "description": "Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни...",
+                                "address": "ул. Ломоносова, 22/2, Великий Новгород",
+                                "hours": "Пн-Пт: 10:00-22:00, Сб-Вс: 11:00-23:00",
+                                "img": "/Фотки зданий/Барашки.png"
+                            }'>
+                            ❤
+                        </button>
+                        <!-- Кнопка развернуть в правом нижнем углу -->
+                        <button class="expand-btn" onclick="expandImage(this)">↗</button>
+                        <!-- Кнопка показать карту по центру снизу -->
+                        <button class="map-btn" onclick="flipCard()">Показать карту</button>
+                        <!-- График работы в левом верхнем углу -->
+                        <div class="schedule-dropdown">
+                            <button class="schedule-btn">График работы ▼</button>
+                            <div class="schedule-content" id="schedule-content">
+                                Пн-Пт: 10:00 - 22:00<br>
+                                Сб-Вс: 11:00 - 23:00
+                            </div>
+                        </div>
+                        <!-- Кнопка меню по центру снизу -->
+                        <button class="menu-btn" onclick="openMenuModal()">Меню</button>
+                    </div>
+
+                    <!-- Задняя сторона (карта) -->
+                    <div class="image-back">
+                        <div class="map-container" id="map-container">
+                            <h3>ул. Ломоносова, 22/2, Великий Новгород</h3>
+                            <div class="map-container">
+                                <iframe id="map_547336407" width="100%" height="100%" sandbox="allow-modals allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"></iframe>
+                            </div>
+                        </div>
+
+                        <!-- Кнопка вернуться к изображению по центру снизу -->
+                        <button class="back-btn" onclick="flipCard()">Показать изображение</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая часть: описание -->
+            <div class="details-section">
+                <h1>Барашки</h1>
+                <p>Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.</p>
+                <p>ул. Ломоносова, 22/2, Великий Новгород</p>
+                <p>+7 (8162) 55-53-22</p>
+            </div>
+        </div>
+
+        <!-- Блок отзывов -->
+        <div class="reviews">
+            <h2>Отзывы</h2>
+            <p>Общая оценка: <strong id="overall-rating">0.0</strong> (на основе <span id="total-reviews">0</span> отзывов)</p>
+            <div class="rating-bars">
+                <div class="rating-bar">
+                    <span>5 звёзд</span>
+                    <div class="bar" style="margin-left: 10px"><div class="fill" style="width: 0;"></div></div>
+                    <span>0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>4 звёзды</span>
+                    <div class="bar"><div class="fill" style="width: 0;"></div></div>
+                    <span>0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>3 звёзды</span>
+                    <div class="bar"><div class="fill" style="width: 0;"></div></div>
+                    <span>0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>2 звёзды</span>
+                    <div class="bar"><div class="fill" style="width: 0;"></div></div>
+                    <span>0</span>
+                </div>
+                <div class="rating-bar">
+                    <span>1 звезда</span>
+                    <div class="bar"><div class="fill" style="width: 0;"></div></div>
+                    <span>0</span>
+                </div>
+            </div>
+
+            <!-- Фильтр отзывов -->
+            <div class="review-filter">
+                <label>Фильтр по оценкам:</label>
+                <div class="filter-controls">
+                    <div class="stars" id="filter-stars">
+                        <span class="star" data-value="1">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                        <span class="star" data-value="2">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                        <span class="star" data-value="3">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                        <span class="star" data-value="4">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                        <span class="star" data-value="5">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Контейнер для отзывов -->
+            <div class="review-container">
+                <!-- Стрелочка влево -->
+                <button class="scroll-button left" onclick="scrollReviews('left')">◄</button>
+                <!-- Контейнер для отзывов -->
+                <div class="review-list" id="review-list">
+                    <!-- Отзывы будут добавляться сюда -->
+                </div>
+                <!-- Стрелочка вправо -->
+                <button class="scroll-button right" onclick="scrollReviews('right')">►</button>
+            </div>
+
+            <!-- Кнопка "Оставить отзыв" -->
+            <button class="review-container-button" onclick="openReviewModal()">Оставить отзыв</button>
+        </div>
+
+        <!-- Модальное окно для меню -->
+        <div class="modal" id="menu-modal">
+            <div class="modal-content">
+                <h2>Меню</h2>
+                <p>Здесь будет содержимое меню.</p>
+                <button onclick="closeMenuModal()">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- Модальное окно для отзыва -->
+        <div class="modal" id="review-modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeReviewModal()">&times;</span>
+                <h2>Оставить отзыв</h2>
+                <form id="review-form">
+                    <label class="review-form-name" for="name">Имя:</label>
+                    <input type="text" id="name" required><br><br>
+                    <label>Оценка: <span id="rating-error" style="color: red; display: none; font-size: 11px">*Обязательное поле</span></label>
+                    <div class="stars" id="review-stars">
+                        <span class="star" data-value="1">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                        <span class="star" data-value="2">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                        <span class="star" data-value="3">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                        <span class="star" data-value="4">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                        <span class="star" data-value="5">
+                            <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
+                        </span>
+                    </div><br>
+                    <label for="comment">Комментарий:</label><br>
+                    <textarea id="comment" rows="4"></textarea><br><br>
+                    <button class="review-form-button" type="submit">Отправить</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Модальное окно для развёрнутого отзыва -->
+        <div class="modal" id="full-review-modal" style="display: none;">
+            <div class="modal-content">
+                <span class="close" onclick="closeFullReviewModal()">&times;</span>
+                <h2>Полный отзыв</h2>
+                <div class="review-header-wrapper">
+                    <div class="review-header">
+                        <img class="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Аватар">
+                        <div class="name-rating-modal">
+                            <div class="review-name"></div>
+                            <div class="review-rating"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="review-comment"></div>
+                <div class="review-actions">
+                    <button class="like-btn" onclick="rateReview(true)">
+                        <img src="{{ url_for('static', filename='Фотки зданий/Лайк.png') }}" alt="Лайк">
+                        <span class="like-count">0</span>
+                    </button>
+                    <button class="dislike-btn" onclick="rateReview(false)">
+                        <img src="{{ url_for('static', filename='Фотки зданий/Дизлайк.png') }}" alt="Дизлайк">
+                        <span class="dislike-count">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="footer">
+        <div class="footer-section">
+            <img class="img-logo-footer" src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Logo">
+            <p class="description">Городской гид - это сайт, который позволит найти всё в твоём городе!</p>
+            <div class="social-icons">
+                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
+                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" alt="YouTube"></a>
+                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
+                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+            </div>
+        </div>
+        <div class="footer-section">
+            <h4>Наши контакты</h4>
+            <img src="{{ url_for('static', filename='Фотки зданий/Телефон.png') }}" class="contact-icon" alt="Phone">
+            <a href="tel:+894674736353">894674736353</a><br>
+            <img src="{{ url_for('static', filename='Фотки зданий/телефон.png') }}" class="contact-icon" alt="Phone">
+            <a href="tel:+894674736353">894674736353</a><br>
+            <img src="{{ url_for('static', filename='Фотки зданий/Письмо.png') }}" class="contact-icon" alt="Mail">
+            <a href="mailto:mail@mail.ru">mail@mail.ru</a><br>
+            <p>г. Великий Новгород</p>
+        </div>
+        <div class="footer-section">
+            <h4>Информация</h4>
+            <a href="#">О нас</a><br>
+            <a href="#">Личный Кабинет</a><br>
+            <a href="#">Создатели</a><br>
+            <a href="#">Контакты</a>
+        </div>
+    </footer>
+<!-- <script src="{{ url_for('static', filename='js/PersonalPage.js') }}"></script> -->
+
+<script>
+        // В начале вашего JavaScript:
+        const PATHS = {
+            starActive: "{{ url_for('static', filename='Фотки зданий/baka.png') }}",
+            starInactive: "{{ url_for('static', filename='Фотки зданий/star.png') }}",
+            avatar: "{{ url_for('static', filename='Фотки зданий/avatar.png') }}"
+        };
+
+    // Переворот карточки
+    function flipCard() {
+        document.querySelector('.image-flip-container').classList.toggle('flipped');
+    }
+
+    // Развернуть изображение
+    function expandImage(btn) {
+        const img = btn.closest('.image-front').querySelector('img');
+        const imgSrc = img.src;
+
+        const overlay = document.createElement('div');
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        overlay.style.display = 'flex';
+        overlay.style.justifyContent = 'center';
+        overlay.style.alignItems = 'center';
+        overlay.style.zIndex = '1000';
+        overlay.style.cursor = 'zoom-out';
+
+        const expandedImg = document.createElement('img');
+        expandedImg.src = imgSrc;
+        expandedImg.style.maxWidth = '90%';
+        expandedImg.style.maxHeight = '90%';
+        expandedImg.style.objectFit = 'contain';
+
+        overlay.appendChild(expandedImg);
+        overlay.onclick = function() {
+            document.body.removeChild(overlay);
+        };
+
+        document.body.appendChild(overlay);
+    }
+
+    // Модальное окно для меню
+    function openMenuModal() {
+        document.getElementById('menu-modal').style.display = 'flex';
+    }
+    function closeMenuModal() {
+        document.getElementById('menu-modal').style.display = 'none';
+    }
+
+    // Модальное окно для отзыва
+    function openReviewModal() {
+        document.getElementById('review-modal').style.display = 'flex';
+    }
+    function closeReviewModal() {
+        document.getElementById('review-modal').style.display = 'none';
+    }
+    // Закрытие модального окна при клике вне его области
+    document.getElementById('review-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeReviewModal();
+        }
+    });
+
+    // Обновленный код фильтрации
+    function filterReviewsByRating(rating) {
+        const reviewList = document.getElementById('review-list');
+        const reviewCards = reviewList.querySelectorAll('.review-card');
+        let hasMatches = false;
+
+        // Удаляем старое сообщение "Нет отзывов"
+        const oldMsg = document.getElementById('no-reviews-message');
+        if (oldMsg) oldMsg.remove();
+
+        // Фильтруем отзывы
+        reviewCards.forEach(card => {
+            const cardRating = parseInt(card.querySelector('.rating').dataset.rating);
+
+            if (rating === 0 || cardRating === rating) {
+                card.style.display = 'flex'; // Важно использовать flex
+                hasMatches = true;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Показываем сообщение если нет совпадений
+        if (!hasMatches && rating !== 0) {
+            const msg = document.createElement('div');
+            msg.id = 'no-reviews-message';
+            msg.textContent = 'Таких отзывов нет!';
+            msg.style.textAlign = 'center';
+            msg.style.padding = '20px';
+            msg.style.color = '#666';
+            reviewList.appendChild(msg);
+        }
+
+        // Принудительное обновление layout
+        setTimeout(updateReviewVisibility, 50);
+    }
+
+    // Обновленный обработчик звезд фильтра
+    const filterStars = document.querySelectorAll('#filter-stars .star');
+    let currentFilter = 0;
+
+    filterStars.forEach(star => {
+        star.addEventListener('click', function() {
+            const value = parseInt(this.getAttribute('data-value'));
+
+            // Если кликнули на уже выбранную звезду - сбрасываем фильтр
+            if (currentFilter === value) {
+                currentFilter = 0;
+                filterStars.forEach(s => {
+                    s.innerHTML = `<img src="${PATHS.starInactive}" alt="★">`;
+                });
+            } else {
+                currentFilter = value;
+                // Подсвечиваем звезды до выбранного значения
+                filterStars.forEach((s, index) => {
+                    const starValue = index + 1;
+                    s.innerHTML = `<img src="${starValue <= value ? PATHS.starActive : PATHS.starInactive}"
+                                       alt="★">`;
+                });
+            }
+
+            filterReviewsByRating(currentFilter);
+        });
+    });
+
+    // Функция показа всех отзывов
+    function showAllReviews() {
+        currentFilter = 0;
+        filterStars.forEach(star => {
+            star.innerHTML = `<img src="${PATHS.starInactive}" alt="★">`;
+        });
+        filterReviewsByRating(0);
+    }
+
+    // Лайки и дизлайки
+    let likeCount = 0;
+    let dislikeCount = 0;
+    function likeReview() {
+        likeCount++;
+        document.getElementById('like-count').textContent = likeCount;
+    }
+    function dislikeReview() {
+        dislikeCount++;
+        document.getElementById('dislike-count').textContent = dislikeCount;
+    }
+
+    // Оценка звёздами
+    const stars = document.querySelectorAll('#review-stars .star');
+    let selectedRating = 0; // Переменная для хранения выбранной оценки
+
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            const value = parseFloat(star.getAttribute('data-value'));
+            selectedRating = value; // Сохраняем выбранную оценку
+
+            stars.forEach((s, index) => {
+                const starValue = parseFloat(s.getAttribute('data-value'));
+                if (starValue <= value) {
+                    s.innerHTML = `<img src="{{ url_for('static', filename='Фотки зданий/baka.png') }}" alt="★" style="width: 24px; height: 24px;">`;
+                } else {
+                    s.innerHTML = `<img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★" style="width: 24px; height: 24px;">`;
+                }
+            });
+        });
+    });
+
+    // Функция для добавления отзыва
+    const reviewForm = document.getElementById('review-form');
+    const reviewList = document.getElementById('review-list');
+    reviewForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const comment = document.getElementById('comment').value;
+
+        // Проверка, что оценка выбрана
+        if (selectedRating === 0) {
+            document.getElementById('rating-error').style.display = 'inline';
+            return;
+        } else {
+            document.getElementById('rating-error').style.display = 'none';
+        }
+
+        // Создаём новый отзыв
+        const review = {
+            id: Date.now(), // Уникальный ID для отзыва
+            name: name,
+            rating: selectedRating,
+            comment: comment,
+            likes: 0,
+            dislikes: 0
+        };
+
+        // Добавляем отзыв в массив
+        reviews.push(review);
+
+        // Обновляем статистику
+        ratingCounts[Math.floor(selectedRating)]++;
+
+        // Обновляем общую оценку
+        updateOverallRating();
+
+        // Создаём HTML для нового отзыва
+        const reviewElement = document.createElement('div');
+        reviewElement.className = 'review-card highlight';
+        reviewElement.dataset.reviewId = review.id;
+
+        reviewElement.innerHTML = `
+            <div class="review-header">
+                <img class="avatar" src="${PATHS.avatar}" alt="Аватар">
+                <div class="name-rating">
+                    <div class="name">${name}</div>
+                    <div class="rating" data-rating="${selectedRating}">
+                        ${`<img src="${PATHS.starActive}" alt="★" style="width:20px;height:20px;">`.repeat(selectedRating)}
+                        ${`<img src="${PATHS.starInactive}" alt="★" style="width:20px;height:20px;">`.repeat(5 - selectedRating)}
+                    </div>
+                </div>
+            </div>
+            <div class="comment-container">
+                <div class="comment-text">${comment || ''}</div>
+                ${comment ? '<div class="comment-blur"></div>' : ''}
+            </div>
+            <div class="expand" onclick="openFullReviewModal(${review.id})">Развернуть</div>
+        `;
+
+        // Добавляем отзыв в начало списка
+        reviewList.prepend(reviewElement);
+        if (comment) {
+            limitCommentHeight(reviewElement);
+        }
+        updateReviewVisibility(); // Всегда обновляем видимость
+
+        // Прокручиваем к началу
+        reviewList.scrollTo({ left: 0, behavior: 'smooth' });
+
+        // Сбрасываем форму
+        reviewForm.reset();
+        stars.forEach(star => star.innerHTML = `<img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★" style="width: 24px; height: 24px;">`);
+        selectedRating = 0; // Сбрасываем выбранную оценку
+        closeReviewModal();
+        updateReviewVisibility();
+    });
+
+    reviewList.scrollTo({
+        left: 0,
+        behavior: 'smooth'
+    });
+
+    // Закрытие модального окна при клике вне его области
+    document.getElementById('full-review-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeFullReviewModal();
+        }
+    });
+
+    // Функция закрытия модального окна
+    function closeFullReviewModal() {
+        document.getElementById('full-review-modal').style.display = 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+    // Гарантированно скрываем модальное окно при загрузке
+        document.getElementById('full-review-modal').style.display = 'none';
+    });
+
+    // Обновленная функция открытия модального окна
+    function openFullReviewModal(reviewId) {
+        const review = reviews.find(r => r.id == reviewId);
+        if (!review) return;
+
+        const modal = document.getElementById('full-review-modal');
+        const commentElement = modal.querySelector('.review-comment');
+
+        // Сначала скрываем, потом показываем для гарантии
+        modal.style.display = 'none';
+        void modal.offsetHeight; // Принудительный reflow
+
+        // Заполняем данные
+        modal.querySelector('.review-name').textContent = review.name;
+        modal.querySelector('.review-rating').innerHTML =
+            `<img src="${PATHS.starActive}" alt="★">`.repeat(review.rating) +
+            `<img src="${PATHS.starInactive}" alt="★">`.repeat(5 - review.rating);
+
+        commentElement.innerHTML = review.comment.replace(/\n/g, '<br>');
+
+        // Сбрасываем стили перед проверкой
+        commentElement.style.maxHeight = '';
+        commentElement.style.overflowY = '';
+
+        // Принудительный reflow
+        void commentElement.offsetHeight;
+
+        // Устанавливаем фиксированную высоту для контейнера
+        const containerHeight = 370; // Фиксированная высота для скролла
+        commentElement.style.maxHeight = `${containerHeight}px`;
+        commentElement.style.overflowY = 'auto';
+
+        modal.querySelector('.like-count').textContent = review.likes;
+        modal.querySelector('.dislike-count').textContent = review.dislikes;
+
+        // Проверяем, голосовал ли уже пользователь
+        const likeBtn = modal.querySelector('.like-btn');
+        const dislikeBtn = modal.querySelector('.dislike-btn');
+        likeBtn.disabled = review.userVoted === 'like';
+        dislikeBtn.disabled = review.userVoted === 'dislike';
+
+        modal.dataset.reviewId = reviewId;
+        modal.style.display = 'flex';
+    }
+
+    // При создании отзыва добавляем поле для отслеживания голосов
+    const review = {
+        id: Date.now(),
+        name: name,
+        rating: selectedRating,
+        comment: comment,
+        likes: 0,
+        dislikes: 0,
+        userVoted: null // 'like', 'dislike' или null
+    };
+
+    // Лайки/дизлайки для модального окна
+    function rateReview(isLike) {
+        const modal = document.getElementById('full-review-modal');
+        const reviewId = modal.dataset.reviewId;
+        const review = reviews.find(r => r.id == reviewId);
+
+        if (!review) return;
+
+        // Если пользователь уже голосовал
+        if (review.userVoted) {
+            // Отменяем предыдущий голос
+            if (review.userVoted === 'like') {
+                review.likes--;
+            } else {
+                review.dislikes--;
+            }
+
+            // Если кликнул ту же кнопку - просто сбрасываем голос
+            if ((isLike && review.userVoted === 'like') ||
+                (!isLike && review.userVoted === 'dislike')) {
+                review.userVoted = null;
+            } else {
+                // Если кликнул другую кнопку - засчитываем новый голос
+                if (isLike) {
+                    review.likes++;
+                    review.userVoted = 'like';
+                } else {
+                    review.dislikes++;
+                    review.userVoted = 'dislike';
+                }
+            }
+        } else {
+            // Первый голос
+            if (isLike) {
+                review.likes++;
+                review.userVoted = 'like';
+            } else {
+                review.dislikes++;
+                review.userVoted = 'dislike';
+            }
+        }
+
+        // Обновляем UI
+        modal.querySelector('.like-count').textContent = review.likes;
+        modal.querySelector('.dislike-count').textContent = review.dislikes;
+
+        const likeBtn = modal.querySelector('.like-btn');
+        const dislikeBtn = modal.querySelector('.dislike-btn');
+        likeBtn.disabled = review.userVoted === 'like';
+        dislikeBtn.disabled = review.userVoted === 'dislike';
+
+        // Исправленная логика затемнения иконок
+        const likeImg = likeBtn.querySelector('img');
+        const dislikeImg = dislikeBtn.querySelector('img');
+
+        if (review.userVoted === 'like') {
+            dislikeImg.style.opacity = '1';
+            likeImg.style.opacity = '0.5';
+        } else if (review.userVoted === 'dislike') {
+            dislikeImg.style.opacity = '0.5';
+            likeImg.style.opacity = '1';
+        } else {
+            dislikeImg.style.opacity = '0.5';
+            likeImg.style.opacity = '0.5';
+        }
+    }
+
+    // Функция для ограничения высоты текста
+    function limitCommentHeight(reviewElement) {
+        const container = reviewElement.querySelector('.comment-container');
+        const textElement = reviewElement.querySelector('.comment-text');
+        const blurElement = reviewElement.querySelector('.comment-blur');
+        const expandButton = reviewElement.querySelector('.expand');
+
+        // Всегда показываем кнопку "Развернуть"
+        expandButton.style.display = 'block';
+
+        // Если комментария нет, скрываем контейнер и размытие
+        if (!textElement.textContent.trim()) {
+            container.style.display = 'none';
+            if (blurElement) blurElement.style.display = 'none';
+            return;
+        }
+
+        // Вычисляем, нужно ли ограничивать текст
+        const lineHeight = parseInt(getComputedStyle(textElement).lineHeight);
+        const maxHeight = lineHeight * 5; // 3 строки
+
+        if (textElement.scrollHeight > maxHeight) {
+            container.style.maxHeight = `${maxHeight}px`;
+            if (blurElement) blurElement.style.display = 'block';
+        } else {
+            container.style.maxHeight = 'none';
+            if (blurElement) blurElement.style.display = 'none';
+        }
+}
+
+    // Массив для хранения отзывов
+    let reviews = [];
+
+    // Общая оценка и статистика
+    let overallRating = 0;
+    let ratingCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+    // Функция для обновления общей оценки и статистики
+    function updateOverallRating() {
+        const totalReviews = reviews.length;
+        if (totalReviews === 0) {
+            overallRating = 0;
+        } else {
+            const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+            overallRating = (totalRating / totalReviews).toFixed(1);
+        }
+
+        // Обновляем отображение общей оценки
+        document.getElementById('overall-rating').textContent = overallRating;
+        document.getElementById('total-reviews').textContent = totalReviews;
+
+        // Обновляем статистику отзывов
+        updateRatingBars();
+    }
+
+    // Функция для обновления статистики отзывов
+    function updateRatingBars() {
+        const totalReviews = reviews.length;
+        for (let i = 1; i <= 5; i++) {
+            const count = ratingCounts[i];
+            const percentage = totalReviews === 0 ? 0 : (count / totalReviews) * 100;
+            const bar = document.querySelector(`.rating-bar:nth-child(${6 - i}) .fill`);
+            const countSpan = document.querySelector(`.rating-bar:nth-child(${6 - i}) span:last-child`);
+            bar.style.width = `${percentage}%`;
+            countSpan.textContent = count;
+        }
+    }
+
+    // Прокрутка отзывов с проверкой границ
+    function scrollReviews(direction) {
+        const reviewList = document.getElementById('review-list');
+        const scrollAmount = 300;
+
+        if (direction === 'left' && reviewList.scrollLeft > 0) {
+            reviewList.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        } else if (direction === 'right' &&
+                  reviewList.scrollLeft + reviewList.clientWidth < reviewList.scrollWidth) {
+            reviewList.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    }
+
+    // Обновленная функция для обновления видимости отзывов и кнопок
+    function updateReviewVisibility() {
+        const reviewList = document.getElementById('review-list');
+        const visibleReviews = Array.from(reviewList.querySelectorAll('.review-card'))
+            .filter(card => window.getComputedStyle(card).display !== 'none');
+
+        const leftButton = document.querySelector('.scroll-button.left');
+        const rightButton = document.querySelector('.scroll-button.right');
+
+        // Проверяем возможность прокрутки
+        const canScrollLeft = reviewList.scrollLeft > 0;
+        const canScrollRight = reviewList.scrollLeft + reviewList.clientWidth < reviewList.scrollWidth;
+
+        // Управляем видимостью и состоянием кнопок
+        if (visibleReviews.length === 0) {
+            leftButton.style.opacity = '0';
+            leftButton.style.pointerEvents = 'none';
+            rightButton.style.opacity = '0';
+            rightButton.style.pointerEvents = 'none';
+        } else {
+            leftButton.style.opacity = canScrollLeft ? '1' : '0.5';
+            leftButton.style.pointerEvents = canScrollLeft ? 'auto' : 'none';
+
+            rightButton.style.opacity = canScrollRight ? '1' : '0.5';
+            rightButton.style.pointerEvents = canScrollRight ? 'auto' : 'none';
+        }
+    }
+
+    // Обновление состояния стрелочек при прокрутке
+    reviewList.addEventListener('scroll', function() {
+        const leftButton = document.querySelector('.scroll-button.left');
+        const rightButton = document.querySelector('.scroll-button.right');
+
+        const canScrollLeft = this.scrollLeft > 0;
+        const canScrollRight = this.scrollLeft + this.clientWidth < this.scrollWidth;
+
+        leftButton.style.opacity = canScrollLeft ? '1' : '0.5';
+        leftButton.style.pointerEvents = canScrollLeft ? 'auto' : 'none';
+
+        rightButton.style.opacity = canScrollRight ? '1' : '0.5';
+        rightButton.style.pointerEvents = canScrollRight ? 'auto' : 'none';
+    });
+
+    // Развёртывание отзыва
+    function expandReview(comment) {
+        alert(comment); // Можно заменить на модальное окно
+    }
+
+    //Карта
+    document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация карты
+    (function(e,t){
+        var r=document.getElementById(e);
+        if(r) {
+            r.contentWindow.document.open();
+            r.contentWindow.document.write(atob(t));
+            r.contentWindow.document.close();
+        }
+    })("map_547336407", "PGJvZHk+PHN0eWxlPgogICAgICAgIGh0bWwsIGJvZHkgewogICAgICAgICAgICBtYXJnaW46IDA7CiAgICAgICAgICAgIHBhZGRpbmc6IDA7CiAgICAgICAgfQogICAgICAgIGh0bWwsIGJvZHksICNtYXAgewogICAgICAgICAgICB3aWR0aDogMTAwJTsKICAgICAgICAgICAgaGVpZ2h0OiAxMDAlOwogICAgICAgIH0KICAgICAgICAuYnVsbGV0LW1hcmtlciB7CiAgICAgICAgICAgIHdpZHRoOiAyMHB4OwogICAgICAgICAgICBoZWlnaHQ6IDIwcHg7CiAgICAgICAgICAgIGJveC1zaXppbmc6IGJvcmRlci1ib3g7CiAgICAgICAgICAgIGJhY2tncm91bmQtY29sb3I6ICNmZmY7CiAgICAgICAgICAgIGJveC1zaGFkb3c6IDAgMXB4IDNweCAwIHJnYmEoMCwgMCwgMCwgMC4yKTsKICAgICAgICAgICAgYm9yZGVyOiA0cHggc29saWQgIzAyODFmMjsKICAgICAgICAgICAgYm9yZGVyLXJhZGl1czogNTAlOwogICAgICAgIH0KICAgICAgICAucGVybWFuZW50LXRvb2x0aXAgewogICAgICAgICAgICBiYWNrZ3JvdW5kOiBub25lOwogICAgICAgICAgICBib3gtc2hhZG93OiBub25lOwogICAgICAgICAgICBib3JkZXI6IG5vbmU7CiAgICAgICAgICAgIHBhZGRpbmc6IDZweCAxMnB4OwogICAgICAgICAgICBjb2xvcjogIzI2MjYyNjsKICAgICAgICB9CiAgICAgICAgLnBlcm1hbmVudC10b29sdGlwOmJlZm9yZSB7CiAgICAgICAgICAgIGRpc3BsYXk6IG5vbmU7CiAgICAgICAgfQogICAgICAgIC5kZy1wb3B1cF9oaWRkZW5fdHJ1ZSB7CiAgICAgICAgICAgIGRpc3BsYXk6IGJsb2NrOwogICAgICAgIH0KICAgICAgICAubGVhZmxldC1jb250YWluZXIgLmxlYWZsZXQtcG9wdXAgLmxlYWZsZXQtcG9wdXAtY2xvc2UtYnV0dG9uIHsKICAgICAgICAgICAgdG9wOiAwOwogICAgICAgICAgICByaWdodDogMDsKICAgICAgICAgICAgd2lkdGg6IDIwcHg7CiAgICAgICAgICAgIGhlaWdodDogMjBweDsKICAgICAgICAgICAgZm9udC1zaXplOiAyMHB4OwogICAgICAgICAgICBsaW5lLWhlaWdodDogMTsKICAgICAgICB9CiAgICA8L3N0eWxlPjxkaXYgaWQ9Im1hcCI+PC9kaXY+PHNjcmlwdCB0eXBlPSJ0ZXh0L2phdmFzY3JpcHQiIHNyYz0iaHR0cHM6Ly9tYXBzLmFwaS4yZ2lzLnJ1LzIuMC9sb2FkZXIuanM/cGtnPWZ1bGwmYW1wO3NraW49bGlnaHQiPjwvc2NyaXB0PjxzY3JpcHQ+KGZ1bmN0aW9uKGUpe3ZhciB0PUpTT04ucGFyc2UoZSkscj10Lm9yZGVyZWRHZW9tZXRyaWVzLG49dC5tYXBQb3NpdGlvbixhPXQuaXNXaGVlbFpvb21FbmFibGVkO2Z1bmN0aW9uIG8oZSl7cmV0dXJuIGRlY29kZVVSSUNvbXBvbmVudChhdG9iKGUpLnNwbGl0KCIiKS5tYXAoZnVuY3Rpb24oZSl7cmV0dXJuIiUiKygiMDAiK2UuY2hhckNvZGVBdCgwKS50b1N0cmluZygxNikpLnNsaWNlKC0yKX0pLmpvaW4oIiIpKX1ERy50aGVuKGZ1bmN0aW9uKCl7dmFyIGU9REcubWFwKCJtYXAiLHtjZW50ZXI6W24ubGF0LG4ubG9uXSx6b29tOm4uem9vbSxzY3JvbGxXaGVlbFpvb206YSx6b29tQ29udHJvbDohYX0pO0RHLmdlb0pTT04ocix7c3R5bGU6ZnVuY3Rpb24oZSl7dmFyIHQscixuLGEsbztyZXR1cm57ZmlsbENvbG9yOm51bGw9PT0odD1lKXx8dm9pZCAwPT09dD92b2lkIDA6dC5wcm9wZXJ0aWVzLmZpbGxDb2xvcixmaWxsT3BhY2l0eTpudWxsPT09KHI9ZSl8fHZvaWQgMD09PXI/dm9pZCAwOnIucHJvcGVydGllcy5maWxsT3BhY2l0eSxjb2xvcjpudWxsPT09KG49ZSl8fHZvaWQgMD09PW4/dm9pZCAwOm4ucHJvcGVydGllcy5zdHJva2VDb2xvcix3ZWlnaHQ6bnVsbD09PShhPWUpfHx2b2lkIDA9PT1hP3ZvaWQgMDphLnByb3BlcnRpZXMuc3Ryb2tlV2lkdGgsb3BhY2l0eTpudWxsPT09KG89ZSl8fHZvaWQgMD09PW8/dm9pZCAwOm8ucHJvcGVydGllcy5zdHJva2VPcGFjaXR5fX0scG9pbnRUb0xheWVyOmZ1bmN0aW9uKGUsdCl7cmV0dXJuInJhZGl1cyJpbiBlLnByb3BlcnRpZXM/REcuY2lyY2xlKHQsZS5wcm9wZXJ0aWVzLnJhZGl1cyk6REcubWFya2VyKHQse2ljb246ZnVuY3Rpb24oZSl7cmV0dXJuIERHLmRpdkljb24oe2h0bWw6IjxkaXYgY2xhc3M9J2J1bGxldC1tYXJrZXInIHN0eWxlPSdib3JkZXItY29sb3I6ICIrZSsiOyc+PC9kaXY+IixjbGFzc05hbWU6Im92ZXJyaWRlLWRlZmF1bHQiLGljb25TaXplOlsyMCwyMF0saWNvbkFuY2hvcjpbMTAsMTBdfSl9KGUucHJvcGVydGllcy5jb2xvcil9KX0sb25FYWNoRmVhdHVyZTpmdW5jdGlvbihlLHQpe2UucHJvcGVydGllcy5kZXNjcmlwdGlvbiYmdC5iaW5kUG9wdXAobyhlLnByb3BlcnRpZXMuZGVzY3JpcHRpb24pLHtjbG9zZUJ1dHRvbjohMCxjbG9zZU9uRXNjYXBlS2V5OiEwfSksZS5wcm9wZXJ0aWVzLnRpdGxlJiZ0LmJpbmRUb29sdGlwKG8oZS5wcm9wZXJ0aWVzLnRpdGxlKSx7cGVybWFuZW50OiEwLG9wYWNpdHk6MSxjbGFzc05hbWU6InBlcm1hbmVudC10b29sdGlwIn0pfX0pLmFkZFRvKGUpfSl9KSgneyJvcmRlcmVkR2VvbWV0cmllcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7ImNvbG9yIjoiIzAwMDAwMCIsInRpdGxlIjoiMEpIUXNOR0EwTERSaU5DNjBMZz0iLCJkZXNjcmlwdGlvbiI6IlBIQSswS0RRdGRHQjBZTFF2dEdBMExEUXZTRENxOUNSMExEUmdOQ3cwWWpRdXRDNHdyc2cwTC9SZ05DMTBMVFF1OUN3MExQUXNOQzEwWUlnMFlIUXN0QyswTGpRdkNEUXM5QyswWUhSZ3RHUDBMd2cwTEhRdTlHTzBMVFFzQ0RRczlHQTBZUFF0OUM0MEwzUmdkQzYwTDdRdVNEUXV0R0QwWVhRdmRDNExDRFF2OUdBMExqUXM5QyswWUxRdnRDeTBMdlF0ZEM5MEwzUmk5QzFJTkMvMEw0ZzBZTFJnTkN3MExUUXVOR0cwTGpRdnRDOTBMM1JpOUM4SU5HQTBMWFJodEMxMEwvUmd0Q3cwTHd1UEM5d1BnPT0iLCJ6SW5kZXgiOjEwMDAwMDAwMDB9LCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9pbnQiLCJjb29yZGluYXRlcyI6WzMxLjIzOTgwMyw1OC41MzE3MzNdfSwiaWQiOjczMX1dLCJtYXBQb3NpdGlvbiI6eyJsYXQiOjU4LjUzMTY3NjIxMDAwNzg2LCJsb24iOjMxLjI0MTk4NDM2NzM3MDYwNSwiem9vbSI6MTZ9LCJpc1doZWVsWm9vbUVuYWJsZWQiOnRydWV9Jyk8L3NjcmlwdD48c2NyaXB0IGFzeW5jPSIiIHNyYz0iaHR0cHM6Ly93d3cuZ29vZ2xldGFnbWFuYWdlci5jb20vZ3RhZy9qcz9pZD1HLVQ4NktNRDAzQzciPjwvc2NyaXB0PjxzY3JpcHQgaWQ9Imdvb2dsZS1hbmFseXRpY3MiPgogICAgICB3aW5kb3cuZGF0YUxheWVyID0gd2luZG93LmRhdGFMYXllciB8fCBbXTsKICAgICAgZnVuY3Rpb24gZ3RhZygpe2RhdGFMYXllci5wdXNoKGFyZ3VtZW50cyk7fQogICAgICBndGFnKCdqcycsIG5ldyBEYXRlKCkpOwogICAgICBndGFnKCdjb25maWcnLCAnRy1UODZLTUQwM0M3JywgeyJjb29raWVfZmxhZ3MiOiJTYW1lU2l0ZT1Ob25lOyBTZWN1cmU7IFBhcnRpdGlvbmVkIiwiY29va2llX3VwZGF0ZSI6ZmFsc2V9KTsKICAgICAgdHJ1ZSAmJiBndGFnKCdldmVudCcsICdmcm9tX2lmcmFtZScpOwogICAgPC9zY3JpcHQ+PC9ib2R5Pg==");
+});
+
+    // Функция показа уведомлений
+function showNotification(message) {
+    try {
+        const notification = document.createElement('div');
+        notification.style.position = 'fixed';
+        notification.style.bottom = '20px';
+        notification.style.right = '20px';
+        notification.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        notification.style.color = 'white';
+        notification.style.padding = '10px 20px';
+        notification.style.borderRadius = '5px';
+        notification.style.zIndex = '1000';
+        notification.style.transition = 'opacity 0.5s';
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 500);
+        }, 2000);
+    } catch (e) {
+        console.error('Error showing notification:', e);
+    }
+}
+
+// Функция для работы с избранным
+const FavoritesManager = {
+    init: function() {
+        this.bindEvents();
+        this.updateCounter();
+        this.markExistingFavorites();
+    },
+
+    bindEvents: function() {
+        // Вешаем обработчики на все кнопки избранного
+        document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+            btn.addEventListener('click', this.handleFavoriteClick.bind(this));
+        });
+    },
+
+    handleFavoriteClick: function(event) {
+        const button = event.currentTarget;
+        if (!button) return;
+
+        try {
+            const itemData = button.getAttribute('data-item');
+            if (!itemData) {
+                console.error('No data-item attribute found');
+                return;
+            }
+
+            const item = JSON.parse(itemData);
+            if (!item || !item.id) {
+                console.error('Invalid item data');
+                return;
+            }
+
+            const favorites = this.getFavorites();
+            const existingIndex = favorites.findIndex(fav => fav.id === item.id);
+
+            if (existingIndex === -1) {
+                favorites.push(item);
+                button.classList.add('active');
+                this.showNotification(`"${item.name}" добавлен в избранное`);
+            } else {
+                favorites.splice(existingIndex, 1);
+                button.classList.remove('active');
+                this.showNotification(`"${item.name}" удален из избранного`);
+            }
+
+            this.saveFavorites(favorites);
+            this.updateCounter();
+        } catch (error) {
+            console.error('Error handling favorite click:', error);
+        }
+    },
+
+    markExistingFavorites: function() {
+        const favorites = this.getFavorites();
+        document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+            try {
+                const itemData = btn.getAttribute('data-item');
+                if (!itemData) return;
+
+                const item = JSON.parse(itemData);
+                if (item && item.id && favorites.some(fav => fav.id === item.id)) {
+                    btn.classList.add('active');
+                }
+            } catch (error) {
+                console.error('Error marking existing favorite:', error);
+            }
+        });
+    },
+
+    getFavorites: function() {
+        try {
+            return JSON.parse(localStorage.getItem('favorites')) || [];
+        } catch (error) {
+            console.error('Error getting favorites:', error);
+            return [];
+        }
+    },
+
+    saveFavorites: function(favorites) {
+        try {
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+        } catch (error) {
+            console.error('Error saving favorites:', error);
+        }
+    },
+
+    updateCounter: function() {
+        try {
+            const count = this.getFavorites().length;
+            const counter = document.getElementById('favorites-count');
+            if (counter) counter.textContent = count;
+        } catch (error) {
+            console.error('Error updating counter:', error);
+        }
+    },
+
+    showNotification: function(message) {
+        // Реализация показа уведомления...
+    }
+};
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    FavoritesManager.init();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Городской гид - {{title}}</title>
+    <!-- Подключение CSS файла -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Style.css') }}">
+    <!-- Украшаем вкладку вашим логотипом -->
+    <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
+
+    <!-- Шапка -->
+    <nav class="bd-subnavbar py-2" aria-label="Secondary navigation">
+        <div class="container-xxl d-flex align-items-md-center">
+            <div class="logo" onclick="window.location.href='/';">
+                <img height="50px" width="70px" src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" class="img-logo" alt="Иконка лого.png">
+                <span class="text-logo">Городской Гид</span>
+            </div>
+            <form class="bd-search position-relative me-auto" action="/search" method="POST">
+                <span class="algolia-autocomplete">
+                    <input class="form-control ds-input" id="search-input" name="query" placeholder="Поиск в документации..." aria-autocomplete="list">
+                </span>
+            </form>
+            <div class="dropdown">
+                <div id="overlay" style="display: none;"></div>
+                <button id="loginButton" class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="showWindow()">
+                    <span class="d-none d-lg-inline">Вход</span>
+                </button>
+                   <div id="content_window" class="popup-window">
+                    <form id="loginForm" method="POST" action="/login">
+                        <h1>Вход</h1>
+                        <span class="btnX" onclick="hideWindow()">x</span>
+                        <div class="form-group">
+                            <label for="username">Логин</label>
+                            <input type="text" class="form-control" id="username" name="username" placeholder="Введите логин" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Пароль</label>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Введите пароль" required>
+                        </div>
+                        <button type="submit" class="btnA">Войти</button>
+                    </form>
+                </div>
+                <button id="registerButton" class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="showWindow1()">
+                    <span class="d-none d-lg-inline">Регистрация</span>
+                </button>
+                <div id="content_window2" class="popup-window">
+                    <form id="regForm" method="POST" action="/register">
+                        <h1>Регистрация</h1>
+                        <span class="btnX" onclick="hideWindow1()">x</span>
+                        <div class="form-group">
+                            <label for="username1">Логин</label>
+                            <input type="text" id="username1" name="username" class="form-control" placeholder="Введите логин" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password1">Пароль</label>
+                            <input type="password" id="password1" name="password" class="form-control" placeholder="Введите пароль" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password2">Подтвердите пароль</label>
+                            <input type="password" id="password2" name="confirm_password" class="form-control" placeholder="Подтвердите пароль" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="secret_key">Секретный ключ</label>
+                            <input type="password" id="secret_key" name="secret_key" class="form-control" placeholder="Введите секретный ключ" required>
+                        </div>
+                        <input type="submit" class="btnB" value="Зарегистрироваться">
+                    </form>
+                </div>
+            </div>
+            <div id="userInfo" style="display: none;">
+                <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar" style="width: 30px; height: 30px;">
+                <span id="welcomeUser"></span>
+                <button class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="logout()">
+                    <span class="d-none d-lg-inline">Выход</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+    <script>
+        function showWindow() {
+            document.getElementById('overlay').style.display = 'block';
+            const windowElement = document.getElementById('content_window');
+            windowElement.classList.add('show');
+            windowElement.style.display = 'block'; // Убедимся, что окно видимо
+            document.body.classList.add('no-scroll'); // Предотвращаем скролл страницы
+        }
+
+        function hideWindow() {
+            document.getElementById('overlay').style.display = 'none';
+            const windowElement = document.getElementById('content_window');
+            windowElement.classList.remove('show');
+            windowElement.style.display = 'none'; // Скрываем окно
+            document.body.classList.remove('no-scroll'); // Возвращаем скролл страницы
+        }
+
+        function showWindow1() {
+            document.getElementById('overlay').style.display = 'block';
+            const windowElement = document.getElementById('content_window2');
+            windowElement.classList.add('show');
+            windowElement.style.display = 'block'; // Убедимся, что окно видимо
+            document.body.classList.add('no-scroll'); // Предотвращаем скролл страницы
+        }
+
+        function hideWindow1() {
+            document.getElementById('overlay').style.display = 'none';
+            const windowElement = document.getElementById('content_window2');
+            windowElement.classList.remove('show');
+            windowElement.style.display = 'none'; // Скрываем окно
+            document.body.classList.remove('no-scroll'); // Возвращаем скролл страницы
+        }
+
+        // Закрытие окна при клике вне его
+        document.getElementById('overlay').addEventListener('click', function() {
+            const window1 = document.getElementById('content_window');
+            const window2 = document.getElementById('content_window2');
+            if (window1.classList.contains('show')) {
+                hideWindow();
+            } else if (window2.classList.contains('show')) {
+                hideWindow1();
+            }
+        });
+
+        // Закрытие окна при нажатии на кнопки внутри окна
+        document.querySelectorAll('.btnA, .btnB').forEach(function(button) {
+            button.addEventListener('click', function() {
+                const window1 = document.getElementById('content_window');
+                const window2 = document.getElementById('content_window2');
+                if (window1.classList.contains('show')) {
+                    hideWindow();
+                } else if (window2.classList.contains('show')) {
+                    hideWindow1();
+                }
+            });
+        });
+
+        // Обработчик для формы регистрации
+        document.getElementById('regForm').onsubmit = function(event) {
+            event.preventDefault(); // Предотвращаем отправку формы
+
+            // Получаем данные из формы
+            const username = document.getElementById('username1').value;
+            const password = document.getElementById('password1').value;
+            const confirmPassword = document.getElementById('password2').value;
+            const secretKey = document.getElementById('secret_key').value;
+
+            // Проверка совпадения паролей
+            if (password !== confirmPassword) {
+                alert('Пароли не совпадают');
+                return;
+            }
+
+            // Отправляем данные на сервер
+            fetch('/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'username': username,
+                    'password': password,
+                    'secret_key': secretKey
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('welcomeUser').innerText = data.username;
+                    document.getElementById('userInfo').style.display = 'block'; // Показываем информацию о пользователе
+                    document.getElementById('overlay').style.display = 'none';
+                    document.getElementById('content_window2').classList.remove('show');
+                    document.getElementById('content_window2').style.display = 'none'; // Скрываем окно
+                    document.getElementById('loginButton').style.display = 'none';
+                    document.getElementById('registerButton').style.display = 'none';
+                    localStorage.setItem('username', data.username);
+                } else {
+                    alert(data.message); // Показываем сообщение об ошибке
+                }
+            });
+        };
+
+        // Обработчик для формы входа
+        document.getElementById('loginForm').onsubmit = function(event) {
+            event.preventDefault(); // Предотвращаем отправку формы
+
+            // Получаем данные из формы
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            // Отправляем данные на сервер
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'username': username,
+                    'password': password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('welcomeUser').innerText = data.username;
+                    document.getElementById('userInfo').style.display = 'block'; // Показываем информацию о пользователе
+                    document.getElementById('overlay').style.display = 'none';
+                    document.getElementById('content_window').classList.remove('show');
+                    document.getElementById('content_window').style.display = 'none'; // Скрываем окно
+                    document.getElementById('loginButton').style.display = 'none';
+                    document.getElementById('registerButton').style.display = 'none';
+                    localStorage.setItem('username', data.username);
+                } else {
+                    alert(data.message); // Показываем сообщение об ошибке
+                }
+            });
+        };
+
+        function logout() {
+            fetch('/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('userInfo').style.display = 'none'; // Скрываем информацию о пользователе
+                    document.getElementById('loginButton').style.display = 'block';
+                    document.getElementById('registerButton').style.display = 'block';
+                    localStorage.removeItem('username');
+                } else {
+                    alert(data.message); // Показываем сообщение об ошибке
+                }
+            });
+        }
+
+        // Проверка состояния пользователя при загрузке страницы
+        window.addEventListener('load', function() {
+            const username = localStorage.getItem('username');
+            if (username) {
+                document.getElementById('welcomeUser').innerText = username;
+                document.getElementById('userInfo').style.display = 'block';
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('registerButton').style.display = 'none';
+            }
+        });
+
+        // Синхронизация состояния пользователя между вкладках
+        window.addEventListener('storage', function(event) {
+            if (event.key === 'username') {
+                if (event.newValue) {
+                    document.getElementById('welcomeUser').innerText = event.newValue;
+                    document.getElementById('userInfo').style.display = 'block';
+                    document.getElementById('loginButton').style.display = 'none';
+                    document.getElementById('registerButton').style.display = 'none';
+                } else {
+                    document.getElementById('userInfo').style.display = 'none';
+                    document.getElementById('loginButton').style.display = 'block';
+                    document.getElementById('registerButton').style.display = 'block';
+                }
+            }
+        });
+    </script>
+</head>
+<body>
+    <!-- Задний фон -->
+    <div class="image-container">
+        <img src="{{ url_for('static', filename='Фотки зданий/МузеиФон.jpg') }}" class="img-top-center" alt="МузеиФон.jpg">
+    </div>
+    <!-- Иконки список -->
+        <div class="container" style="margin-top: 50px;">
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Витославлицы.png') }}" alt="Музей «Витославлицы».png">
+                <div class="card-body">
+                    <h4 class="card-title">Музей народного деревянного зодчества Витославлицы</h4>
+                    <p class="card-text">Музей «Витославлицы» — это музей деревянного зодчества под открытым небом, расположенный в живописном месте на берегу реки.<br><br>+7 (921) 020-54-22 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤЮрьевское ш., 15</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Новгородский кремль.png') }}" alt="Музей Новгородский кремль.png">
+                <div class="card-body">
+                    <h4 class="card-title">Новгородский кремль</h4>
+                    <p class="card-text">Новгородский кремль — это музейный комплекс, который является одной из главных достопримечательностей Великого Новгорода.<br><br>+7 (8162) 90-93-92 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤНовгородский кремль, 25</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Поветкина.png') }}" alt="Музей музыкальных древностей В.И. Поветкина.png">
+                <div class="card-body">
+                    <h4 class="card-title">Центр музыкальных древностей В.И. Поветкина</h4>
+                    <p class="card-text">Центр музыкальных древностей В.И. Поветкина — это уникальное место, где можно услышать звучание редких и самобытных инструментов, которые могли бы быть утрачены навсегда.<br><br>+7 (8162) 63-50-19 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤИльина ул., 9Б, район Торговая сторона</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Рубцова.png') }}" alt="Киномузей Валерия Рубцова.png">
+                <div class="card-body">
+                    <h4 class="card-title">Киномузей Валерия Рубцова</h4>
+                    <p class="card-text">Киномузей Валерия Рубцова — это частная коллекция киноаппаратуры и других экспонатов, связанных с историей кино.<br><br>+7 (911) 642-71-79 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤул. Рогатица, 16/21, район Торговая сторона</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/музей-заповедник.png') }}" alt="Новгородский музей-заповедник.png">
+                <div class="card-body">
+                    <h4 class="card-title">Новгородский государственный объединенный музей-заповедник, главное здание музея</h4>
+                    <p class="card-text">Новгородский музей-заповедник — это место, где вы можете погрузиться в историю Новгородской земли. Здесь вы найдете множество археологических находок, позволяющих узнать много нового из истории Новгорода.<br><br>+7 (921) 730-93-92 ㅤㅤㅤㅤㅤㅤㅤㅤрайон Софийская сторона, Новгородский кремль, 4</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/изобразительных искусств.png') }}" alt="Музей изобразительных искусств.png">
+                <div class="card-body">
+                    <h4 class="card-title">Музей изобразительных искусств</h4>
+                    <p class="card-text">Музей изобразительных искусств в Великом Новгороде — это место, где можно увидеть работы известных русских художников, таких как Шишкин, Айвазовский, Репин и Куинджи, а также посетить временные выставки.<br><br>+7 (921) 730-93-92 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤплощадь Победы-Софийская, 2</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/цех фарфора.png') }}" alt="Музейный цех фарфора.png">
+                <div class="card-body">
+                    <h4 class="card-title">Музейный цех фарфора</h4>
+                    <p class="card-text">«Музейный цех фарфора» является частью Музея художественной культуры Новгородской земли в Десятинном монастыре.<br><br>+7 (911) 644-02-91 ㅤㅤㅤㅤㅤㅤрайон Софийская сторона, Десятинный монастырь, 6</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/художественной культуры.png') }}" alt="музей художественной культуры.png">
+                <div class="card-body">
+                    <h4 class="card-title">Государственный музей художественной культуры Новгородской земли</h4>
+                    <p class="card-text">Музей художественной культуры Новгородской земли — это музей, расположенный на территории Десятинного монастыря, памятника архитектуры XIV-XIX веков. В музее представлены произведения искусства новгородских художников конца ХХ — начала XXI веков.<br><br>+7 (921) 730-93-92 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤплощадь Победы-Софийская, 2</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Владычная палата.png') }}" alt="музей Владычная палата.png">
+                <div class="card-body">
+                    <h4 class="card-title">Владычная палата</h4>
+                    <p class="card-text">Владычная палата — это уникальный памятник древнерусской архитектуры, выполненный в стиле западноевропейской готики. Это единственное сохранившееся гражданское сооружение средневекового Новгорода.<br><br>+7 (921) 207-37-70 ㅤㅤㅤㅤㅤㅤㅤрайон Софийская сторона, Новгородский кремль, 14А</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Александра Варенцова.png') }}" alt="Мастерская-музей.png">
+                <div class="card-body">
+                    <h4 class="card-title">Мастерская-музей реалистической живописи Александра Варенцова</h4>
+                    <p class="card-text">Музей реалистической живописи А. Варенцова — это место, где взрослые и дети могут раскрыть свой творческий потенциал.<br><br>+7 (911) 644-43-42 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤКаберова-Власьевская ул., 22 • этаж 3</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Музей письменности.png') }}" alt="Музей письменности.png">
+                <div class="card-body">
+                    <h4 class="card-title">Музей письменности</h4>
+                    <p class="card-text">Музей письменности — это современный интерактивный музей, который рассказывает об истории письменности и берестяных грамотах. Здесь можно увидеть оригинальные берестяные грамоты и их копии, а также старинные рукописные и первые печатные книги.<br><br>+7 (921) 730-93-92 ㅤㅤㅤㅤㅤㅤㅤㅤрайон Софийская сторона, Новгородский кремль, 12</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Детский музейный центр.png') }}" alt="Детский музейный центр.png">
+                <div class="card-body">
+                    <h4 class="card-title">Детский музейный центр</h4>
+                    <p class="card-text">Детский музейный центр в Великом Новгороде — это место, где дети могут узнать много интересного о древнем городе и его жителях.<br><br>+7 (8162) 77-40-54<br>район Софийская сторона, Новгородский кремль, Студийский городок 3</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Алексеевская Белая башня.png') }}" alt="Алексеевская Белая башня.png">
+                <div class="card-body">
+                    <h4 class="card-title">Алексеевская Белая башня</h4>
+                    <p class="card-text">Алексеевская Белая башня — это интерактивный музей, рассказывающий о героической обороне Великого Новгорода от шведского вторжения начала XVII века. В музее представлены как подлинные экспонаты, так и реконструкция некоторых предметов одежды, воинского снаряжения и оружия.<br><br>+7 (921) 730-93-92 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤТроицкая ул., 15А</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Зал воинской славы.png') }}" alt="Зал воинской славы.png">
+                <div class="card-body">
+                    <h4 class="card-title">Зал воинской славы</h4>
+                    <p class="card-text">Зал воинской славы в Великом Новгороде — часть музейного комплекса, посвященного военной доблести и патриотизму России. Он находится в Новгородском музее-заповеднике и включает экспозицию, посвященную важным событиям, связанным с защитой Родины.<br><br>+7 (8162) 94-87-64 ㅤㅤㅤㅤㅤㅤㅤㅤㅤЧудинцева ул., 11/62, район Софийская сторона</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Музей Утюга.png') }}" alt="Музей Утюга.png">
+                <div class="card-body">
+                    <h4 class="card-title">Музей Утюга</h4>
+                    <p class="card-text">«Музей утюга» — это частная коллекция утюгов всех видов (цельнолитые, со сменными ручками и вкладышами, на угле, на газе, на спирте, на электричестве, сувенирные), XVIII-XX веков, из разных стран (СССР, Франция, США, Польша, Тунис).<br><br>+7 (921) 203-90-47 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤЮрьевское ш., 6Б</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/музей-заповедник1.png') }}" alt="музей-заповедник.png">
+                <div class="card-body">
+                    <h4 class="card-title">Новгородский музей-заповедник, экскурсионный отдел</h4>
+                    <p class="card-text">Новгородский музей-заповедник, экскурсионный отдел — это место, где вы можете заказать индивидуальную или групповую экскурсию, а также воспользоваться услугами профессионального экскурсовода.<br><br>+7 (921) 207-37-70 ㅤㅤㅤㅤㅤㅤул. Мерецкова-Волосова, 2, район Софийская сторона</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Центр противопожарной пропаганды.png') }}" alt="Центр противопожарной пропаганды.png">
+                <div class="card-body">
+                    <h4 class="card-title">Центр противопожарной пропаганды и общественных связей</h4>
+                    <p class="card-text">Центр противопожарной пропаганды и общественных связей в Великом Новгороде — специализированный музей, посвященный пожарной безопасности и истории пожарной службы. Здесь представлены экспозиции, знакомящие посетителей с основами безопасности и методами тушения пожаров.<br><br> ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ ㅤㅤㅤㅤㅤㅤㅤㅤㅤул. Михайлова, 27, район Торговая сторона</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Стены и башни.png') }}" alt="Стены и башни.png">
+                <div class="card-body">
+                    <h4 class="card-title">Стены и башни Новгородского кремля</h4>
+                    <p class="card-text">Музей «Стены и башни Новгородского кремля» — это место, где можно насладиться красотой и величием этого древнего сооружения.<br><br>+7 (8162) 77-37-38 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤНовгородский кремль</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Лекторий.png') }}" alt="Лекторий.png">
+                <div class="card-body">
+                    <h4 class="card-title">Лекторий</h4>
+                    <p class="card-text">Лекторий в Великом Новгороде — образовательное пространство в одном из музеев, предлагающее лекции, семинары и мастер-классы. Его цель — популяризация знаний в истории, культуре и искусстве, а также повышение осведомленности о социальных и экологических вопросах.<br><br>+7 (8162) 77-37-63 ㅤㅤㅤㅤㅤㅤㅤㅤрайон Софийская сторона, Новгородский кремль, 7</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/музея-заповедника2.png') }}" alt="музея-заповедника.png">
+                <div class="card-body">
+                    <h4 class="card-title">Дирекция Новгородского государственного объединённого музея-заповедника</h4>
+                    <p class="card-text">Дирекция Новгородского государственного объединенного музея-заповедника в Великом Новгороде управляет музеем, который включает несколько исторических и культурных объектов. Музей играет ключевую роль в сохранении и популяризации культурного наследия региона, проводя выставки и образовательные программы.<br><br>+7 (8162) 77-36-08 ㅤㅤㅤㅤㅤㅤㅤㅤрайон Софийская сторона, Новгородский кремль, 9</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Усадебный дом.png') }}" alt="Усадебный дом.png">
+                <div class="card-body">
+                    <h4 class="card-title">Усадебный дом А.А. Орловой-Чесменской</h4>
+                    <p class="card-text">Усадебный дом А.А. Орловой-Чесменской — это музей, расположенный в музее-заповеднике «Витославлицы». Он представляет собой двухэтажный дом, в котором можно увидеть экспозицию, посвященную жизни и деятельности графини Орловой-Чесменской.<br><br> ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ ㅤㅤㅤㅤㅤНовгородская область, Великий Новгород, Юрьево</p>
+                </div>
+            </div>
+            <div class="card">
+                <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Музей истории органов внутренних дел.png') }}" alt="Музей истории органов внутренних дел.png">
+                <div class="card-body">
+                    <h4 class="card-title">Музей истории органов внутренних дел Новгородской области культурного центра УМВД России по Новгородской области</h4>
+                    <p class="card-text">Музей истории органов внутренних дел Новгородской области, расположенный в культурном центре УМВД России, посвящен истории правоохранительных органов региона. Он представляет собой площадку с экспонатами, документами и фотографиями, иллюстрирующими развитие милиции и полиции в области.<br><br> ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤпросп. Александра Корсунова, 34</p>
+                </div>
+            </div>
+        </div>
+    <footer class="footer">
+        <div class="footer-section">
+            <img class="img-logo-footer" src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Logo">
+            <p class="description">Городской гид - это сайт, который позволит найти всё в твоём городе!</p>
+            <div class="social-icons">
+                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
+                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" alt="YouTube"></a>
+                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
+                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+            </div>
+        </div>
+        <div class="footer-section">
+            <h4>Наши контакты</h4>
+            <img src="{{ url_for('static', filename='Фотки зданий/Телефон.png') }}" class="contact-icon" alt="Phone">
+            <a href="tel:+894674736353">894674736353</a><br>
+            <img src="{{ url_for('static', filename='Фотки зданий/телефон.png') }}" class="contact-icon" alt="Phone">
+            <a href="tel:+894674736353">894674736353</a><br>
+            <img src="{{ url_for('static', filename='Фотки зданий/Письмо.png') }}" class="contact-icon" alt="Mail">
+            <a href="mailto:mail@mail.ru">mail@mail.ru</a><br>
+            <p>г. Великий Новгород</p>
+        </div>
+        <div class="footer-section">
+            <h4>Информация</h4>
+            <a href="#">О нас</a><br>
+            <a href="#">Личный Кабинет</a><br>
+            <a href="#">Создатели</a><br>
+            <a href="#">Контакты</a>
+        </div>
+    </footer>
+</body>
+</html>

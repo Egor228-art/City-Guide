@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отзывы</title>
+    <style>
+        .review-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            position: relative;
+        }
+        .review-list {
+            display: flex;
+            gap: 10px;
+        }
+        .review-card {
+            flex: 0 0 auto;
+            width: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .review-navigation {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+        .review-navigation button {
+            pointer-events: all;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            padding: 10px;
+            cursor: pointer;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            width: 300px;
+        }
+        .stars {
+            display: flex;
+            gap: 5px;
+        }
+        .star img {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Модальное окно для отзыва -->
+<div class="modal" id="review-modal">
+    <div class="modal-content">
+        <h2>Оставить отзыв</h2>
+        <form id="review-form">
+            <label for="name">Имя:</label>
+            <input type="text" id="name" required><br><br>
+            <label>Оценка:</label>
+            <div class="stars" id="review-stars">
+                <span class="star" data-value="1"><img src="star.png" alt="★"></span>
+                <span class="star" data-value="2"><img src="star.png" alt="★"></span>
+                <span class="star" data-value="3"><img src="star.png" alt="★"></span>
+                <span class="star" data-value="4"><img src="star.png" alt="★"></span>
+                <span class="star" data-value="5"><img src="star.png" alt="★"></span>
+            </div><br>
+            <label for="comment">Комментарий:</label><br>
+            <textarea id="comment" rows="4" required></textarea><br><br>
+            <button type="submit">Отправить</button>
+        </form>
+    </div>
+</div>
+
+<!-- Блок отзывов -->
+<div class="reviews">
+    <h2>Отзывы</h2>
+    <p>Общая оценка: <strong id="overall-rating">0.0</strong> (на основе <span id="total-reviews">0</span> отзывов)</p>
+    <div class="rating-bars">
+        <div class="rating-bar"><span>5 звёзд</span><div class="bar"><div class="fill" style="width: 0%;"></div></div><span>0</span></div>
+        <div class="rating-bar"><span>4 звёзды</span><div class="bar"><div class="fill" style="width: 0%;"></div></div><span>0</span></div>
+        <div class="rating-bar"><span>3 звёзды</span><div class="bar"><div class="fill" style="width: 0%;"></div></div><span>0</span></div>
+        <div class="rating-bar"><span>2 звёзды</span><div class="bar"><div class="fill" style="width: 0%;"></div></div><span>0</span></div>
+        <div class="rating-bar"><span>1 звезда</span><div class="bar"><div class="fill" style="width: 0%;"></div></div><span>0</span></div>
+    </div>
+
+    <!-- Контейнер для отзывов -->
+    <div class="review-container">
+        <!-- Стрелочки для прокрутки отзывов -->
+        <div class="review-navigation">
+            <button onclick="scrollReviews('left')">◄</button>
+            <button onclick="scrollReviews('right')">►</button>
+        </div>
+        <!-- Список отзывов -->
+        <div class="review-list" id="review-list">
+            <!-- Отзывы будут добавляться сюда -->
+        </div>
+    </div>
+
+    <!-- Кнопка "Оставить отзыв" -->
+    <button onclick="openReviewModal()">Оставить отзыв</button>
+</div>
+
+<script>
+    // Оценка звёздами
+    const stars = document.querySelectorAll('#review-stars .star');
+    let selectedRating = 0; // Переменная для хранения выбранной оценки
+
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            const value = parseFloat(star.getAttribute('data-value'));
+            selectedRating = value; // Сохраняем выбранную оценку
+
+            stars.forEach((s, index) => {
+                const starValue = parseFloat(s.getAttribute('data-value'));
+                if (starValue <= value) {
+                    s.innerHTML = `<img src="baka.png" alt="★" style="width: 24px; height: 24px;">`;
+                } else {
+                    s.innerHTML = `<img src="star.png" alt="★" style="width: 24px; height: 24px;">`;
+                }
+            });
+        });
+    });
+
+    // Функция для добавления отзыва
+    const reviewForm = document.getElementById('review-form');
+    const reviewList = document.getElementById('review-list');
+    reviewForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const comment = document.getElementById('comment').value;
+
+        // Создаём новый отзыв
+        const review = {
+            name: name,
+            rating: selectedRating,
+            comment: comment,
+        };
+
+        // Добавляем отзыв в массив
+        reviews.push(review);
+
+        // Обновляем статистику
+        ratingCounts[Math.floor(selectedRating)]++;
+
+        // Обновляем общую оценку
+        updateOverallRating();
+
+        // Создаём HTML для нового отзыва
+        const reviewElement = document.createElement('div');
+        reviewElement.className = 'review-card highlight';
+        reviewElement.innerHTML = `
+            <div class="review-header">
+                <img class="avatar" src="avatar.png" alt="Аватар">
+                <div class="name-rating">
+                    <div class="name">${name}</div>
+                    <div class="rating">
+                        ${'<img src="baka.png" alt="★" style="width: 24px; height: 24px;">'.repeat(selectedRating)}
+                        ${'<img src="star.png" alt="★" style="width: 24px; height: 24px;">'.repeat(5 - selectedRating)}
+                    </div>
+                </div>
+            </div>
+            <div class="comment">${comment}</div>
+        `;
+
+        // Добавляем отзыв в начало списка
+        reviewList.prepend(reviewElement);
+
+        // Сбрасываем форму
+        reviewForm.reset();
+        stars.forEach(star => star.innerHTML = `<img src="star.png" alt="★" style="width: 24px; height: 24px;">`);
+        closeReviewModal();
+
+        // Обновляем видимость отзывов
+        updateReviewVisibility();
+    });
+
+    // Массив для хранения отзывов
+    let reviews = [];
+
+    // Общая оценка и статистика
+    let overallRating = 0;
+    let ratingCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+    // Функция для обновления общей оценки и статистики
+    function updateOverallRating() {
+        const totalReviews = reviews.length;
+        if (totalReviews === 0) {
+            overallRating = 0;
+        } else {
+            const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+            overallRating = (totalRating / totalReviews).toFixed(1);
+        }
+
+        // Обновляем отображение общей оценки
+        document.getElementById('overall-rating').textContent = overallRating;
+        document.getElementById('total-reviews').textContent = totalReviews;
+
+        // Обновляем статистику отзывов
+        updateRatingBars();
+    }
+
+    // Функция для обновления статистики отзывов
+    function updateRatingBars() {
+        const totalReviews = reviews.length;
+        for (let i = 1; i <= 5; i++) {
+            const count = ratingCounts[i];
+            const percentage = totalReviews === 0 ? 0 : (count / totalReviews) * 100;
+            const bar = document.querySelector(`.rating-bar:nth-child(${6 - i}) .fill`);
+            const countSpan = document.querySelector(`.rating-bar:nth-child(${6 - i}) span:last-child`);
+            bar.style.width = `${percentage}%`;
+            countSpan.textContent = count;
+        }
+    }
+
+    // Функция для прокрутки отзывов
+    function scrollReviews(direction) {
+        const container = document.querySelector('.review-container');
+        const scrollAmount = 300; // Количество пикселей для прокрутки
+        if (direction === 'left') {
+            container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        } else {
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    }
+
+    // Функция для открытия модального окна
+    function openReviewModal() {
+        document.getElementById('review-modal').style.display = 'flex';
+    }
+
+    // Функция для закрытия модального окна
+    function closeReviewModal() {
+        document.getElementById('review-modal').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
