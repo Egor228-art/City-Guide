@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Добавить место</title>
+    <style>
+        form { max-width: 600px; margin: 20px auto; }
+        div { margin-bottom: 15px; }
+        label { display: inline-block; width: 150px; }
+        input[type="text"], textarea, select { width: 100%; padding: 8px; }
+        textarea { height: 100px; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; }
+    </style>
+</head>
+<body>
+    <h1>Добавить новое место</h1>
+    <form method="post" enctype="multipart/form-data">
+        <div>
+            <label>Название:</label>
+            <input type="text" name="title">
+        </div>
+
+        <div>
+            <label>Описание:</label>
+            <textarea name="description"></textarea>
+        </div>
+
+        <div>
+            <label>Телефон:</label>
+            <input type="tel" name="telephone">
+        </div>
+
+        <div>
+            <label>Адрес:</label>
+            <textarea name="address"></textarea>
+        </div>
+
+        <div>
+            <label>Категория:</label>
+            <select name="category" required>
+                <option value="">-- Выберите категорию --</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label>Изображение:</label>
+            <input type="file" name="image" accept="image/*">
+        </div>
+
+        <button type="submit">Добавить</button>
+    </form>
+</body>
+</html>

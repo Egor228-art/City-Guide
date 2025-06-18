@@ -1,129 +1,366 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Городской гид - {{title}}</title>
-    <!-- Подключение CSS файла -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{title}}</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Style.css') }}">
-    <!-- Украшаем вкладку вашим логотипом -->
     <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
-
-    <!-- Шапка -->
-    <nav class="bd-subnavbar py-2" aria-label="Secondary navigation">
-        <div class="container-xxl d-flex align-items-md-center">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <!-- Навигация с функционалом из HTML 1 и стилями из HTML 2 -->
+    <nav class="navbar">
+        <div class="nav-container">
             <div class="logo" onclick="window.location.href='/';">
-                <img height="50px" width="70px" src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" class="img-logo" alt="Иконка лого.png">
-                <span class="text-logo">Городской Гид</span>
+                <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Логотип">
+                <span>Городской Гид</span>
             </div>
-            <form class="bd-search position-relative me-auto" action="/search" method="POST">
-                <span class="algolia-autocomplete">
-                    <input class="form-control ds-input" id="search-input" name="query" placeholder="Поиск в документации..." aria-autocomplete="list">
-                </span>
+
+            <!-- Поиск из HTML 1 -->
+            <form class="search-box" action="/search" method="POST">
+                <input type="text" name="query" placeholder="Поиск заведений..." class="search-input">
+                <button type="submit" class="search-button">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
             </form>
-            <div class="dropdown">
-                <div id="overlay" style="display: none;"></div>
-                <button id="loginButton" class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="showWindow()">
-                    <span class="d-none d-lg-inline">Вход</span>
-                </button>
-                   <div id="content_window" class="popup-window">
-                    <form id="loginForm" method="POST" action="/login">
-                        <h1>Вход</h1>
-                        <span class="btnX" onclick="hideWindow()">x</span>
-                        <div class="form-group">
-                            <label for="username">Логин</label>
-                            <input type="text" class="form-control" id="username" name="username" placeholder="Введите логин" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password">Пароль</label>
-                            <input type="password" class="form-control" id="password" name="password" placeholder="Введите пароль" required>
-                        </div>
-                        <button type="submit" class="btnA">Войти</button>
-                    </form>
+
+            <!-- Кнопки входа/регистрации из HTML 1 -->
+            <div class="auth-buttons">
+                <button id="loginButton" class="btn-login">Вход</button>
+                <button id="registerButton" class="btn-register">Регистрация</button>
+                <div id="userInfo" style="display: none;">
+                    <div class="box">
+                        <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar">
+                        <span id="welcomeUser"></span>
+                    </div>
+                    <button class="btn-logout">Выход</button>
                 </div>
-                <button id="registerButton" class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="showWindow1()">
-                    <span class="d-none d-lg-inline">Регистрация</span>
-                </button>
-                <div id="content_window2" class="popup-window">
-                    <form id="regForm" method="POST" action="/register">
-                        <h1>Регистрация</h1>
-                        <span class="btnX" onclick="hideWindow1()">x</span>
-                        <div class="form-group">
-                            <label for="username1">Логин</label>
-                            <input type="text" id="username1" name="username" class="form-control" placeholder="Введите логин" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password1">Пароль</label>
-                            <input type="password" id="password1" name="password" class="form-control" placeholder="Введите пароль" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password2">Подтвердите пароль</label>
-                            <input type="password" id="password2" name="confirm_password" class="form-control" placeholder="Подтвердите пароль" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="secret_key">Секретный ключ</label>
-                            <input type="password" id="secret_key" name="secret_key" class="form-control" placeholder="Введите секретный ключ" required>
-                        </div>
-                        <input type="submit" class="btnB" value="Зарегистрироваться">
-                    </form>
-                </div>
-            </div>
-            <div id="userInfo" style="display: none;">
-                <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar" style="width: 30px; height: 30px;">
-                <span id="welcomeUser"></span>
-                <button class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="logout()">
-                    <span class="d-none d-lg-inline">Выход</span>
-                </button>
             </div>
         </div>
+        <div class="clouds"></div>
     </nav>
+
+    <!-- Окна входа/регистрации из HTML 1 -->
+    <div id="overlay" style="display: none;"></div>
+
+    <div id="content_window" class="popup-window">
+        <form id="loginForm" method="POST" action="/login">
+            <h1>Вход</h1>
+            <span class="btnX" onclick="hideWindow()">×</span>
+            <div class="form-group">
+                <label for="username">Логин</label>
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btnA">Войти</button>
+        </form>
+    </div>
+
+    <div id="content_window2" class="popup-window">
+        <form id="regForm" method="POST" action="/register">
+            <h1>Регистрация</h1>
+            <span class="btnX" onclick="hideWindow1()">×</span>
+            <div class="form-group">
+                <label for="username1">Логин</label>
+                <input type="text" id="username1" name="username" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password1">Пароль</label>
+                <input type="password" id="password1" name="password" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password2">Подтвердите пароль</label>
+                <input type="password" id="password2" name="confirm_password" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="secret_key">Секретный ключ</label>
+                <input type="password" id="secret_key" name="secret_key" class="form-control" required>
+            </div>
+            <button type="submit" class="btnB">Зарегистрироваться</button>
+        </form>
+    </div>
+
+    <!-- Параллакс фон из первого HTML -->
+    <div class="parallax-background">
+        <img src="{{ url_for('static', filename='Фотки зданий/КафеФон.jpg') }}" alt="Фон Кафе">
+    </div>
+
+    <!-- Умная пагинация -->
+    <div class="smart-pagination">
+        <ul class="pagination" id="pagination">
+            <!-- Кнопки будут добавлены через JavaScript -->
+        </ul>
+        <div id="loading" style="display: none; text-align: center; padding: 20px;">
+            Загрузка...
+        </div>
+    </div>
+
+    <!-- Контейнер с ресторанами - совмещаем структуру из обоих вариантов -->
+    <div class="restaurants-container">
+        {% for place in coffee %}
+        <div class="restaurant-card"
+             onclick="window.location.href='{{ url_for('lambs') if place.id == 2 else url_for('restaurant_page', id=place.id) }}'"
+            {% if loop.last %}style="margin-bottom: 0px"{% endif %}>
+            <div class="image-wrapper">
+                {% if place.image_path %}
+                    <img class="restaurant-image"
+                         src="{{ url_for('static', filename=place.image_path) }}"
+                         alt="{{ place.title }}">
+                        <p>Путь к изображению: {{ place.image_path }}</p>
+                        <p>Полный URL: {{ url_for('static', filename=place.image_path) }}</p>
+                {% else %}
+                    <img class="restaurant-image"
+                         src="{{ url_for('static', filename='Фотки зданий/default.png') }}"
+                         alt="Нет изображения">
+                {% endif %}
+            </div>
+            <div class="restaurant-info">
+                <h3 class="restaurant-name">{{ place.title if place.title else 'Название не указано' }}</h3>
+                <p class="restaurant-description">
+                    {{ place.description if place.description else 'Описание отсутствует' }}
+                </p>
+                <div class="restaurant-contacts">
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        <span>{{ place.telephone if place.telephone else 'Телефон не указан' }}</span>
+                    </div>
+                    <div class="metka">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        <span>{{ place.address if place.address else 'Адрес не указан' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Городской силуэт перед футером -->
+    <div class="skyscrapers"></div>
+
+    <!-- Футер -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section about">
+                <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" style="width: 120px;" alt="Логотип">
+                <p>Городской гид - ваш путеводитель по лучшим местам Великого Новгорода</p>
+                <div class="socials">
+                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
+                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" style="margin-bottom: 0; margin-top: 8px" alt="YouTube"></a>
+                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
+                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+                </div>
+            </div>
+
+            <div class="footer-section links">
+                <h3>Навигация</h3>
+                <ul>
+                    <li><a href="#">Главная</a></li>
+                    <li><a href="#">О проекте</a></li>
+                    <li><a href="#">Контакты</a></li>
+                    <li><a href="#">Помощь</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section contact">
+                <h3>Контакты</h3>
+                <p><i class="phone-icon"></i> +7 (123) 456-78-90</p>
+                <p><i class="email-icon"></i> info@gorodskoygid.ru</p>
+                <p><i class="location-icon"></i> Великий Новгород</p>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            &copy; 2025 Городской Гид | Все права защищены
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+
     <script>
-        function showWindow() {
-            document.getElementById('overlay').style.display = 'block';
-            const windowElement = document.getElementById('content_window');
-            windowElement.classList.add('show');
-            windowElement.style.display = 'block'; // Убедимся, что окно видимо
-            document.body.classList.add('no-scroll'); // Предотвращаем скролл страницы
-        }
 
-        function hideWindow() {
-            document.getElementById('overlay').style.display = 'none';
-            const windowElement = document.getElementById('content_window');
-            windowElement.classList.remove('show');
-            windowElement.style.display = 'none'; // Скрываем окно
-            document.body.classList.remove('no-scroll'); // Возвращаем скролл страницы
-        }
+        // Управление навигацией при скролле
+        let lastScroll = 0;
+        const navbar = document.querySelector('.navbar'); // Добавляем шапку
+        const smartPagination = document.querySelector('.smart-pagination');
 
-        function showWindow1() {
-            document.getElementById('overlay').style.display = 'block';
-            const windowElement = document.getElementById('content_window2');
-            windowElement.classList.add('show');
-            windowElement.style.display = 'block'; // Убедимся, что окно видимо
-            document.body.classList.add('no-scroll'); // Предотвращаем скролл страницы
-        }
+        window.addEventListener('scroll', function() {
+            const currentScroll = window.pageYOffset;
 
-        function hideWindow1() {
-            document.getElementById('overlay').style.display = 'none';
-            const windowElement = document.getElementById('content_window2');
-            windowElement.classList.remove('show');
-            windowElement.style.display = 'none'; // Скрываем окно
-            document.body.classList.remove('no-scroll'); // Возвращаем скролл страницы
-        }
-
-        // Закрытие окна при клике вне его
-        document.getElementById('overlay').addEventListener('click', function() {
-            const window1 = document.getElementById('content_window');
-            const window2 = document.getElementById('content_window2');
-            if (window1.classList.contains('show')) {
-                hideWindow();
-            } else if (window2.classList.contains('show')) {
-                hideWindow1();
+            // Управление навигацией и пагинацией
+            if (currentScroll <= 0) {
+                navbar.classList.remove('hidden');
+                navbar.style.transform = 'translateY(0)'; // Явно показываем шапку
+                smartPagination.style.top = '95px';
+                smartPagination.style.zIndex = '900';
+            } else if (currentScroll > lastScroll) {
+                // Скролл вниз - скрываем оба элемента
+                navbar.classList.add('hidden');
+                navbar.style.transform = 'translateY(-100%)'; // Явно скрываем шапку
+                smartPagination.style.top = '0';
+                smartPagination.style.zIndex = '1001';
+            } else {
+                // Скролл вверх - показываем оба элемента
+                navbar.classList.remove('hidden');
+                navbar.style.transform = 'translateY(0)';
+                smartPagination.style.top = '95px';
+                smartPagination.style.zIndex = '900';
             }
+
+            lastScroll = currentScroll;
         });
 
-        // Закрытие окна при нажатии на кнопки внутри окна
-        document.querySelectorAll('.btnA, .btnB').forEach(function(button) {
-            button.addEventListener('click', function() {
+        // Анимация загрузки карточек
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.restaurant-card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = (index * 0.1) + 's';
+            });
+
+            // Инициализация пагинации
+            initPagination(10, 1); // Всего 10 страниц, текущая 1
+        });
+
+        // Умная пагинация
+        function initPagination(totalPages, currentPage) {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            // Кнопка "В начало"
+            if (currentPage > 1) {
+                addPageItem(pagination, '««', 1, 'arrow');
+            } else {
+                addPageItem(pagination, '««', 1, 'arrow disabled');
+            }
+
+            // Кнопка "Назад"
+            if (currentPage > 1) {
+                addPageItem(pagination, '«', currentPage - 1, 'arrow');
+            } else {
+                addPageItem(pagination, '«', currentPage - 1, 'arrow disabled');
+            }
+
+            // Всегда показываем первую страницу
+            if (currentPage > 3) {
+                addPageItem(pagination, 1, 1);
+                if (currentPage > 4) {
+                    addEllipsis(pagination);
+                }
+            }
+
+            // Показываем 2 страницы перед текущей
+            for (let i = Math.max(1, currentPage - 2); i < currentPage; i++) {
+                addPageItem(pagination, i, i);
+            }
+
+            // Текущая страница
+            addPageItem(pagination, currentPage, currentPage, 'active');
+
+            // Показываем 2 страницы после текущей
+            for (let i = currentPage + 1; i <= Math.min(totalPages, currentPage + 2); i++) {
+                addPageItem(pagination, i, i);
+            }
+
+            // Всегда показываем последнюю страницу
+            if (currentPage < totalPages - 2) {
+                if (currentPage < totalPages - 3) {
+                    addEllipsis(pagination);
+                }
+                addPageItem(pagination, totalPages, totalPages);
+            }
+
+            // Кнопка "Вперед"
+            if (currentPage < totalPages) {
+                addPageItem(pagination, '»', currentPage + 1, 'arrow');
+            } else {
+                addPageItem(pagination, '»', currentPage + 1, 'arrow disabled');
+            }
+
+            // Кнопка "В конец"
+            if (currentPage < totalPages) {
+                addPageItem(pagination, '»»', totalPages, 'arrow');
+            } else {
+                addPageItem(pagination, '»»', totalPages, 'arrow disabled');
+            }
+        }
+
+        function addPageItem(container, text, pageNumber, className = '') {
+            const li = document.createElement('li');
+            li.className = 'page-item';
+
+            const a = document.createElement('a');
+            a.className = `page-link ${className}`;
+            a.href = `?page=${pageNumber}`;
+            a.textContent = text;
+            a.onclick = function(e) {
+                e.preventDefault();
+                // Здесь можно добавить загрузку страницы через AJAX
+                console.log(`Переход на страницу ${pageNumber}`);
+                initPagination(10, pageNumber); // Обновляем пагинацию
+            };
+
+            li.appendChild(a);
+            container.appendChild(li);
+        }
+
+        function addEllipsis(container) {
+            const li = document.createElement('li');
+            li.className = 'page-item';
+            li.innerHTML = '<span class="ellipsis">...</span>';
+            container.appendChild(li);
+        }
+
+        // Обработчики для карточек
+        document.querySelectorAll('.restaurant-card').forEach(card => {
+            card.addEventListener('click', function() {
+                window.location.href = this.getAttribute('onclick').match(/'(.*?)'/)[1];
+            });
+        });
+
+            function showWindow() {
+                document.getElementById('overlay').style.display = 'block';
+                const windowElement = document.getElementById('content_window');
+                windowElement.classList.add('show');
+                windowElement.style.display = 'block';
+            }
+
+            function hideWindow() {
+                document.getElementById('overlay').style.display = 'none';
+                const windowElement = document.getElementById('content_window');
+                windowElement.classList.remove('show');
+                windowElement.style.display = 'none';
+                document.body.classList.remove('no-scroll');
+            }
+
+            function showWindow1() {
+                document.getElementById('overlay').style.display = 'block';
+                const windowElement = document.getElementById('content_window2');
+                windowElement.classList.add('show');
+                windowElement.style.display = 'block';
+            }
+
+            function hideWindow1() {
+                document.getElementById('overlay').style.display = 'none';
+                const windowElement = document.getElementById('content_window2');
+                windowElement.classList.remove('show');
+                windowElement.style.display = 'none';
+                document.body.classList.remove('no-scroll');
+            }
+
+            // Закрытие окна при клике вне его
+            document.getElementById('overlay').addEventListener('click', function() {
                 const window1 = document.getElementById('content_window');
                 const window2 = document.getElementById('content_window2');
                 if (window1.classList.contains('show')) {
@@ -132,376 +369,134 @@
                     hideWindow1();
                 }
             });
-        });
 
-        // Обработчик для формы регистрации
-        document.getElementById('regForm').onsubmit = function(event) {
-            event.preventDefault(); // Предотвращаем отправку формы
+            // Обработчики кнопок входа/регистрации
+            document.getElementById('loginButton').addEventListener('click', showWindow);
+            document.getElementById('registerButton').addEventListener('click', showWindow1);
 
-            // Получаем данные из формы
-            const username = document.getElementById('username1').value;
-            const password = document.getElementById('password1').value;
-            const confirmPassword = document.getElementById('password2').value;
-            const secretKey = document.getElementById('secret_key').value;
+            // Обработчик для формы регистрации
+            document.getElementById('regForm').onsubmit = function(event) {
+                event.preventDefault();
 
-            // Проверка совпадения паролей
-            if (password !== confirmPassword) {
-                alert('Пароли не совпадают');
-                return;
-            }
+                const username = document.getElementById('username1').value;
+                const password = document.getElementById('password1').value;
+                const confirmPassword = document.getElementById('password2').value;
+                const secretKey = document.getElementById('secret_key').value;
 
-            // Отправляем данные на сервер
-            fetch('/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    'username': username,
-                    'password': password,
-                    'secret_key': secretKey
+                if (password !== confirmPassword) {
+                    alert('Пароли не совпадают');
+                    return;
+                }
+
+                fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'username': username,
+                        'password': password,
+                        'secret_key': secretKey
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('welcomeUser').innerText = data.username;
-                    document.getElementById('userInfo').style.display = 'block'; // Показываем информацию о пользователе
-                    document.getElementById('overlay').style.display = 'none';
-                    document.getElementById('content_window2').classList.remove('show');
-                    document.getElementById('content_window2').style.display = 'none'; // Скрываем окно
-                    document.getElementById('loginButton').style.display = 'none';
-                    document.getElementById('registerButton').style.display = 'none';
-                    localStorage.setItem('username', data.username);
-                } else {
-                    alert(data.message); // Показываем сообщение об ошибке
-                }
-            });
-        };
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('welcomeUser').innerText = data.username;
+                        document.getElementById('userInfo').style.display = 'flex';
+                        document.getElementById('overlay').style.display = 'none';
+                        document.getElementById('content_window2').classList.remove('show');
+                        document.getElementById('content_window2').style.display = 'none';
+                        document.getElementById('loginButton').style.display = 'none';
+                        document.getElementById('registerButton').style.display = 'none';
+                        localStorage.setItem('username', data.username);
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            };
 
-        // Обработчик для формы входа
-        document.getElementById('loginForm').onsubmit = function(event) {
-            event.preventDefault(); // Предотвращаем отправку формы
+            // Обработчик для формы входа
+            document.getElementById('loginForm').onsubmit = function(event) {
+                event.preventDefault();
 
-            // Получаем данные из формы
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
 
-            // Отправляем данные на сервер
-            fetch('/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    'username': username,
-                    'password': password
+                fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'username': username,
+                        'password': password
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('welcomeUser').innerText = data.username;
-                    document.getElementById('userInfo').style.display = 'block'; // Показываем информацию о пользователе
-                    document.getElementById('overlay').style.display = 'none';
-                    document.getElementById('content_window').classList.remove('show');
-                    document.getElementById('content_window').style.display = 'none'; // Скрываем окно
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('welcomeUser').innerText = data.username;
+                        document.getElementById('userInfo').style.display = 'flex';
+                        document.getElementById('overlay').style.display = 'none';
+                        document.getElementById('content_window').classList.remove('show');
+                        document.getElementById('content_window').style.display = 'none';
+                        document.getElementById('loginButton').style.display = 'none';
+                        document.getElementById('registerButton').style.display = 'none';
+                        localStorage.setItem('username', data.username);
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            };
+
+            // Обработчик кнопки выхода
+            document.querySelector('.btn-logout').addEventListener('click', function() {
+                fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('userInfo').style.display = 'none';
+                        document.getElementById('loginButton').style.display = 'block';
+                        document.getElementById('registerButton').style.display = 'block';
+                        localStorage.removeItem('username');
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            });
+
+            // Проверка состояния пользователя при загрузке страницы
+            window.addEventListener('load', function() {
+                const username = localStorage.getItem('username');
+                if (username) {
+                    document.getElementById('welcomeUser').innerText = username;
+                    document.getElementById('userInfo').style.display = 'flex';
                     document.getElementById('loginButton').style.display = 'none';
                     document.getElementById('registerButton').style.display = 'none';
-                    localStorage.setItem('username', data.username);
-                } else {
-                    alert(data.message); // Показываем сообщение об ошибке
                 }
             });
-        };
 
-        function logout() {
-            fetch('/logout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('userInfo').style.display = 'none'; // Скрываем информацию о пользователе
-                    document.getElementById('loginButton').style.display = 'block';
-                    document.getElementById('registerButton').style.display = 'block';
-                    localStorage.removeItem('username');
-                } else {
-                    alert(data.message); // Показываем сообщение об ошибке
+            // Синхронизация состояния пользователя между вкладками
+            window.addEventListener('storage', function(event) {
+                if (event.key === 'username') {
+                    if (event.newValue) {
+                        document.getElementById('welcomeUser').innerText = event.newValue;
+                        document.getElementById('userInfo').style.display = 'flex';
+                        document.getElementById('loginButton').style.display = 'none';
+                        document.getElementById('registerButton').style.display = 'none';
+                    } else {
+                        document.getElementById('userInfo').style.display = 'none';
+                        document.getElementById('loginButton').style.display = 'block';
+                        document.getElementById('registerButton').style.display = 'block';
+                    }
                 }
             });
-        }
-
-        // Проверка состояния пользователя при загрузке страницы
-        window.addEventListener('load', function() {
-            const username = localStorage.getItem('username');
-            if (username) {
-                document.getElementById('welcomeUser').innerText = username;
-                document.getElementById('userInfo').style.display = 'block';
-                document.getElementById('loginButton').style.display = 'none';
-                document.getElementById('registerButton').style.display = 'none';
-            }
-        });
-
-        // Синхронизация состояния пользователя между вкладках
-        window.addEventListener('storage', function(event) {
-            if (event.key === 'username') {
-                if (event.newValue) {
-                    document.getElementById('welcomeUser').innerText = event.newValue;
-                    document.getElementById('userInfo').style.display = 'block';
-                    document.getElementById('loginButton').style.display = 'none';
-                    document.getElementById('registerButton').style.display = 'none';
-                } else {
-                    document.getElementById('userInfo').style.display = 'none';
-                    document.getElementById('loginButton').style.display = 'block';
-                    document.getElementById('registerButton').style.display = 'block';
-                }
-            }
-        });
-    </script>
-</head>
-<body>
-    <!-- Задний фон -->
-    <div class="image-container">
-        <img src="{{ url_for('static', filename='Фотки зданий/КафеФон.jpg') }}" class="img-top-center" alt="КафеФон.jpg">
-    </div>
-    <!-- Иконки список -->
-    <div class="container" style="margin-top: 50px;">
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Хлебник.png') }}" alt="Кафе Хлебник.png">
-            <div class="card-body">
-                <h4 class="card-title">Хлебник</h4>
-                <p class="card-text">Кафе «Хлебник» — это уютное место, где можно позавтракать, пообедать или просто перекусить.<br><br>+7 (995) 233-31-22 ㅤㅤㅤㅤㅤул. Фёдоровский Ручей, 2/13, район Торговая сторона</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Время Ч.png') }}" alt="Кафе Время Ч.png">
-            <div class="card-body">
-                <h4 class="card-title">Время Ч</h4>
-                <p class="card-text">Кафе «Время Ч» — это место, где вы можете насладиться разнообразным меню, включающим в себя авторские блюда и классические рецепты. Интерьер кафе стильно оформлен и создает приятный фон для вечера, а спокойная музыка дополняет общую атмосферу.<br><br>+7 (8162) 99-80-40 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤЩитная ул., 7/31, район Торговая сторона</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/МамаСушиПицца.png') }}" alt="Кафе МамаСушиПицца.png">
-            <div class="card-body">
-                <h4 class="card-title">МамаСушиПицца</h4>
-                <p class="card-text">Кафе «МамаСушиПицца» — Нет описания.<br><br>+7 (991) 493-10-09 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤул. Ломоносова, 43</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Ромитто.png') }}" alt="Кафе Ромитто.png">
-            <div class="card-body">
-                <h4 class="card-title">Ромитто</h4>
-                <p class="card-text">«Ромитто» — это заведение быстрого питания, где можно попробовать разнообразные блюда, такие как шаурма, гамбургеры, пельмени, лапша и корн-доги.<br><br>+7 (8162) 70-06-00 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤул. Ломоносова, 37</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Колобок.png') }}" alt="Кафе Колобок.png">
-            <div class="card-body">
-                <h4 class="card-title">Колобок</h4>
-                <p class="card-text">Кафе «Колобок» — это место, где можно вкусно и недорого поесть.<br><br>+7 (8162) 63-82-04 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤБольшая Московская ул., 28</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Старик Хинкалыч.png') }}" alt="Кафе Старик Хинкалыч.png">
-            <div class="card-body">
-                <h4 class="card-title">Старик Хинкалыч</h4>
-                <p class="card-text">«Старик Хинкалыч» — это кафе грузинской кухни, где вы можете попробовать различные виды хинкали, такие как хинкали с говядиной, сыром, картофелем и грибами, а также хачапури по-аджарски.<br><br>+7‒905‒290‒87‒98 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤрайон Софийская сторона, Розважа ул., 13</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Изюм.png') }}" alt="Кафе Изюм.png">
-            <div class="card-body">
-                <h4 class="card-title">Изюм</h4>
-                <p class="card-text">Найди свою «Изюминку» и живи со вкусом!<br><br>+7 (8162) 90-08-82 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤМолотковская ул., 4, район Торговая сторона</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Бруклин.png') }}" alt="Кафе Бруклин.png">
-            <div class="card-body">
-                <h4 class="card-title">Бруклин</h4>
-                <p class="card-text">«Бруклин» — это заведение быстрого питания, где вы можете насладиться вкусными и сытными блюдами, такими как бургеры, хот-доги, шаурма и картофель фри.<br><br>+7 (953) 907-00-88 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤЧудинцева ул., 7, район Софийская сторона</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Персона.png') }}" alt="Кафе Персона.png">
-            <div class="card-body">
-                <h4 class="card-title">Персона</h4>
-                <p class="card-text">Банкетный зал «Персона» — это место, где можно провести любое мероприятие, будь то свадьба, корпоратив или выпускной вечер.<br><br>+7 (911) 600-20-19 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤБатецкая ул., 22, Псковский район этаж 3</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Садко.png') }}" alt="Кафе Садко.png">
-            <div class="card-body">
-                <h4 class="card-title">Садко</h4>
-                <p class="card-text">Кафе «Садко» — это место, где можно вкусно и сытно позавтракать, пообедать или поужинать.<br><br>+7 (8162) 66-18-08 ㅤㅤㅤㅤㅤㅤㅤул. Фёдоровский Ручей, 16, район Торговая сторона</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Шаурpoint.png') }}" alt="Кафе Шаурpoint.png">
-            <div class="card-body">
-                <h4 class="card-title">Шаурpoint</h4>
-                <p class="card-text">ШАУРPOINT-cеть кафе быстрого питания в разных форматах – от ресторанов в собственных зданиях и точек быстрого обслуживания до фуд-траков.<br><br>+7 (996) 569-41-19ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤул. Державина, 19</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/My Kitchen.png') }}" alt="Кафе My Kitchen.png">
-            <div class="card-body">
-                <h4 class="card-title">My Kitchen</h4>
-                <p class="card-text">My Kitchen — это кафе, который предлагает своим гостям блюда грузинской, европейской и японской кухни. В меню можно найти такие блюда, как хачапури, сациви, томатный суп, борщ и другие.<br><br>+7 (8162) 90-07-20ㅤㅤㅤㅤㅤㅤㅤㅤБольшая Московская ул., 52/9, Великий Новгород</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Наffига козе баян.png') }}" alt="Кафе Наffига козе баян.png">
-            <div class="card-body">
-                <h4 class="card-title">Наffига козе баян?!</h4>
-                <p class="card-text">Кафе «Наffига козе баян?!» — это место, где стиль, креатив и фантазия сочетаются с кулинарной идеей.<br><br>+7 (911) 633-10-27ㅤㅤㅤㅤㅤВеликая ул., 3, Софийская сторона, Великий Новгород</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Чайхана Сказка.png') }}" alt="Кафе Чайхана Сказка.png">
-            <div class="card-body">
-                <h4 class="card-title">Чайхана Сказка</h4>
-                <p class="card-text">«Чайхана Сказка» — это кафе, расположенный на набережной реки Волхов в Великом Новгороде. Он предлагает своим гостям широкий выбор блюд, включая манты, хинкали, шашлыки, плов, хачапури, роллы и пиццу.<br><br>+7 (8162) 50-01-11<br>наб. Александра Невского, 26, район Торговая сторона, Великий Новгород</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Сказка.png') }}" alt="Кафе Сказка.png">
-            <div class="card-body">
-                <h4 class="card-title">Сказка</h4>
-                <p class="card-text">Кафе «Сказка» — это место, где вы можете попробовать блюда разных кухонь, такие как восточная, кавказская, итальянская и азиатская.<br><br>+7 (8162) 28-03-41<br>ул. Мерецкова-Волосова, 11, Софийская сторона, Великий Новгород</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Тепло траттория.png') }}" alt="Кафе Тепло траттория.png">
-            <div class="card-body">
-                <h4 class="card-title">Тепло траттория</h4>
-                <p class="card-text">Кафе «Тепло траттория» — это уютное заведение с милым интерьером, где много света и зелени. Гостям нравится мясная пицца, сырные палочки, салат с форелью, лимонный чизкейк, пицца и котлеты «Пожарские».<br><br>+7 (8162) 90-98-62ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤПрусская ул., 1/7, Великий Новгород</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Рестобар Кружечный Двор.png') }}" alt="Кафе Рестобар Кружечный Двор.png">
-            <div class="card-body">
-                <h4 class="card-title">Рестобар Кружечный Двор</h4>
-                <p class="card-text">Рестобар «Кружечный Двор» — это атмосферное место с низкими сводчатыми кирпичными потолками, картинами с мишками, бочками, вениками, уткой-графином, дровником и росписью на стенах.<br><br>+7 (921) 606-53-53<br>ул. Рогатица, 14, район Торговая сторона, Великий Новгород этаж цокольный</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Legenda.png') }}" alt="Кафе Legenda.png">
-            <div class="card-body">
-                <h4 class="card-title">Legenda</h4>
-                <p class="card-text">Кафе «Legenda» — это место, где можно вкусно поесть и весело потанцевать. После 20:00 работает диджей, который включает музыку по желанию гостей.<br><br>+7 (8162) 66-07-96<br>Михайлова ул., 3, корп. 4, район Торговая сторона, Великий Новгород этаж 1</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Юрьевское Подворье.png') }}" alt="Кафе Юрьевское Подворье.png">
-            <div class="card-body">
-                <h4 class="card-title">Юрьевское Подворье</h4>
-                <p class="card-text">Кафе «Юрьевское Подворье» предлагает своим гостям аутентичную русскую кухню, приготовленную из традиционных продуктов.<br><br>+7 (8162) 78-80-08 ㅤㅤㅤㅤㅤㅤㅤㅤㅤЮрьевское ш., 6А Район Юрьево, этаж 1</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Napoli.png') }}" alt="Кафе Napoli.png">
-            <div class="card-body">
-                <h4 class="card-title">Napoli</h4>
-                <p class="card-text">Каждый гость найдет в меню ресторана блюдо на свой вкус. Понятная и известная, легкая и современная, но в то же время тонкая и изысканная кухня средиземноморья.<br><br>+7 (911) 600-30-95ㅤㅤㅤㅤㅤㅤㅤㅤㅤСтуденческая ул., 21/43, Донецкий район Первый</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Чародейка.png') }}" alt="Кафе Чародейка.png">
-            <div class="card-body">
-                <h4 class="card-title">Чародейка</h4>
-                <p class="card-text">Кафе «Чародейка» — это место, куда хочется возвращаться. Здесь стильно, вкусно и по-домашнему уютно. Официанты и персонал молодцы. Кухня прекрасна, бургер — шедевр.<br><br>+7 (911) 600-14-09ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤЧудинцева ул., 1/1, район Софийская сторона</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/География.png') }}" alt="Кафе География.png">
-            <div class="card-body">
-                <h4 class="card-title">География</h4>
-                <p class="card-text">Кафе «География» расположен в самом сердце Великого Новгорода, в окружении главных достопримечательностей, с видом на Кремль и фонтан «Садко». В ресторане есть два зала: внутри помещения и закрытая веранда, а также бесплатная парковка для посетителей.<br><br>+7 (8162) 90-00-55ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤул. Газон, 2, район Софийская сторона</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/ПхалиХинкали.png') }}" alt="Кафе ПхалиХинкали.png">
-            <div class="card-body">
-                <h4 class="card-title">ПхалиХинкали</h4>
-                <p class="card-text">Кафе «ПхалиХинкали» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.<br><br>+7 (8162) 90-46-46ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤЛюдогоща ул., 10, район Софийская сторона</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Проун.png') }}" alt="Кафе Проун.png">
-            <div class="card-body">
-                <h4 class="card-title">Проун</h4>
-                <p class="card-text">Кафе «Проун» предлагает своим гостям блюда русской авангардной кухни, приготовленные с творческим подходом. В меню можно найти такие блюда, как борщ с необычной подачей и оригинальными ингредиентами, стейк из оленины, утиная грудка и тартар из говядины.<br><br>+7 (8162) 50-07-70ㅤㅤㅤㅤㅤㅤㅤㅤㅤПредтеченская ул., 24, район Софийская сторона 5</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Marusya.png') }}" alt="Кафе Marusya.png">
-            <div class="card-body">
-                <h4 class="card-title">Marusya</h4>
-                <p class="card-text">Кафе Marusya — это стильное и современное место, где можно попробовать аутентичные блюда русской кухни, а также блюда других кухонь, такие как паста и тартары.<br><br>+7 (8162) 78-88-87<br>Предтеченская ул., 24, район Софийская сторона Район Софийская сторона, этаж 1</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Барашки.png') }}" alt="Кафе Барашки.png">
-            <div class="card-body">
-                <h4 class="card-title">Барашки</h4>
-                <p class="card-text">Кафе «Барашки» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.<br><br>+7 (8162) 55-53-22ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤул. Ломоносова, 22/2, Великий Новгород</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Шкипер.png') }}" alt="Кафе Шкипер.png">
-            <div class="card-body">
-                <h4 class="card-title">Шкипер</h4>
-                <p class="card-text">Кафе «Шкипер» Настоящая кавказская кухня в приятном месте города!<br><br>+7 (8162) 63-39-80 ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤСтуденческая ул., 4, Донецкий район</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Диез.png') }}" alt="Кафе Диез.png">
-            <div class="card-body">
-                <h4 class="card-title">Диез</h4>
-                <p class="card-text">Кафе «Диез» — это место, где можно вкусно и недорого поесть. Формат обслуживания — столовая, но антураж как в кафе. Из окон открывается красивый вид на набережную Волхова.<br><br>+7 (8162) 69-30-82 ㅤㅤㅤㅤул. Фёдоровский Ручей, 2/13, район Торговая сторона этаж 1</p>
-            </div>
-        </div>
-        <div class="card">
-            <img class="img-top" style="border-radius: 20px; margin: 10px; transition: filter 0.3s;" width="250px" height="250px" src="{{ url_for('static', filename='Фотки зданий/Cafe Le Chocolat.png') }}" alt="Кафе Cafe Le Chocolat.png">
-            <div class="card-body">
-                <h4 class="card-title">Cafe Le Chocolat</h4>
-                <p class="card-text">Кафе «Café le Chocolat» — это место, где вы можете насладиться вкусными завтраками, обедами и ужинами, а также горячими напитками, такими как горячий шоколад и кофе.<br><br>+7 (8162) 73-90-09 ㅤㅤㅤㅤㅤㅤㅤㅤЛюдогоща ул., 8, район Софийская сторона этаж 1</p>
-            </div>
-        </div>
-    </div>
-    <footer class="footer">
-        <div class="footer-section">
-            <img class="img-logo-footer" src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Logo">
-            <p class="description">Городской гид - это сайт, который позволит найти всё в твоём городе!</p>
-            <div class="social-icons">
-                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
-                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" alt="YouTube"></a>
-                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
-                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
-            </div>
-        </div>
-        <div class="footer-section">
-            <h4>Наши контакты</h4>
-            <img src="{{ url_for('static', filename='Фотки зданий/Телефон.png') }}" class="contact-icon" alt="Phone">
-            <a href="tel:+894674736353">894674736353</a><br>
-            <img src="{{ url_for('static', filename='Фотки зданий/телефон.png') }}" class="contact-icon" alt="Phone">
-            <a href="tel:+894674736353">894674736353</a><br>
-            <img src="{{ url_for('static', filename='Фотки зданий/Письмо.png') }}" class="contact-icon" alt="Mail">
-            <a href="mailto:mail@mail.ru">mail@mail.ru</a><br>
-            <p>г. Великий Новгород</p>
-        </div>
-        <div class="footer-section">
-            <h4>Информация</h4>
-            <a href="#">О нас</a><br>
-            <a href="#">Личный Кабинет</a><br>
-            <a href="#">Создатели</a><br>
-            <a href="#">Контакты</a>
-        </div>
-    </footer>
+        </script>
 </body>
 </html>

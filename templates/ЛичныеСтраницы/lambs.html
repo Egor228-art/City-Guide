@@ -8,81 +8,103 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/PersonalPage.css') }}">
     <!-- Украшаем вкладку вашим логотипом -->
     <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
-    <!-- Шапка -->
-    <nav class="bd-subnavbar py-2" aria-label="Secondary navigation">
-        <div class="container-xxl d-flex align-items-md-center">
-            <div class="logo" onclick="window.location.href='/';">
-<!-- Новое лого height="60px" width="80px" "style: left: -10px; margin-top: -10px" -->
-                <img height="50px" width="70px" src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" class="img-logo" alt="Иконка лого.png">
-                <span class="text-logo">Городской Гид</span>
-            </div>
-            <form class="bd-search position-relative me-auto" action="/search" method="POST">
-                <span class="algolia-autocomplete" style="top:-10px;">
-                    <label for="search-input"></label><input class="form-control ds-input" id="search-input" name="query" placeholder="Поиск в документации..." aria-autocomplete="list">
-                </span>
-            </form>
-            <button id="header-favorites-btn" class="visible" onclick="window.location.href='/favorites'">
-                ❤ Избранное (<span id="favorites-count">0</span>)
-            </button>
-            <div class="dropdown">
-                <div id="overlay" style="display: none;"></div>
-                <button id="loginButton" class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="showWindow()">
-                    <span class="d-none d-lg-inline">Вход</span>
-                </button>
-                   <div id="content_window" class="popup-window">
-                    <form id="loginForm" method="POST" action="/login">
-                        <h1>Вход</h1>
-                        <span class="btnX" onclick="hideWindow()">x</span>
-                        <div class="form-group">
-                            <label for="username">Логин</label>
-                            <input type="text" class="form-control" id="username" name="username" placeholder="Введите логин" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password">Пароль</label>
-                            <input type="password" class="form-control" id="password" name="password" placeholder="Введите пароль" required>
-                        </div>
-                        <button type="submit" class="btnA">Войти</button>
-                    </form>
-                </div>
-                <button id="registerButton" class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="showWindow1()">
-                    <span class="d-none d-lg-inline">Регистрация</span>
-                </button>
-                <div id="content_window2" class="popup-window">
-                    <form id="regForm" method="POST" action="/register">
-                        <h1>Регистрация</h1>
-                        <span class="btnX" onclick="hideWindow1()">x</span>
-                        <div class="form-group">
-                            <label for="username1">Логин</label>
-                            <input type="text" id="username1" name="username" class="form-control" placeholder="Введите логин" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password1">Пароль</label>
-                            <input type="password" id="password1" name="password" class="form-control" placeholder="Введите пароль" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="password2">Подтвердите пароль</label>
-                            <input type="password" id="password2" name="confirm_password" class="form-control" placeholder="Подтвердите пароль" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="secret_key">Секретный ключ</label>
-                            <input type="password" id="secret_key" name="secret_key" class="form-control" placeholder="Введите секретный ключ" required>
-                        </div>
-                        <input type="submit" class="btnB" value="Зарегистрироваться">
-                    </form>
-                </div>
-            </div>
-            <div id="userInfo" style="display: none;">
-                <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar" style="width: 30px; height: 30px;">
-                <span id="welcomeUser"></span>
-                <button class="btn btn-bd-light" style="border: 1px solid #ced4da;" onclick="logout()">
-                    <span class="d-none d-lg-inline">Выход</span>
-                </button>
-            </div>
-        </div>
-    </nav>
+
     <script src="{{ url_for('static', filename='js/RegistrationLogin.js') }}"></script>
 </head>
 <body>
+    <!-- Объединенная навигация -->
+<nav class="navbar">
+    <div class="nav-container">
+        <div class="logo" onclick="window.location.href='/';">
+            <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Логотип" height="50px" width="70px">
+            <span>Городской Гид</span>
+        </div>
+
+        <!-- Поиск из старого HTML с визуалом нового -->
+        <form class="search-box" action="/search" method="POST">
+            <input type="text" name="query" placeholder="Поиск заведений..." class="search-input" id="search-input">
+            <button type="submit" class="search-button">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </form>
+
+        <!-- Кнопка избранного из старого HTML -->
+        <div class="favorites-wrapper">
+            <div class="favorite-wrapper" id="header-favorites-btn" style="display: none;" onclick="window.location.href='/favorites'">
+              <span class="particle particle-1">✦</span>
+              <span class="particle particle-2">✦</span>
+              <span class="particle particle-3">✦</span>
+              <span class="particle particle-4">✦</span>
+              <span class="particle particle-5">✦</span>
+                <span class="particle particle-6">✦</span>
+              <span class="particle particle-7">✦</span>
+              <span class="heart-icon">❤</span>
+              <span class="favorites-counter" id="favorites-count">0</span>
+            </div>
+        </div>
+
+        <!-- Кнопки входа/регистрации из старого HTML с визуалом нового -->
+        <div class="auth-buttons">
+            <button id="loginButton" class="btn-login" onclick="showWindow()">Вход</button>
+            <button id="registerButton" class="btn-register" onclick="showWindow1()">Регистрация</button>
+            <div id="userInfo" style="display: none;">
+                <div class="Коробка">
+                    <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar">
+                    <span id="welcomeUser"></span>
+                </div>
+                <button class="btn-logout" onclick="logout()">Выход</button>
+            </div>
+        </div>
+    </div>
+    <div class="clouds"></div>
+</nav>
+
+<!-- Окна входа/регистрации из старого HTML -->
+<div id="overlay" style="display: none;"></div>
+
+<div id="content_window" class="popup-window">
+    <form id="loginForm" method="POST" action="/login">
+        <h1>Вход</h1>
+        <span class="btnX" onclick="hideWindow()">×</span>
+        <div class="form-group">
+            <label for="username">Логин</label>
+            <input type="text" class="form-control" id="username" name="username" placeholder="Введите логин" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Пароль</label>
+            <input type="password" class="form-control" id="password" name="password" placeholder="Введите пароль" required>
+        </div>
+        <button type="submit" class="btnA">Войти</button>
+    </form>
+</div>
+
+<div id="content_window2" class="popup-window">
+    <form id="regForm" method="POST" action="/register">
+        <h1>Регистрация</h1>
+        <span class="btnX" onclick="hideWindow1()">×</span>
+        <div class="form-group">
+            <label for="username1">Логин</label>
+            <input type="text" id="username1" name="username" class="form-control" placeholder="Введите логин" required>
+        </div>
+        <div class="form-group">
+            <label for="password1">Пароль</label>
+            <input type="password" id="password1" name="password" class="form-control" placeholder="Введите пароль" required>
+        </div>
+        <div class="form-group">
+            <label for="password2">Подтвердите пароль</label>
+            <input type="password" id="password2" name="confirm_password" class="form-control" placeholder="Подтвердите пароль" required>
+        </div>
+        <div class="form-group">
+            <label for="secret_key">Секретный ключ</label>
+            <input type="password" id="secret_key" name="secret_key" class="form-control" placeholder="Введите секретный ключ" required>
+        </div>
+        <button type="submit" class="btnB">Зарегистрироваться</button>
+    </form>
+</div>
+
     <!-- Задний фон -->
     <div class="image-container">
         <img src="{{ url_for('static', filename='Фотки зданий/РесторанФон.jpg') }}" class="img-top-center" alt="РесторанФон.jpg">
@@ -97,15 +119,10 @@
                         <img src="{{ url_for('static', filename='Фотки зданий/Барашки.png') }}" alt="Ресторан Барашки">
                         <!-- Кнопка на карточке заведения -->
                         <button class="favorite-btn js-favorite-btn"
-                            data-item='{
-                                "id": "lambs",
-                                "name": "Ресторан Lambs",
-                                "description": "Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни...",
-                                "address": "ул. Ломоносова, 22/2, Великий Новгород",
-                                "hours": "Пн-Пт: 10:00-22:00, Сб-Вс: 11:00-23:00",
-                                "img": "/Фотки зданий/Барашки.png"
-                            }'>
-                            ❤
+                                data-item-id="lambs"
+                                data-item='{"id":"lambs","name":"Ресторан Lambs"}'
+                                onclick="toggleFavorite('lambs', this)">
+                          ❤
                         </button>
                         <!-- Кнопка развернуть в правом нижнем углу -->
                         <button class="expand-btn" onclick="expandImage(this)">↗</button>
@@ -142,7 +159,9 @@
             <div class="details-section">
                 <h1>Барашки</h1>
                 <p>Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.</p>
-                <p>ул. Ломоносова, 22/2, Великий Новгород</p>
+                <svg style="width: 18px; height: 18px; font-size: 17px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
                 <p>+7 (8162) 55-53-22</p>
             </div>
         </div>
@@ -289,44 +308,756 @@
             </div>
         </div>
     </div>
+
+    <!-- Модальное окно для редактирования отзыва -->
+<div class="modal" id="edit-review-modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeEditReviewModal()">&times;</span>
+        <h2>Редактировать отзыв</h2>
+        <form id="edit-review-form">
+            <label>Оценка:</label>
+            <div class="stars">
+                <span class="star" data-value="1" onclick="setRating(this, 1)">
+                    <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                </span>
+                <span class="star" data-value="2" onclick="setRating(this, 2)">
+                    <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                </span>
+                <span class="star" data-value="3" onclick="setRating(this, 3)">
+                    <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                </span>
+                <span class="star" data-value="4" onclick="setRating(this, 4)">
+                    <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                </span>
+                <span class="star" data-value="5" onclick="setRating(this, 5)">
+                    <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                </span>
+            </div>
+            <label for="edit-comment">Комментарий:</label>
+            <textarea id="edit-comment" rows="4"></textarea>
+            <button type="submit" class="submit-btn">Сохранить изменения</button>
+        </form>
+    </div>
+</div>
+
+    <!-- Городской силуэт перед футером -->
+    <div class="skyscrapers"></div>
+
+    <!-- Футер -->
     <footer class="footer">
-        <div class="footer-section">
-            <img class="img-logo-footer" src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Logo">
-            <p class="description">Городской гид - это сайт, который позволит найти всё в твоём городе!</p>
-            <div class="social-icons">
-                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
-                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" alt="YouTube"></a>
-                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
-                <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+        <div class="footer-content">
+            <div class="footer-section about">
+                <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" style="width: 120px;" alt="Логотип">
+                <p>Городской гид - ваш путеводитель по лучшим местам Великого Новгорода</p>
+                <div class="socials">
+                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
+                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" style="margin-bottom: 0; margin-top: 8px" alt="YouTube"></a>
+                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
+                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+                </div>
+            </div>
+
+            <div class="footer-section links">
+                <h3>Навигация</h3>
+                <ul>
+                    <li><a href="#">Главная</a></li>
+                    <li><a href="#">О проекте</a></li>
+                    <li><a href="#">Контакты</a></li>
+                    <li><a href="#">Помощь</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section contact">
+                <h3>Контакты</h3>
+                <p><i class="phone-icon"></i> +7 (123) 456-78-90</p>
+                <p><i class="email-icon"></i> info@gorodskoygid.ru</p>
+                <p><i class="location-icon"></i> Великий Новгород</p>
             </div>
         </div>
-        <div class="footer-section">
-            <h4>Наши контакты</h4>
-            <img src="{{ url_for('static', filename='Фотки зданий/Телефон.png') }}" class="contact-icon" alt="Phone">
-            <a href="tel:+894674736353">894674736353</a><br>
-            <img src="{{ url_for('static', filename='Фотки зданий/телефон.png') }}" class="contact-icon" alt="Phone">
-            <a href="tel:+894674736353">894674736353</a><br>
-            <img src="{{ url_for('static', filename='Фотки зданий/Письмо.png') }}" class="contact-icon" alt="Mail">
-            <a href="mailto:mail@mail.ru">mail@mail.ru</a><br>
-            <p>г. Великий Новгород</p>
-        </div>
-        <div class="footer-section">
-            <h4>Информация</h4>
-            <a href="#">О нас</a><br>
-            <a href="#">Личный Кабинет</a><br>
-            <a href="#">Создатели</a><br>
-            <a href="#">Контакты</a>
+
+        <div class="footer-bottom">
+            &copy; 2025 Городской Гид | Все права защищены
         </div>
     </footer>
-<!-- <script src="{{ url_for('static', filename='js/PersonalPage.js') }}"></script> -->
 
-<script>
-        // В начале вашего JavaScript:
-        const PATHS = {
-            starActive: "{{ url_for('static', filename='Фотки зданий/baka.png') }}",
-            starInactive: "{{ url_for('static', filename='Фотки зданий/star.png') }}",
-            avatar: "{{ url_for('static', filename='Фотки зданий/avatar.png') }}"
-        };
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // Константы
+const PATHS = {
+    starActive: "/static/Фотки зданий/baka.png",
+    starInactive: "/static/Фотки зданий/star.png",
+    avatar: "/static/Фотки зданий/avatar.png",
+    like: "/static/Фотки зданий/Лайк.png",
+    dislike: "/static/Фотки зданий/Дизлайк.png"
+};
+
+// Глобальные переменные
+let selectedRating = 0;
+const currentRestaurantId = 'lambs'; // ID текущего ресторана
+
+// Функция для загрузки отзывов
+async function loadReviews() {
+    try {
+        const response = await fetch(`/api/reviews?restaurant_id=${currentRestaurantId}`);
+        if (!response.ok) {
+            throw new Error('Ошибка при загрузке отзывов');
+        }
+        const reviews = await response.json();
+        updateReviewsUI(reviews);
+        updateOverallRating();
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Ошибка при загрузке отзывов', 'error');
+    }
+}
+
+// Функция для обновления UI с отзывами
+function updateReviewsUI(reviews) {
+    const reviewList = document.getElementById('review-list');
+    reviewList.innerHTML = '';
+
+    if (!reviews || reviews.length === 0) {
+        reviewList.innerHTML = '<div class="no-reviews">Пока нет отзывов. Будьте первым!</div>';
+        return;
+    }
+
+    reviews.forEach(review => {
+        const reviewElement = document.createElement('div');
+        reviewElement.className = 'review-card';
+        reviewElement.dataset.reviewId = review.id;
+
+        reviewElement.innerHTML = `
+            <div class="review-header">
+                <img class="avatar" src="${PATHS.avatar}" alt="Аватар">
+                <div class="name-rating">
+                    <div class="name">${review.username}</div>
+                    <div class="rating" data-rating="${review.rating}">
+                        ${'<img src="' + PATHS.starActive + '" alt="★">'.repeat(review.rating)}
+                        ${'<img src="' + PATHS.starInactive + '" alt="★">'.repeat(5 - review.rating)}
+                    </div>
+                </div>
+            </div>
+            <div class="comment-container">
+                <div class="comment-text">${review.comment || ''}</div>
+                ${review.comment ? '<div class="comment-blur"></div>' : ''}
+            </div>
+            <div class="review-actions">
+                <button class="like-btn" onclick="rateReview(${review.id}, true)">
+                    <img src="${PATHS.like}" alt="Лайк">
+                    <span class="like-count">${review.likes || 0}</span>
+                </button>
+                <button class="dislike-btn" onclick="rateReview(${review.id}, false)">
+                    <img src="${PATHS.dislike}" alt="Дизлайк">
+                    <span class="dislike-count">${review.dislikes || 0}</span>
+                </button>
+            </div>
+            <div class="expand" onclick="openFullReviewModal(${review.id})">Развернуть</div>
+        `;
+
+        if (review.comment) {
+            limitCommentHeight(reviewElement);
+        }
+
+        reviewList.appendChild(reviewElement);
+    });
+
+    updateReviewVisibility();
+}
+
+// Функция для отправки отзыва
+async function submitReview() {
+    const name = document.getElementById('name').value.trim();
+    const comment = document.getElementById('comment').value.trim();
+
+    if (!name) {
+        showNotification('Пожалуйста, укажите имя', 'error');
+        return;
+    }
+
+    if (selectedRating === 0) {
+        document.getElementById('rating-error').style.display = 'inline';
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/reviews', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                restaurant_id: currentRestaurantId,
+                username: name,
+                rating: selectedRating,
+                comment: comment
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Ошибка при отправке отзыва');
+        }
+
+        showNotification('Отзыв успешно добавлен!');
+        closeReviewModal();
+        loadReviews(); // Перезагружаем отзывы
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification(error.message, 'error');
+    }
+}
+
+// Функция для обновления общего рейтинга
+async function updateOverallRating() {
+    try {
+        const response = await fetch(`/api/restaurants/${currentRestaurantId}/stats`);
+        if (!response.ok) {
+            throw new Error('Ошибка при загрузке рейтинга');
+        }
+        const stats = await response.json();
+
+        document.getElementById('overall-rating').textContent = stats.average_rating.toFixed(1);
+        document.getElementById('total-reviews').textContent = stats.total_reviews;
+
+        // Обновляем статистику по звездам
+        for (let i = 1; i <= 5; i++) {
+            const count = stats.ratings[i] || 0;
+            const percentage = stats.total_reviews === 0 ? 0 : (count / stats.total_reviews) * 100;
+            const bar = document.querySelector(`.rating-bar:nth-child(${6 - i}) .fill`);
+            const countSpan = document.querySelector(`.rating-bar:nth-child(${6 - i}) span:last-child`);
+            if (bar) bar.style.width = `${percentage}%`;
+            if (countSpan) countSpan.textContent = count;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    // Инициализация звезд рейтинга
+    const stars = document.querySelectorAll('#review-stars .star');
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            selectedRating = parseInt(star.getAttribute('data-value'));
+            stars.forEach((s, index) => {
+                s.innerHTML = `<img src="${index < selectedRating ? PATHS.starActive : PATHS.starInactive}" alt="★">`;
+            });
+            document.getElementById('rating-error').style.display = 'none';
+        });
+    });
+
+    // Обработчик формы отзыва
+    document.getElementById('review-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitReview();
+    });
+
+    // Загрузка отзывов
+    loadReviews();
+});
+
+
+
+
+
+
+
+
+
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    loadReviews();
+
+    // Обработчик формы отзыва
+    document.getElementById('review-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        submitReview();
+    });
+});
+
+
+
+
+
+        // Обновляем обработчик формы
+document.getElementById('review-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    submitReview();
+});
+
+// Функция для показа уведомлений
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// Функция для закрытия модального окна отзыва
+function closeReviewModal() {
+    document.getElementById('review-modal').style.display = 'none';
+    document.getElementById('review-form').reset();
+
+    // Сбрасываем выбранные звезды
+    const stars = document.querySelectorAll('#review-stars .star');
+    stars.forEach(star => {
+        star.innerHTML = `<img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">`;
+    });
+    selectedRating = 0;
+}
+
+
+
+
+
+
+
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    loadReviews();
+});
+
+
+
+
+       // Инициализация
+document.addEventListener('DOMContentLoaded', function() {
+  initFavorites();
+});
+
+function initFavorites() {
+  updateFavoritesVisibility();
+
+  window.addEventListener('storage', function(event) {
+    if (event.key === 'favorites') {
+      updateFavoritesVisibility();
+    }
+  });
+}
+
+// Основная функция переключения
+function toggleFavorite(itemId, itemData) {
+  const favorites = JSON.parse(localStorage.getItem('favorites')) || {};
+
+  if (favorites[itemId]) {
+    delete favorites[itemId];
+  } else {
+    favorites[itemId] = itemData;
+  }
+
+  localStorage.setItem('favorites', JSON.stringify(favorites));
+
+  // Принудительное обновление интерфейса
+  forceUIUpdate();
+
+  // Оповещение других вкладок
+  window.dispatchEvent(new Event('storageUpdate'));
+}
+
+// Обновление интерфейса с анимацией
+function forceUIUpdate() {
+  const headerBtn = document.getElementById('header-favorites-btn');
+  if (headerBtn) {
+    // 1. Добавляем класс для анимации исчезновения
+    headerBtn.classList.add('hide');
+
+    // 2. Через 300ms (длительность анимации) обновляем состояние
+    setTimeout(() => {
+      updateFavoritesVisibility();
+      headerBtn.classList.remove('hide');
+    }, 300);
+  } else {
+    updateFavoritesVisibility();
+  }
+}
+
+// Контроль видимости кнопки
+function updateFavoritesVisibility() {
+  const favorites = JSON.parse(localStorage.getItem('favorites')) || {};
+  const count = Object.keys(favorites).length;
+  const headerBtn = document.getElementById('header-favorites-btn');
+  const counter = document.getElementById('favorites-count');
+
+  if (counter) counter.textContent = count;
+
+  if (!headerBtn) return;
+
+  if (count > 0) {
+    showHeaderButton();
+  } else {
+    hideHeaderButton();
+  }
+}
+
+
+
+        document.addEventListener('DOMContentLoaded', function() {
+  // Инициализация кнопки
+  const headerFavBtn = document.getElementById('header-favorites-btn');
+  const particles = headerFavBtn.querySelectorAll('.particle');
+
+  // Проверка избранного при загрузке
+  updateFavoritesCount();
+
+  // Анимация частиц
+  headerFavBtn.addEventListener('mouseenter', function() {
+    this.classList.add('active');
+  });
+
+  headerFavBtn.addEventListener('mouseleave', function() {
+    this.classList.remove('active');
+  });
+
+  // Обработчики для кнопок в карточках
+  document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const itemId = this.dataset.itemId;
+      const itemData = JSON.parse(this.dataset.item);
+      toggleFavorite(itemId, itemData);
+    });
+  });
+
+  // Синхронизация между вкладками
+  window.addEventListener('storage', function(event) {
+    if (event.key === 'favorites') {
+      updateFavoritesCount();
+    }
+  });
+});
+
+// Показать кнопку в шапке
+function showHeaderButton() {
+  const btn = document.getElementById('header-favorites-btn');
+  if (!btn.classList.contains('visible')) {
+    btn.style.display = 'inline-block';
+    setTimeout(() => {
+      btn.classList.add('visible');
+    }, 10);
+  }
+}
+
+// Скрыть кнопку с анимацией
+function hideHeaderButton() {
+  const btn = document.getElementById('header-favorites-btn');
+  if (btn.classList.contains('visible')) {
+    btn.classList.remove('visible');
+    setTimeout(() => {
+      btn.style.display = 'none';
+    }, 300); // Должно совпадать с длительностью transition
+  }
+}
+
+// Обновление счетчика и видимости кнопки
+function updateFavoritesCount() {
+  const favorites = JSON.parse(localStorage.getItem('favorites')) || {};
+  const count = Object.keys(favorites).length;
+  const counter = document.getElementById('favorites-count');
+  const headerBtn = document.getElementById('header-favorites-btn');
+
+  if (counter) counter.textContent = count;
+
+  if (headerBtn) {
+    if (count > 0) {
+      showHeaderButton();
+    } else {
+      hideHeaderButton();
+    }
+  }
+}
+
+
+    // Функции для окон входа/регистрации
+    function showWindow() {
+        document.getElementById('overlay').style.display = 'block';
+        const windowElement = document.getElementById('content_window');
+        windowElement.classList.add('show');
+        windowElement.style.display = 'block';
+        document.body.classList.add('no-scroll');
+    }
+
+    function hideWindow() {
+        document.getElementById('overlay').style.display = 'none';
+        const windowElement = document.getElementById('content_window');
+        windowElement.classList.remove('show');
+        windowElement.style.display = 'none';
+        document.body.classList.remove('no-scroll');
+    }
+
+    function showWindow1() {
+        document.getElementById('overlay').style.display = 'block';
+        const windowElement = document.getElementById('content_window2');
+        windowElement.classList.add('show');
+        windowElement.style.display = 'block';
+        document.body.classList.add('no-scroll');
+    }
+
+    function hideWindow1() {
+        document.getElementById('overlay').style.display = 'none';
+        const windowElement = document.getElementById('content_window2');
+        windowElement.classList.remove('show');
+        windowElement.style.display = 'none';
+        document.body.classList.remove('no-scroll');
+    }
+
+    // Закрытие окна при клике вне его
+    document.getElementById('overlay').addEventListener('click', function() {
+        const window1 = document.getElementById('content_window');
+        const window2 = document.getElementById('content_window2');
+        if (window1.classList.contains('show')) {
+            hideWindow();
+        } else if (window2.classList.contains('show')) {
+            hideWindow1();
+        }
+    });
+
+    // Обработчик для формы регистрации
+    document.getElementById('regForm').onsubmit = function(event) {
+        event.preventDefault();
+
+        const username = document.getElementById('username1').value;
+        const password = document.getElementById('password1').value;
+        const confirmPassword = document.getElementById('password2').value;
+        const secretKey = document.getElementById('secret_key').value;
+
+        if (password !== confirmPassword) {
+            alert('Пароли не совпадают');
+            return;
+        }
+
+        fetch('/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'username': username,
+                'password': password,
+                'secret_key': secretKey
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('welcomeUser').innerText = data.username;
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('registerButton').style.display = 'none';
+                hideWindow1();
+                localStorage.setItem('username', data.username);
+            } else {
+                alert(data.message);
+            }
+        });
+    };
+
+    // Обработчик для формы входа
+    document.getElementById('loginForm').onsubmit = function(event) {
+        event.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'username': username,
+                'password': password
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('welcomeUser').innerText = data.username;
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('registerButton').style.display = 'none';
+                hideWindow();
+                localStorage.setItem('username', data.username);
+            } else {
+                alert(data.message);
+            }
+        });
+    };
+
+    // Функция выхода
+    function logout() {
+        fetch('/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('userInfo').style.display = 'none';
+                document.getElementById('loginButton').style.display = 'block';
+                document.getElementById('registerButton').style.display = 'block';
+                localStorage.removeItem('username');
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+
+    // Проверка состояния пользователя при загрузке страницы
+    window.addEventListener('load', function() {
+        const username = localStorage.getItem('username');
+        if (username) {
+            document.getElementById('welcomeUser').innerText = username;
+            document.getElementById('userInfo').style.display = 'flex';
+            document.getElementById('loginButton').style.display = 'none';
+            document.getElementById('registerButton').style.display = 'none';
+        }
+
+        // Инициализация менеджера избранного
+        FavoritesManager.init();
+    });
+
+    // Синхронизация состояния пользователя между вкладками
+    window.addEventListener('storage', function(event) {
+        if (event.key === 'username') {
+            if (event.newValue) {
+                document.getElementById('welcomeUser').innerText = event.newValue;
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('registerButton').style.display = 'none';
+            } else {
+                document.getElementById('userInfo').style.display = 'none';
+                document.getElementById('loginButton').style.display = 'block';
+                document.getElementById('registerButton').style.display = 'block';
+            }
+        }
+    });
+
+    // Менеджер избранного из старого HTML
+    const FavoritesManager = {
+        init: function() {
+            this.bindEvents();
+            this.updateCounter();
+            this.markExistingFavorites();
+        },
+
+        bindEvents: function() {
+            document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+                btn.addEventListener('click', this.handleFavoriteClick.bind(this));
+            });
+        },
+
+        handleFavoriteClick: function(event) {
+            const button = event.currentTarget;
+            if (!button) return;
+
+            try {
+                const itemData = button.getAttribute('data-item');
+                if (!itemData) {
+                    console.error('No data-item attribute found');
+                    return;
+                }
+
+                const item = JSON.parse(itemData);
+                if (!item || !item.id) {
+                    console.error('Invalid item data');
+                    return;
+                }
+
+                const favorites = this.getFavorites();
+                const existingIndex = favorites.findIndex(fav => fav.id === item.id);
+
+                if (existingIndex === -1) {
+                    favorites.push(item);
+                    button.classList.add('active');
+                    this.showNotification(`"${item.name}" добавлен в избранное`);
+                } else {
+                    favorites.splice(existingIndex, 1);
+                    button.classList.remove('active');
+                    this.showNotification(`"${item.name}" удален из избранного`);
+                }
+
+                this.saveFavorites(favorites);
+                this.updateCounter();
+            } catch (error) {
+                console.error('Error handling favorite click:', error);
+            }
+        },
+
+        markExistingFavorites: function() {
+            const favorites = this.getFavorites();
+            document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+                try {
+                    const itemData = btn.getAttribute('data-item');
+                    if (!itemData) return;
+
+                    const item = JSON.parse(itemData);
+                    if (item && item.id && favorites.some(fav => fav.id === item.id)) {
+                        btn.classList.add('active');
+                    }
+                } catch (error) {
+                    console.error('Error marking existing favorite:', error);
+                }
+            });
+        },
+
+        getFavorites: function() {
+            try {
+                return JSON.parse(localStorage.getItem('favorites')) || [];
+            } catch (error) {
+                console.error('Error getting favorites:', error);
+                return [];
+            }
+        },
+
+        saveFavorites: function(favorites) {
+            try {
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+            } catch (error) {
+                console.error('Error saving favorites:', error);
+            }
+        },
+
+        updateCounter: function() {
+            try {
+                const count = this.getFavorites().length;
+                const counter = document.getElementById('favorites-count');
+                if (counter) counter.textContent = count;
+            } catch (error) {
+                console.error('Error updating counter:', error);
+            }
+        },
+
+        showNotification: function(message) {
+            const notification = document.createElement('div');
+            notification.style.position = 'fixed';
+            notification.style.bottom = '20px';
+            notification.style.right = '20px';
+            notification.style.backgroundColor = 'rgba(0,0,0,0.8)';
+            notification.style.color = 'white';
+            notification.style.padding = '10px 20px';
+            notification.style.borderRadius = '5px';
+            notification.style.zIndex = '1000';
+            notification.style.transition = 'opacity 0.5s';
+            notification.textContent = message;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 500);
+            }, 2000);
+        }
+    };
 
     // Переворот карточки
     function flipCard() {
@@ -376,9 +1107,6 @@
     // Модальное окно для отзыва
     function openReviewModal() {
         document.getElementById('review-modal').style.display = 'flex';
-    }
-    function closeReviewModal() {
-        document.getElementById('review-modal').style.display = 'none';
     }
     // Закрытие модального окна при клике вне его области
     document.getElementById('review-modal').addEventListener('click', function(e) {
@@ -475,7 +1203,6 @@
 
     // Оценка звёздами
     const stars = document.querySelectorAll('#review-stars .star');
-    let selectedRating = 0; // Переменная для хранения выбранной оценки
 
     stars.forEach(star => {
         star.addEventListener('click', () => {
@@ -751,24 +1478,6 @@
     let overallRating = 0;
     let ratingCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
-    // Функция для обновления общей оценки и статистики
-    function updateOverallRating() {
-        const totalReviews = reviews.length;
-        if (totalReviews === 0) {
-            overallRating = 0;
-        } else {
-            const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
-            overallRating = (totalRating / totalReviews).toFixed(1);
-        }
-
-        // Обновляем отображение общей оценки
-        document.getElementById('overall-rating').textContent = overallRating;
-        document.getElementById('total-reviews').textContent = totalReviews;
-
-        // Обновляем статистику отзывов
-        updateRatingBars();
-    }
-
     // Функция для обновления статистики отзывов
     function updateRatingBars() {
         const totalReviews = reviews.length;
@@ -856,136 +1565,300 @@
     })("map_547336407", "PGJvZHk+PHN0eWxlPgogICAgICAgIGh0bWwsIGJvZHkgewogICAgICAgICAgICBtYXJnaW46IDA7CiAgICAgICAgICAgIHBhZGRpbmc6IDA7CiAgICAgICAgfQogICAgICAgIGh0bWwsIGJvZHksICNtYXAgewogICAgICAgICAgICB3aWR0aDogMTAwJTsKICAgICAgICAgICAgaGVpZ2h0OiAxMDAlOwogICAgICAgIH0KICAgICAgICAuYnVsbGV0LW1hcmtlciB7CiAgICAgICAgICAgIHdpZHRoOiAyMHB4OwogICAgICAgICAgICBoZWlnaHQ6IDIwcHg7CiAgICAgICAgICAgIGJveC1zaXppbmc6IGJvcmRlci1ib3g7CiAgICAgICAgICAgIGJhY2tncm91bmQtY29sb3I6ICNmZmY7CiAgICAgICAgICAgIGJveC1zaGFkb3c6IDAgMXB4IDNweCAwIHJnYmEoMCwgMCwgMCwgMC4yKTsKICAgICAgICAgICAgYm9yZGVyOiA0cHggc29saWQgIzAyODFmMjsKICAgICAgICAgICAgYm9yZGVyLXJhZGl1czogNTAlOwogICAgICAgIH0KICAgICAgICAucGVybWFuZW50LXRvb2x0aXAgewogICAgICAgICAgICBiYWNrZ3JvdW5kOiBub25lOwogICAgICAgICAgICBib3gtc2hhZG93OiBub25lOwogICAgICAgICAgICBib3JkZXI6IG5vbmU7CiAgICAgICAgICAgIHBhZGRpbmc6IDZweCAxMnB4OwogICAgICAgICAgICBjb2xvcjogIzI2MjYyNjsKICAgICAgICB9CiAgICAgICAgLnBlcm1hbmVudC10b29sdGlwOmJlZm9yZSB7CiAgICAgICAgICAgIGRpc3BsYXk6IG5vbmU7CiAgICAgICAgfQogICAgICAgIC5kZy1wb3B1cF9oaWRkZW5fdHJ1ZSB7CiAgICAgICAgICAgIGRpc3BsYXk6IGJsb2NrOwogICAgICAgIH0KICAgICAgICAubGVhZmxldC1jb250YWluZXIgLmxlYWZsZXQtcG9wdXAgLmxlYWZsZXQtcG9wdXAtY2xvc2UtYnV0dG9uIHsKICAgICAgICAgICAgdG9wOiAwOwogICAgICAgICAgICByaWdodDogMDsKICAgICAgICAgICAgd2lkdGg6IDIwcHg7CiAgICAgICAgICAgIGhlaWdodDogMjBweDsKICAgICAgICAgICAgZm9udC1zaXplOiAyMHB4OwogICAgICAgICAgICBsaW5lLWhlaWdodDogMTsKICAgICAgICB9CiAgICA8L3N0eWxlPjxkaXYgaWQ9Im1hcCI+PC9kaXY+PHNjcmlwdCB0eXBlPSJ0ZXh0L2phdmFzY3JpcHQiIHNyYz0iaHR0cHM6Ly9tYXBzLmFwaS4yZ2lzLnJ1LzIuMC9sb2FkZXIuanM/cGtnPWZ1bGwmYW1wO3NraW49bGlnaHQiPjwvc2NyaXB0PjxzY3JpcHQ+KGZ1bmN0aW9uKGUpe3ZhciB0PUpTT04ucGFyc2UoZSkscj10Lm9yZGVyZWRHZW9tZXRyaWVzLG49dC5tYXBQb3NpdGlvbixhPXQuaXNXaGVlbFpvb21FbmFibGVkO2Z1bmN0aW9uIG8oZSl7cmV0dXJuIGRlY29kZVVSSUNvbXBvbmVudChhdG9iKGUpLnNwbGl0KCIiKS5tYXAoZnVuY3Rpb24oZSl7cmV0dXJuIiUiKygiMDAiK2UuY2hhckNvZGVBdCgwKS50b1N0cmluZygxNikpLnNsaWNlKC0yKX0pLmpvaW4oIiIpKX1ERy50aGVuKGZ1bmN0aW9uKCl7dmFyIGU9REcubWFwKCJtYXAiLHtjZW50ZXI6W24ubGF0LG4ubG9uXSx6b29tOm4uem9vbSxzY3JvbGxXaGVlbFpvb206YSx6b29tQ29udHJvbDohYX0pO0RHLmdlb0pTT04ocix7c3R5bGU6ZnVuY3Rpb24oZSl7dmFyIHQscixuLGEsbztyZXR1cm57ZmlsbENvbG9yOm51bGw9PT0odD1lKXx8dm9pZCAwPT09dD92b2lkIDA6dC5wcm9wZXJ0aWVzLmZpbGxDb2xvcixmaWxsT3BhY2l0eTpudWxsPT09KHI9ZSl8fHZvaWQgMD09PXI/dm9pZCAwOnIucHJvcGVydGllcy5maWxsT3BhY2l0eSxjb2xvcjpudWxsPT09KG49ZSl8fHZvaWQgMD09PW4/dm9pZCAwOm4ucHJvcGVydGllcy5zdHJva2VDb2xvcix3ZWlnaHQ6bnVsbD09PShhPWUpfHx2b2lkIDA9PT1hP3ZvaWQgMDphLnByb3BlcnRpZXMuc3Ryb2tlV2lkdGgsb3BhY2l0eTpudWxsPT09KG89ZSl8fHZvaWQgMD09PW8/dm9pZCAwOm8ucHJvcGVydGllcy5zdHJva2VPcGFjaXR5fX0scG9pbnRUb0xheWVyOmZ1bmN0aW9uKGUsdCl7cmV0dXJuInJhZGl1cyJpbiBlLnByb3BlcnRpZXM/REcuY2lyY2xlKHQsZS5wcm9wZXJ0aWVzLnJhZGl1cyk6REcubWFya2VyKHQse2ljb246ZnVuY3Rpb24oZSl7cmV0dXJuIERHLmRpdkljb24oe2h0bWw6IjxkaXYgY2xhc3M9J2J1bGxldC1tYXJrZXInIHN0eWxlPSdib3JkZXItY29sb3I6ICIrZSsiOyc+PC9kaXY+IixjbGFzc05hbWU6Im92ZXJyaWRlLWRlZmF1bHQiLGljb25TaXplOlsyMCwyMF0saWNvbkFuY2hvcjpbMTAsMTBdfSl9KGUucHJvcGVydGllcy5jb2xvcil9KX0sb25FYWNoRmVhdHVyZTpmdW5jdGlvbihlLHQpe2UucHJvcGVydGllcy5kZXNjcmlwdGlvbiYmdC5iaW5kUG9wdXAobyhlLnByb3BlcnRpZXMuZGVzY3JpcHRpb24pLHtjbG9zZUJ1dHRvbjohMCxjbG9zZU9uRXNjYXBlS2V5OiEwfSksZS5wcm9wZXJ0aWVzLnRpdGxlJiZ0LmJpbmRUb29sdGlwKG8oZS5wcm9wZXJ0aWVzLnRpdGxlKSx7cGVybWFuZW50OiEwLG9wYWNpdHk6MSxjbGFzc05hbWU6InBlcm1hbmVudC10b29sdGlwIn0pfX0pLmFkZFRvKGUpfSl9KSgneyJvcmRlcmVkR2VvbWV0cmllcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7ImNvbG9yIjoiIzAwMDAwMCIsInRpdGxlIjoiMEpIUXNOR0EwTERSaU5DNjBMZz0iLCJkZXNjcmlwdGlvbiI6IlBIQSswS0RRdGRHQjBZTFF2dEdBMExEUXZTRENxOUNSMExEUmdOQ3cwWWpRdXRDNHdyc2cwTC9SZ05DMTBMVFF1OUN3MExQUXNOQzEwWUlnMFlIUXN0QyswTGpRdkNEUXM5QyswWUhSZ3RHUDBMd2cwTEhRdTlHTzBMVFFzQ0RRczlHQTBZUFF0OUM0MEwzUmdkQzYwTDdRdVNEUXV0R0QwWVhRdmRDNExDRFF2OUdBMExqUXM5QyswWUxRdnRDeTBMdlF0ZEM5MEwzUmk5QzFJTkMvMEw0ZzBZTFJnTkN3MExUUXVOR0cwTGpRdnRDOTBMM1JpOUM4SU5HQTBMWFJodEMxMEwvUmd0Q3cwTHd1UEM5d1BnPT0iLCJ6SW5kZXgiOjEwMDAwMDAwMDB9LCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9pbnQiLCJjb29yZGluYXRlcyI6WzMxLjIzOTgwMyw1OC41MzE3MzNdfSwiaWQiOjczMX1dLCJtYXBQb3NpdGlvbiI6eyJsYXQiOjU4LjUzMTY3NjIxMDAwNzg2LCJsb24iOjMxLjI0MTk4NDM2NzM3MDYwNSwiem9vbSI6MTZ9LCJpc1doZWVsWm9vbUVuYWJsZWQiOnRydWV9Jyk8L3NjcmlwdD48c2NyaXB0IGFzeW5jPSIiIHNyYz0iaHR0cHM6Ly93d3cuZ29vZ2xldGFnbWFuYWdlci5jb20vZ3RhZy9qcz9pZD1HLVQ4NktNRDAzQzciPjwvc2NyaXB0PjxzY3JpcHQgaWQ9Imdvb2dsZS1hbmFseXRpY3MiPgogICAgICB3aW5kb3cuZGF0YUxheWVyID0gd2luZG93LmRhdGFMYXllciB8fCBbXTsKICAgICAgZnVuY3Rpb24gZ3RhZygpe2RhdGFMYXllci5wdXNoKGFyZ3VtZW50cyk7fQogICAgICBndGFnKCdqcycsIG5ldyBEYXRlKCkpOwogICAgICBndGFnKCdjb25maWcnLCAnRy1UODZLTUQwM0M3JywgeyJjb29raWVfZmxhZ3MiOiJTYW1lU2l0ZT1Ob25lOyBTZWN1cmU7IFBhcnRpdGlvbmVkIiwiY29va2llX3VwZGF0ZSI6ZmFsc2V9KTsKICAgICAgdHJ1ZSAmJiBndGFnKCdldmVudCcsICdmcm9tX2lmcmFtZScpOwogICAgPC9zY3JpcHQ+PC9ib2R5Pg==");
 });
 
-    // Функция показа уведомлений
-function showNotification(message) {
+// Глобальные переменные
+let currentUser = null; // Должно устанавливаться при авторизации
+let currentRestaurant = {
+    id: 'lambs',
+    name: 'Барашки'
+};
+
+// Обновляем обработчик формы
+document.getElementById('review-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    submitReview();
+});
+
+// Функция для обновления отзыва
+async function updateReview(reviewId, rating, comment) {
     try {
-        const notification = document.createElement('div');
-        notification.style.position = 'fixed';
-        notification.style.bottom = '20px';
-        notification.style.right = '20px';
-        notification.style.backgroundColor = 'rgba(0,0,0,0.8)';
-        notification.style.color = 'white';
-        notification.style.padding = '10px 20px';
-        notification.style.borderRadius = '5px';
-        notification.style.zIndex = '1000';
-        notification.style.transition = 'opacity 0.5s';
-        notification.textContent = message;
+        const token = localStorage.getItem('token');
 
-        document.body.appendChild(notification);
+        const response = await fetch(`/api/reviews/${reviewId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token
+            },
+            body: JSON.stringify({
+                rating: rating,
+                comment: comment
+            })
+        });
 
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 500);
-        }, 2000);
-    } catch (e) {
-        console.error('Error showing notification:', e);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Ошибка при обновлении отзыва');
+        }
+
+        // Обновляем UI
+        if (data.restaurant.rating) {
+            updateRestaurantRating(data.restaurant.rating);
+        }
+        updateReviewInUI(reviewId, data.review);
+
+        showNotification(data.message);
+    } catch (error) {
+        showNotification(error.message, 'error');
     }
 }
 
-// Функция для работы с избранным
-const FavoritesManager = {
-    init: function() {
-        this.bindEvents();
-        this.updateCounter();
-        this.markExistingFavorites();
-    },
+// Функция для удаления отзыва
+async function deleteReview(reviewId) {
+    try {
+        const token = localStorage.getItem('token');
 
-    bindEvents: function() {
-        // Вешаем обработчики на все кнопки избранного
-        document.querySelectorAll('.js-favorite-btn').forEach(btn => {
-            btn.addEventListener('click', this.handleFavoriteClick.bind(this));
-        });
-    },
-
-    handleFavoriteClick: function(event) {
-        const button = event.currentTarget;
-        if (!button) return;
-
-        try {
-            const itemData = button.getAttribute('data-item');
-            if (!itemData) {
-                console.error('No data-item attribute found');
-                return;
-            }
-
-            const item = JSON.parse(itemData);
-            if (!item || !item.id) {
-                console.error('Invalid item data');
-                return;
-            }
-
-            const favorites = this.getFavorites();
-            const existingIndex = favorites.findIndex(fav => fav.id === item.id);
-
-            if (existingIndex === -1) {
-                favorites.push(item);
-                button.classList.add('active');
-                this.showNotification(`"${item.name}" добавлен в избранное`);
-            } else {
-                favorites.splice(existingIndex, 1);
-                button.classList.remove('active');
-                this.showNotification(`"${item.name}" удален из избранного`);
-            }
-
-            this.saveFavorites(favorites);
-            this.updateCounter();
-        } catch (error) {
-            console.error('Error handling favorite click:', error);
-        }
-    },
-
-    markExistingFavorites: function() {
-        const favorites = this.getFavorites();
-        document.querySelectorAll('.js-favorite-btn').forEach(btn => {
-            try {
-                const itemData = btn.getAttribute('data-item');
-                if (!itemData) return;
-
-                const item = JSON.parse(itemData);
-                if (item && item.id && favorites.some(fav => fav.id === item.id)) {
-                    btn.classList.add('active');
-                }
-            } catch (error) {
-                console.error('Error marking existing favorite:', error);
+        const response = await fetch(`/api/reviews/${reviewId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': token
             }
         });
-    },
 
-    getFavorites: function() {
-        try {
-            return JSON.parse(localStorage.getItem('favorites')) || [];
-        } catch (error) {
-            console.error('Error getting favorites:', error);
-            return [];
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Ошибка при удалении отзыва');
         }
-    },
 
-    saveFavorites: function(favorites) {
-        try {
-            localStorage.setItem('favorites', JSON.stringify(favorites));
-        } catch (error) {
-            console.error('Error saving favorites:', error);
-        }
-    },
+        // Обновляем UI
+        updateRestaurantRating(data.restaurant.rating, data.restaurant.review_count);
+        removeReviewFromUI(reviewId);
 
-    updateCounter: function() {
-        try {
-            const count = this.getFavorites().length;
-            const counter = document.getElementById('favorites-count');
-            if (counter) counter.textContent = count;
-        } catch (error) {
-            console.error('Error updating counter:', error);
-        }
-    },
-
-    showNotification: function(message) {
-        // Реализация показа уведомления...
+        showNotification(data.message);
+    } catch (error) {
+        showNotification(error.message, 'error');
     }
-};
+}
+
+// Функция для проверки можно ли редактировать отзыв
+function checkReviewEditAbility(review) {
+    if (!review.can_edit) return false;
+
+    const createdAt = new Date(review.created_at);
+    const now = new Date();
+    const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
+
+    return hoursDiff <= 3;
+}
+
+// Функция для загрузки данных ресторана и отзывов
+async function loadRestaurantData() {
+    try {
+        const response = await fetch(`/api/restaurants/${currentRestaurant.id}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error('Ошибка при загрузке данных');
+        }
+
+        // Обновляем рейтинг ресторана
+        updateRestaurantRating(data.restaurant.rating, data.restaurant.review_count);
+
+        // Очищаем и добавляем отзывы
+        document.getElementById('reviews-list').innerHTML = '';
+        data.reviews.forEach(review => {
+            addReviewToUI(review);
+        });
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+// Вспомогательные функции для обновления UI
+function updateRestaurantRating(rating, count) {
+    if (rating) {
+        document.querySelector('.overall-rating .rating-value').textContent = rating.toFixed(1);
+        document.querySelector('.restaurant-rating .rating-value').textContent = rating.toFixed(1);
+    }
+    if (count) {
+        document.querySelector('.overall-rating .reviews-count').textContent = `${count} отзывов`;
+    }
+}
+
+function addReviewToUI(review) {
+    const reviewsContainer = document.getElementById('review-list');
+
+    // Удаляем сообщение "Нет отзывов", если оно есть
+    const noReviewsMsg = reviewsContainer.querySelector('.no-reviews');
+    if (noReviewsMsg) {
+        noReviewsMsg.remove();
+    }
+
+    const reviewElement = document.createElement('div');
+    reviewElement.className = 'review-card';
+    reviewElement.dataset.reviewId = review.id;
+
+    reviewElement.innerHTML = `
+        <div class="review-header">
+            <img class="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Аватар">
+            <div class="name-rating">
+                <div class="name">${review.username}</div>
+                <div class="rating">
+                    ${'<img src="{{ url_for('static', filename='Фотки зданий/baka.png') }}" alt="★">'.repeat(review.rating)}
+                    ${'<img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">'.repeat(5 - review.rating)}
+                </div>
+            </div>
+        </div>
+        <div class="comment-container">
+            <div class="comment-text">${review.comment || ''}</div>
+        </div>
+        <div class="review-actions">
+            <button class="like-btn" onclick="rateReview(${review.id}, true)">
+                <img src="{{ url_for('static', filename='Фотки зданий/Лайк.png') }}" alt="Лайк">
+                <span class="like-count">${review.likes}</span>
+            </button>
+            <button class="dislike-btn" onclick="rateReview(${review.id}, false)">
+                <img src="{{ url_for('static', filename='Фотки зданий/Дизлайк.png') }}" alt="Дизлайк">
+                <span class="dislike-count">${review.dislikes}</span>
+            </button>
+        </div>
+        <div class="review-date">${new Date(review.created_at).toLocaleString()}</div>
+    `;
+
+    // Добавляем новый отзыв в начало списка
+    reviewsContainer.insertBefore(reviewElement, reviewsContainer.firstChild);
+
+    // Добавляем анимацию появления
+    reviewElement.style.opacity = '0';
+    setTimeout(() => {
+        reviewElement.style.transition = 'opacity 0.3s ease';
+        reviewElement.style.opacity = '1';
+    }, 10);
+}
+
+// Обновляем обработчик формы
+document.getElementById('review-form').addEventListener('submit', function(e) {
+    e.preventDefault(); // Это предотвращает перезагрузку страницы
+    submitReview();
+});
+
+function updateReviewInUI(reviewId, updatedData) {
+    const reviewElement = document.querySelector(`.review-card[data-review-id="${reviewId}"]`);
+    if (!reviewElement) return;
+
+    if (updatedData.rating) {
+        const ratingElement = reviewElement.querySelector('.review-rating');
+        ratingElement.innerHTML = `
+            ${'<svg viewBox="0 0 24 24" class="star-icon filled"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>'.repeat(updatedData.rating)}
+            <span>${updatedData.rating.toFixed(1)}</span>
+        `;
+    }
+
+    if (updatedData.comment !== undefined) {
+        const commentElement = reviewElement.querySelector('.review-content p');
+        commentElement.textContent = updatedData.comment || '';
+    }
+
+    // Обновляем дату редактирования
+    if (updatedData.updated_at) {
+        const dateElement = reviewElement.querySelector('.review-date');
+        dateElement.textContent = `${formatDate(updatedData.updated_at)} (изменен)`;
+    }
+
+    // Проверяем можно ли еще редактировать
+    const canEdit = checkReviewEditAbility({
+        created_at: reviewElement.querySelector('.review-date').dataset.originalDate,
+        can_edit: true
+    });
+
+    if (!canEdit) {
+        const editButtons = reviewElement.querySelector('.review-edit-buttons');
+        if (editButtons) editButtons.remove();
+    }
+}
+
+function removeReviewFromUI(reviewId) {
+    const reviewElement = document.querySelector(`.review-card[data-review-id="${reviewId}"]`);
+    if (reviewElement) {
+        reviewElement.classList.add('fade-out');
+        setTimeout(() => reviewElement.remove(), 300);
+    }
+}
+
+// Модальное окно для редактирования отзыва
+function openEditReviewModal(reviewId, currentRating, currentComment) {
+    const modal = document.getElementById('edit-review-modal');
+    const form = modal.querySelector('form');
+
+    form.dataset.reviewId = reviewId;
+
+    // Устанавливаем текущие значения
+    modal.querySelectorAll('.star').forEach((star, index) => {
+        star.classList.toggle('filled', index < currentRating);
+    });
+
+    modal.querySelector('textarea').value = currentComment || '';
+
+    // Показываем модальное окно
+    modal.style.display = 'flex';
+}
+
+function closeEditReviewModal() {
+    document.getElementById('edit-review-modal').style.display = 'none';
+}
+
+// Вспомогательные функции
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
 
 // Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    FavoritesManager.init();
+document.addEventListener('DOMContentLoaded', () => {
+    // Установка текущего пользователя (должно приходить из системы авторизации)
+    currentUser = 1; // Здесь должен быть ID текущего пользователя
+
+    // Загрузка данных ресторана
+    loadRestaurantData();
+
+    // Обработчики для модального окна добавления отзыва
+    document.getElementById('review-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const rating = this.querySelector('.star.filled').length;
+        const comment = this.querySelector('textarea').value;
+
+        submitReview(rating, comment);
+    });
+
+    // Обработчики для модального окна редактирования отзыва
+    document.getElementById('edit-review-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const reviewId = this.dataset.reviewId;
+        const rating = this.querySelectorAll('.star.filled').length;
+        const comment = this.querySelector('textarea').value;
+
+        updateReview(reviewId, rating, comment);
+        closeEditReviewModal();
+    });
+
+    // Закрытие модальных окон при клике вне их
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                if (this.id === 'review-modal') closeReviewModal();
+                if (this.id === 'edit-review-modal') closeEditReviewModal();
+            }
+        });
+    });
 });
 </script>
 </body>

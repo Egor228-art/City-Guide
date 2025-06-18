@@ -1,226 +1,405 @@
+/* Общие стили из нового HTML */
+:root {
+    --black: #1a1a1a;
+    --white: #ffffff;
+    --gray: #f5f5f5;
+    --dark-gray: #333333;
+    --accent: #000000;
+    --primary: #2c3e50;
+    --active: #000000;
+    --accent-color: #0B63F6;
+}
+
 body {
-    overflow-x: hidden; /* Убирает горизонтальный скролл */
-    font-family: Arial, sans-serif;
-    margin-left: 0;
-    margin-right: 0;
-    margin-bottom: 0;
-    padding: 20px 10px 0 20px;
-    background-color: #f9f9f9;
-    margin-top: 45px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: var(--black);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    padding-top: 70px;
 }
 /*=========================================== Шапка сайта ============================================================*/
-.bd-subnavbar {
-    position: fixed; /* Фиксируем навигацию */
-    top: 0; /* Устанавливаем на верх страницы */
-    left: 0; /* Устанавливаем на левый край */
-    right: 0; /* Устанавливаем на правый край */
-    z-index: 1000; /* Устанавливаем высокий z-index, чтобы шапка была поверх других элементов */
-    background-color: white; /* Устанавливаем фон, чтобы текст был читаемым */
-    border-bottom: 1px solid #ced4da; /* Граница снизу для отделения от контента */
+.navbar {
+    background-color: var(--white);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+    transition: transform 0.3s ease;
 }
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 5%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
 .logo {
-    margin-left: 76px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     cursor: pointer;
 }
-.img-logo {
-    position: relative;
-    left: -25px;
+
+.logo img {
+    height: 50px;
+    width: 70px;
 }
-.text-logo {
-    position: relative;
-    left: -5.6px;
-    font-size: 30px;
-    font-family: SFMono-Regular;
+
+.logo span {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--black);
 }
-.algolia-autocomplete {
-    position: relative;
-    display: inline-block;
-    direction: ltr;
-    left: 25px;
-}
-.form-control ds-input {
-    position: relative;
-    vertical-align: top;
-}
-.form-control:focus {
-    border-color: #1b1b1b; /* Изменяем цвет границы при фокусе */
-    box-shadow: 0 0 5px rgba(14, 14, 14, 0.5); /* Добавляем тень при фокусе */
-    outline: none; /* Убираем стандартную обводку */
-    color: #1b1b1b; /* Цвет текста при фокусе */
-}
-.dropdown {
+
+.search-box {
     display: flex;
-    gap: 4px;
-    margin-left: auto;
-    margin-right: 300px;
-    position: relative;
-    z-index: 1200;
+    flex-grow: 1;
+    min-width: 500px;
+    margin: 0 2rem;
+    height: 40px;
+    border: 1px solid #000;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #fff;
 }
-#overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
+
+.search-input {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    background: transparent;
     width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1100;
-    display: none;
 }
 
+.search-input:focus {
+    border-color: #1b1b1b;
+    box-shadow: 0 0 5px rgba(14, 14, 14, 0.5);
+    outline: none;
+    color: #1b1b1b;
+}
 
-/*=========================================== Окна регистрации\входа =================================================*/
+.search-input::placeholder {
+    color: #999;
+}
 
-/* Исправления для модальных окон */
+.search-button {
+    background: var(--black);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 15px;
+}
+
+.search-icon {
+    width: 20px;
+    height: 20px;
+    stroke: white;
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.btn-login, .btn-register, .btn-logout {
+    padding: 0.5rem 1.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid var(--black);
+}
+
+.btn-login, .btn-register {
+    background-color: var(--white);
+    color: var(--black);
+}
+
+.btn-login:hover, .btn-register:hover {
+    background-color: var(--black);
+    color: var(--white);
+    transform: translateY(-2px);
+}
+
+.btn-logout {
+    background-color: var(--black);
+    color: var(--white);
+    margin-left: 10px;
+}
+
+.btn-logout:hover {
+    background-color: #333;
+    transform: translateY(-2px);
+}
+
+.Коробка {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: white;
+    box-shadow: 0 0 0 2px #f8f8f8, 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    transform-style: preserve-3d;
+    cursor: pointer;
+}
+
+#avatar {
+    width: 36px !important;
+    height: 36px !important;
+    border: 2px solid white !important;
+    transition: transform 0.3s;
+}
+
+.Коробка:hover #avatar {
+    transform: scale(1.1) rotate(5deg);
+}
+
+#userInfo {
+    display: none;
+    align-items: center;
+    gap: 10px;
+}
+
+#welcomeUser {
+    font-weight: 500;
+}
+
+/* Облака из нового HTML */
+.navbar::after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 50px;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none"><path fill="%23ffffff" d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25"></path><path fill="%23ffffff" d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" opacity=".5"></path><path fill="%23ffffff" d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z"></path></svg>') no-repeat;
+    background-size: cover;
+    position: absolute;
+    bottom: -49px;
+    left: 0;
+    z-index: 99;
+}
+
+/* Стили кнопки избранного из старого HTML */
+.favorite-wrapper {
+  position: relative;
+  cursor: pointer;
+  display: none;
+  margin-right: 20px;
+    margin-left: -10px;
+  font-size: 30px;
+  text-align: center;
+  line-height: 40px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.favorite-wrapper.visible {
+  display: inline-block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Стили сердца и счетчика */
+.heart-icon {
+  position: relative;
+  z-index: 2;
+  color: #000;
+  transition: color 0.3s ease 0.8s; /* Задержка 1 секунда */
+}
+
+.favorite-wrapper:hover .heart-icon {
+  color: #ff2e4d;
+  transition: color 0.3s ease; /* Без задержки при наведении */
+}
+
+/* Анимация исчезновения при обновлении */
+.favorite-wrapper.hide {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+.favorites-counter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  z-index: 3;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Частицы с эффектами свечения */
+.particle {
+  position: absolute;
+  font-size: 20px;
+  color: #ff2e4d;
+  opacity: 0;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  text-shadow: 0 0 8px rgba(255, 46, 77, 0.7);
+}
+
+/* Анимации */
+.favorite-wrapper:hover .heart-icon {
+  color: #ff2e4d;
+  transform: scale(1.2);
+}
+
+/* Анимации частиц при активации */
+.favorite-wrapper.active .particle {
+  opacity: 0.9;
+  transform: translate(
+    calc(-50% + var(--tx) * 27px),
+    calc(-50% + var(--ty) * 27px)
+  );
+}
+
+/* Усиление свечения при наведении */
+.favorite-wrapper.active:hover .particle {
+  opacity: 1;
+}
+
+/* Позиции частиц с увеличенным расстоянием */
+.particle-1 { --tx: -0.7; --ty: -1.2; transition-delay: 0.1s; }
+.particle-2 { --tx: 0.8; --ty: -0.9; transition-delay: 0.2s; }
+.particle-3 { --tx: -1; --ty: 0.5; transition-delay: 0.3s; }
+.particle-4 { --tx: 0.4; --ty: 0.9; transition-delay: 0.1s; }
+.particle-5 { --tx: 0; --ty: -0.7; transition-delay: 0.2s; }
+.particle-6 { --tx: 1.2; --ty: 0.9; transition-delay: 0.3s; }
+.particle-7 { --tx: -1; --ty: 1; transition-delay: 0.1s; }
+
+/* Кнопка в карточке */
+.favorite-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.favorite-btn:hover {
+  transform: scale(1.2);
+}
+
+/* Стили окон входа/регистрации из старого HTML */
 .popup-window {
     display: none;
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: white;
-    padding: 20px;
-    border-radius: 20px;
-    border: 1px solid #ced4da;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    z-index: 1200;
-    width: 300px;
-    opacity: 0;
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+    z-index: 1001;
+    width: 350px;
 }
 
-.popup-window.show {
-    display: block;
-    opacity: 1;
-}
-#content_window, #content_window2 {
-    /* Оставляем только эти свойства, остальное удаляем */
-    display: none;
+.popup-window h1 {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-#content_window.show, #content_window2.show {
-    display: block;
+.form-group {
+    margin-bottom: 15px;
 }
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: #1b1b1b;
+    box-shadow: 0 0 5px rgba(14, 14, 14, 0.5);
+    outline: none;
+}
+
+.btnA, .btnB {
+    border-radius: 10px;
+    border: 2px solid #0B63F6;
+    color: white;
+    background: linear-gradient(135deg, #0B63F6, #063678);
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btnA:hover, .btnB:hover {
+    background: linear-gradient(135deg, #0849a5, #042553);
+    transform: translateY(-2px);
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
 .btnX {
     font-family: 'DejaVu Sans Mono', monospace;
-    margin-top: -25px;
-    margin-left: 245px;
-    top: 15px;
     position: absolute;
-    background-color: transparent; /* Прозрачный фон */
-    color: #dc3545; /* Цвет текста (красный) */
-    border: none; /* Убираем границу */
-    font-size: 40px; /* Размер шрифта */
-    cursor: pointer; /* Указываем, что это кнопка */
-    transition: transform 0.3s ease, color 0.3s ease; /* Плавный переход для трансформации и цвета */
-}
-/* Стили при наведении */
-.btnX:hover {
-    background-color: transparent; /* Прозрачный фон при наведении */
-    color: #c82333; /* Цвет текста при наведении */
-    transform: scale(1.2); /* Увеличиваем размер при наведении */
-}
-/* Стили при нажатии */
-.btnX:active {
-    background-color: transparent; /* Прозрачный фон при нажатии */
-    color: #b01a2a; /* Цвет текста при нажатии */
-    transform: scale(1); /* Возвращаем размер при нажатии */
-}
-/* Убираем обводку при фокусе */
-.btnX:focus {
-    outline: none; /* Убираем обводку при фокусе */
-}
-.btnB, .btnA {
-    border-radius: 10px;
-    border: 2px solid #000000; /* Добавляем границу */
-    color: white;
-    background: linear-gradient(135deg, #535353, #000000); /* Градиентный фон */
-    padding: 5px 10px; /* Добавляем внутренние отступы для увеличения размера кнопки */
-    font-size: 16px; /* Увеличиваем размер шрифта */
+    top: 10px;
+    right: 15px;
+    background-color: transparent;
+    color: #dc3545;
+    border: none;
+    font-size: 30px;
     cursor: pointer;
-    transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease; /* Плавные переходы */
-    position: relative;
+    transition: transform 0.3s ease, color 0.3s ease;
+    line-height: 1;
+}
+
+.btnX:hover {
+    color: #c82333;
+    transform: scale(1.2);
+}
+
+.btnX:focus {
+    outline: none;
+}
+
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+body.no-scroll {
     overflow: hidden;
 }
-.btnB {
-    margin-left: 40px;
-}
-.btnA {
-    margin-left: 100px;
-}
-/* Стили при наведении */
-.btnB:hover, .btnA:hover {
-    background: linear-gradient(135deg, #717171, #303030); /* Темнее оттенок синего */
-    color: #ffffff; /* Белый цвет текста */
-    transform: scale(1.05); /* Увеличиваем размер кнопки */
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* Добавляем тень */
-}
-/* Стили при нажатии */
-.btnB:active, .btnA:active {
-    background: linear-gradient(135deg, #535353, #000000); /* Еще темнее оттенок синего */
-    color: #ffffff; /* Белый цвет текста */
-    transform: scale(1); /* Возвращаем размер кнопки */
-    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1); /* Уменьшаем тень */
-}
-
-#userInfo {
-    margin-left: auto;
-    margin-right: 300px;
-}
-.btn {
-    background-color: #ffffff; /* Белый фон по умолчанию */
-    border: 0px solid #8a8a8a; /* Добавляем обводку */
-    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    color: #000000; /* Чёрный цвет текста */
-    font-size: 16px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    margin: 4px 2px;
-    cursor: pointer;
-    transition: background-color 0.6s ease, color 0.3s ease, box-shadow 0.6s ease, transform 0.3s ease; /* Плавный переход для фона, текста, тени и трансформации */
-    position: relative;
-    overflow: hidden;
-}
-.btn:hover {
-    background-color: #373737; /* Чёрный фон при наведении */
-    color: #ffffff; /* Белый цвет текста при наведении */
-    box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.2);
-    transform: translateY(-2px);
-}
-.btn:active {
-    background-color: #373737; /* Чёрный фон при нажатии */
-    color: #ffffff; /* Белый цвет текста при нажатии */
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-    transform: translateY(0);
-}
-.btnX {
-    margin-left: 240px;
-    top: 15px;
-    position: absolute;
-    background-color: transparent; /* Прозрачный фон */
-    color: #dc3545; /* Цвет текста (красный) */
-    border: none; /* Убираем границу */
-    font-size: 40px; /* Размер шрифта */
-    cursor: pointer; /* Указываем, что это кнопка */
-}
-
-/* Стили при наведении */
-.btnX:hover {
-    background-color: transparent; /* Прозрачный фон при наведении */
-    color: #c82333; /* Цвет текста при наведении */
-}
-
-/* Стили при нажатии */
-.btnX:active {
-    background-color: transparent; /* Прозрачный фон при нажатии */
-    color: #c82333; /* Цвет текста при нажатии */
-}
-/* Убираем обводку при фокусе */
-.btnX:focus {
-    outline: none; /* Убираем обводку при фокусе */
-}
-
-/*------------------------------------------- Окна регистрации\входа -------------------------------------------------*/
 /*------------------------------------------------- Шапка сайта ------------------------------------------------------*/
 /*================================================== Тело сайта ======================================================*/
 .container {
@@ -400,7 +579,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 10px;
     box-sizing: border-box;
 
     position: relative;
@@ -1112,66 +1291,6 @@ body {
     font-style: italic;
     grid-column: 1 / -1; /* Для правильного отображения в grid/flex */
 }
-/* Добавьте эти стили */
-#header-favorites-btn {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    color: #000000;
-    font-size: 16px;
-    padding: 8px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    z-index: 1000;
-    display: none;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.3s ease;
-    white-space: nowrap;
-    font-weight: 500;
-}
-
-#header-favorites-btn.visible {
-    display: flex;
-}
-
-#header-favorites-btn:hover {
-    background-color: #373737;
-    color: #ffffff;
-    box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.2);
-    transform: translateX(-50%) translateY(-2px);
-}
-
-#header-favorites-btn:active {
-    background-color: #373737;
-    color: #ffffff;
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
-    transform: translateX(-50%) translateY(0);
-}
-
-#header-favorites-btn .badge {
-    background: #ff4757;
-    color: white;
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
-    margin-left: 4px;
-    transition: all 0.3s ease;
-}
-
-#header-favorites-btn:hover .badge {
-    background: white;
-    color: #ff4757;
-}
 .fixed-favorites-btn {
     position: fixed;
     bottom: 30px;
@@ -1210,7 +1329,7 @@ body {
     display: flex;
     align-items: center;     /* вертикальное центрирование */
     flex-direction: column;  /* если нужно расположить элементы в колонку */
-    margin-top: 30px;
+    margin-top: 85px;
     margin-bottom: 30px;
     background: #ffffff;
     background-size: 200% 200%;
@@ -1246,47 +1365,238 @@ body {
     background: rgba(255, 255, 255, 0.70); /* Белый цвет с прозрачностью */
     pointer-events: none; /* Чтобы слой не мешал взаимодействию с контентом */
 }
-/*-------------------------------------------------- Тело сайта ------------------------------------------------------*/
-/*================================================= Подвал сайта =====================================================*/
 
+.skyscrapers {
+    background-size: auto 100%; /* сохраняет пропорции, растягивает по высоте */
+    background-image: url('/static/Фотки зданий/высотки.png');
+    background-repeat: repeat-x; /* повтор только по горизонтали */
+    background-position: center bottom; /* выравнивание по центру внизу */
+    height: 100px; /* или любая нужная высота */
+    width: 100%;
+    position: relative;
+    z-index: 1; /* чтобы было над футером */
+}
+/*-------------------------------------------------- Тело сайта ------------------------------------------------------*/
+/*============================================== Подвал сайта ========================================================*/
+
+/* Футер из HTML 2 */
 .footer {
-    display: flex;
-    justify-content: space-between;
-    padding: 20px 0 60px;
-    background-color: white;
-    border-top: 1px solid #ddd;
-    margin-right: -20px;
-    margin-left: -20px;
+    background-color: var(--black);
+    color: var(--white);
+    padding: 3rem 5% 1rem;
+    position: relative;
 }
+
+.footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
 .footer-section {
-    padding-left: 20px;
-    flex: 1;
+    margin-bottom: 2rem;
 }
-.social-icons img, .contact-icon {
-    max-width: 35px;
+
+.footer-section h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    padding-bottom: 0.5rem;
 }
-.footer-section p {
-    margin: 10px 0;
+
+.footer-section h3::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 50px;
+    height: 2px;
+    background-color: var(--white);
 }
-.footer-section a {
+
+.footer-section.about img {
+    filter: invert(1);
+    margin-bottom: 1rem;
+}
+
+.socials {
+    display: flex;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.socials a img {
+    width: 37px;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.socials a:hover img {
+    opacity: 1;
+}
+
+.footer-section.links ul {
+    list-style: none;
+    padding: 0;
+}
+
+.footer-section.links li {
+    margin-bottom: 0.8rem;
+}
+
+.footer-section.links a {
+    color: var(--white);
     text-decoration: none;
-    color: #333;
+    transition: color 0.3s;
 }
-.footer-section a:hover {
-    text-decoration: underline;
+
+.footer-section.links a:hover {
+    color: #ccc;
 }
-.footer-section .social-icons a {
-    margin-right: 10px;
+
+.footer-section.contact p {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
 }
-.img-logo-footer {
-    width: 100px;
-}
-.description {
-    font-family: SFMono-Regular;
-    color: #323232;
-    font-weight: bold;
-    line-height: 1.2; /* Уменьшение межстрочного интервала */;
-    font-size: 40px;
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 2rem;
+    border-top: 1px solid #444;
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    color: #aaa;
 }
 
 /*---------------------------------------------- Подвал сайта --------------------------------------------------------*/
+/*========================================== Окна входа/регистрации ==================================================*/
+
+.popup-window {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+    z-index: 1001;
+    width: 350px;
+}
+
+.popup-window h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    border-color: #1b1b1b;
+    box-shadow: 0 0 5px rgba(14, 14, 14, 0.5);
+    outline: none;
+}
+
+.btnA, .btnB {
+    border-radius: 10px;
+    border: 2px solid #0B63F6;
+    color: white;
+    background: linear-gradient(135deg, #0B63F6, #063678);
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btnA:hover, .btnB:hover {
+    background: linear-gradient(135deg, #0849a5, #042553);
+    transform: translateY(-2px);
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.btnX {
+    font-family: 'DejaVu Sans Mono', monospace;
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background-color: transparent;
+    color: #dc3545;
+    border: none;
+    font-size: 30px;
+    cursor: pointer;
+    transition: transform 0.3s ease, color 0.3s ease;
+    line-height: 1;
+}
+
+.btnX:hover {
+    color: #c82333;
+    transform: scale(1.2);
+}
+
+.btnX:focus {
+    outline: none;
+}
+
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+body.no-scroll {
+    overflow: hidden;
+}
+
+/*------------------------------------------ Окна входа/регистрации --------------------------------------------------*/
+/*====================================== Адаптация для мобильных и прочее ============================================*/
+
+/* Анимации */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Задержки для анимации карточек */
+.restaurant-card:nth-child(1) { animation-delay: 0.1s; }
+.restaurant-card:nth-child(2) { animation-delay: 0.2s; }
+.restaurant-card:nth-child(3) { animation-delay: 0.3s; }
+.restaurant-card:nth-child(4) { animation-delay: 0.4s; }
+
+@media (max-width: 768px) {
+    .restaurant-card {
+        flex-direction: column;
+    }
+
+    .image-wrapper {
+        width: 100%;
+        height: 200px;
+    }
+}
+/*-------------------------------------- Адаптация для мобильных и прочее --------------------------------------------*/
