@@ -146,7 +146,7 @@ def get_restaurant(restaurant_id):
         return jsonify({'error': str(e)}), 500
 
 # Маршрут для добавления отзыва
-# Добавить новый маршрут для получения статистики
+# Добавить, новый маршрут для получения статистики
 @app.route('/api/restaurants/<restaurant_id>/stats', methods=['GET'])
 def get_restaurant_stats(restaurant_id):
     reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
