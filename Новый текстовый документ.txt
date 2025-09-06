@@ -1,0 +1,12 @@
+<!-- Задняя сторона (карта) -->
+                    <div class="image-back">
+                        <div class="map-container" id="map-container">
+                            <h3>ул. Ломоносова, 22/2, Великий Новгород</h3>
+                            <div id="yandex-map" style="width: 500px; height: 400px;">
+                                <script type="text/javascript" charset="utf-8" async
+                                        src="https://api-maps.yandex.ru/services/constructor/1.0/js/?um=constructor%3A5a6e03b338adf645bf44cf4d3ff45a9dae7e8cf7644abacde6f0b25ba231517d&amp;width=500&amp;height=400&amp;lang=ru_RU&amp;scroll=true">
+                                </script>
+                            </div>
+                        </div>
+
+//Карта -Код с этим комментарием удалить.
