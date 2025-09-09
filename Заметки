@@ -1,1 +1,27 @@
+// Код для обнавление столбцов в бд
+def check_and_fix_database():
+    with app.app_context():
+        try:
+            # Проверяем структуру таблицы
+            result = db.engine.execute("PRAGMA table_info(review)").fetchall()
+            columns = [row[1] for row in result]
+            print("Current columns in review table:", columns)
+
+            # Если столбца нет - добавляем
+            if 'device_fingerprint' not in columns:
+                db.engine.execute('ALTER TABLE review ADD COLUMN device_fingerprint VARCHAR(255)')
+                print("Column device_fingerprint added")
+            else:
+                print("Column device_fingerprint already exists")
+
+        except Exception as e:
+            print(f"Database error: {e}")
+            # Если таблицы нет вообще - создаем заново
+            db.drop_all()
+            db.create_all()
+            print("Database recreated from scratch")
+
+
+# Вызовите эту функцию перед запуском
+check_and_fix_database()
 
