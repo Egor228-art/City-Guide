@@ -31,15 +31,18 @@ function hideWindow1() {
 }
 
 // Закрытие окна при клике вне его
-document.getElementById('overlay').addEventListener('click', function() {
-    const window1 = document.getElementById('content_window');
-    const window2 = document.getElementById('content_window2');
-    if (window1.classList.contains('show')) {
-        hideWindow();
-    } else if (window2.classList.contains('show')) {
-        hideWindow1();
-    }
-});
+const element = document.getElementById('overlay');
+if (element) {
+    element.addEventListener('click', function() {
+        const window1 = document.getElementById('content_window');
+        const window2 = document.getElementById('content_window2');
+        if (window1.classList.contains('show')) {
+            hideWindow();
+        } else if (window2.classList.contains('show')) {
+            hideWindow1();
+        }
+    });
+}
 
 // Закрытие окна при нажатии на кнопки внутри окна
 document.querySelectorAll('.btnA, .btnB').forEach(function(button) {

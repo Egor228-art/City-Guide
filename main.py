@@ -1,22 +1,28 @@
 import hashlib
 import re
 import os
+import pytz
 
 from werkzeug.utils import secure_filename
-from flask_login import LoginManager, current_user
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
 from flask_admin import Admin
 from flask import Flask, jsonify, render_template, request, url_for, session
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+from flask_migrate import Migrate
+from sqlalchemy import text
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+MOSCOW_TZ = pytz.timezone('Europe/Moscow')
+def get_moscow_time():
+    return datetime.now(MOSCOW_TZ)
 
 db = SQLAlchemy(app)
 admin = Admin(app)
 bcrypt = Bcrypt(app)
+migrate = Migrate(app, db) #Обнавление столбцов в бд
 
 # Убедитесь, что эти настройки добавлены перед созданием приложения
 UPLOAD_FOLDER = os.path.join('static', 'Фотки зданий')
@@ -36,7 +42,6 @@ class Secret(db.Model):
     secret_value = db.Column(db.String(255), nullable=False)
 
 #Работа с фотками и текстом
-
 class Place(db.Model):
     __tablename__ = 'place'
 
@@ -55,13 +60,11 @@ class Place(db.Model):
 # Модели базы данных
 class Restaurant(db.Model):
     __tablename__ = 'restaurants'
-
     id = db.Column(db.String(50), primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     total_rating = db.Column(db.Float, default=0.0)
     review_count = db.Column(db.Integer, default=0)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
 
 class Review(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -69,9 +72,12 @@ class Review(db.Model):
     username = db.Column(db.String(100), nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     comment = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=get_moscow_time)
     likes = db.Column(db.Integer, default=0)
     dislikes = db.Column(db.Integer, default=0)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_token = db.Column(db.String(255))  # Для анонимных пользователей
+    device_fingerprint = db.Column(db.String(255))  # Добавляем это поле
+    ip_address = db.Column(db.String(45))  # Для ограничения по IP
 
 # Хелпер-функции
 def get_client_hash(request):
@@ -89,13 +95,99 @@ def create_user_hash(request):
     user_agent = request.headers.get('User-Agent', '')
     return hashlib.sha256(f"{ip}_{user_agent}".encode()).hexdigest()
 
+
 @app.route('/api/reviews', methods=['GET', 'POST'])
 def handle_reviews():
-    if request.method == 'POST':
-        return add_review()
-    else:
+    if request.method == 'GET':
         restaurant_id = request.args.get('restaurant_id')
-        return get_reviews(restaurant_id)
+        if not restaurant_id:
+            return jsonify({'error': 'restaurant_id is required'}), 400
+
+        reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(Review.created_at.desc()).all()
+        reviews_data = [{
+            'id': review.id,
+            'username': review.username,
+            'rating': review.rating,
+            'comment': review.comment,
+            'created_at': review.created_at.isoformat()
+        } for review in reviews]
+
+        return jsonify(reviews_data)
+
+    elif request.method == 'POST':
+        data = request.get_json()
+
+        if not data or 'restaurant_id' not in data or 'username' not in data or 'rating' not in data:
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        try:
+            rating = int(data['rating'])
+            if rating < 1 or rating > 5:
+                return jsonify({'error': 'Rating must be between 1 and 5'}), 400
+
+            new_review = Review(
+                restaurant_id=data['restaurant_id'],
+                username=data['username'],
+                rating=rating,
+                comment=data.get('comment', '')
+            )
+
+            db.session.add(new_review)
+            db.session.commit()
+
+            # Обновляем статистику ресторана
+            update_restaurant_stats(data['restaurant_id'])
+
+            return jsonify({
+                'message': 'Review added successfully',
+                'review': {
+                    'id': new_review.id,
+                    'username': new_review.username,
+                    'rating': new_review.rating,
+                    'comment': new_review.comment,
+                    'created_at': new_review.created_at.isoformat()
+                }
+            }), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
+
+def update_restaurant_stats(restaurant_id):
+    reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
+
+    if not reviews:
+        return
+
+    total_rating = sum(review.rating for review in reviews)
+    review_count = len(reviews)
+    average_rating = total_rating / review_count
+
+    # ИСПОЛЬЗУЙТЕ Restaurant.query.get() вместо db.session.get()
+    restaurant = Restaurant.query.get(restaurant_id)
+    if not restaurant:
+        restaurant = Restaurant(id=restaurant_id, name=f"Restaurant {restaurant_id}")
+        db.session.add(restaurant)
+
+    restaurant.total_rating = average_rating
+    restaurant.review_count = review_count
+    db.session.commit()
+
+
+# Псевдокод для серверной проверки
+def check_review_limit(user_token, ip_address, restaurant_id):
+    # Проверяем количество отзывов с этим токеном за последние 24 часа
+    reviews_count = Review.query.filter(
+        Review.user_token == user_token,
+        Review.created_at > datetime.now() - timedelta(hours=24)
+    ).count()
+
+    # Проверяем по IP (дополнительная защита)
+    ip_reviews_count = Review.query.filter(
+        Review.ip_address == ip_address,
+        Review.created_at > datetime.now() - timedelta(hours=24)
+    ).count()
+
+    return reviews_count < 3 and ip_reviews_count < 5  # Лимиты
 
 @app.route('/api/reviews/<int:review_id>', methods=['PUT', 'DELETE'])
 def handle_single_review(review_id):
@@ -105,48 +197,6 @@ def handle_single_review(review_id):
         return delete_review(review_id)
 
 
-@app.route('/api/restaurants/<restaurant_id>', methods=['GET'])
-def get_restaurant(restaurant_id):
-    try:
-        restaurant = db.session.get(Restaurant, restaurant_id)
-        if not restaurant:
-            # Если ресторана нет, создаем его с базовыми значениями
-            restaurant = Restaurant(
-                id=restaurant_id,
-                name=f"Restaurant {restaurant_id}",
-                total_rating=0,
-                review_count=0
-            )
-            db.session.add(restaurant)
-            db.session.commit()
-
-        reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
-
-        return jsonify({
-            'restaurant': {
-                'id': restaurant.id,
-                'name': restaurant.name,
-                'rating': float(restaurant.total_rating),
-                'review_count': restaurant.review_count
-            },
-            'reviews': [{
-                'id': review.id,
-                'user_id': review.user_id,
-                'rating': review.rating,
-                'comment': review.comment,
-                'likes': review.likes,
-                'dislikes': review.dislikes,
-                'created_at': review.created_at.isoformat(),
-                'updated_at': review.updated_at.isoformat() if review.updated_at else None,
-                'can_edit': review.can_edit
-            } for review in reviews]
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
-# Маршрут для добавления отзыва
-# Добавить, новый маршрут для получения статистики
 @app.route('/api/restaurants/<restaurant_id>/stats', methods=['GET'])
 def get_restaurant_stats(restaurant_id):
     reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
@@ -161,7 +211,6 @@ def get_restaurant_stats(restaurant_id):
     total_reviews = len(reviews)
     average_rating = sum(review.rating for review in reviews) / total_reviews
 
-    # Считаем количество отзывов по каждой оценке
     ratings = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
     for review in reviews:
         ratings[review.rating] += 1
@@ -172,46 +221,66 @@ def get_restaurant_stats(restaurant_id):
         'ratings': ratings
     })
 
+
+@app.route('/api/restaurants/<string:restaurant_id>', methods=['GET'])
+def get_restaurant(restaurant_id):
+    print(f"DEBUG: restaurant_id = {restaurant_id}, type = {type(restaurant_id)}")
+
+    # Добавьте эту проверку
+    if callable(restaurant_id):
+        print("ERROR: restaurant_id is a function! This shouldn't happen.")
+        # Попробуем получить ID из URL параметров
+        restaurant_id = request.args.get('restaurant_id', 'lambs')
+        print(f"Using fallback ID: {restaurant_id}")
+
+
+    try:
+        restaurant = db.session.get(Restaurant, restaurant_id)
+        if not restaurant:
+            return jsonify({'error': 'Ресторан не найден'}), 404
+
+        return jsonify({
+            'id': restaurant.id,
+            'name': restaurant.name,
+            'total_rating': restaurant.total_rating,
+            'review_count': restaurant.review_count
+        })
+    except Exception as e:
+        print(f"Error in get_restaurant: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 # Обновленный маршрут для добавления отзыва
 @app.route('/api/reviews', methods=['POST'])
 def add_review():
+    print("=== ПОЛУЧЕН ЗАПРОС НА ДОБАВЛЕНИЕ ОТЗЫВА ===")
     data = request.get_json()
+    print(f"Данные отзыва: {data}")
 
-    # Валидация данных
     if not data or 'restaurant_id' not in data or 'username' not in data or 'rating' not in data:
+        print("Ошибка: отсутствуют обязательные поля")
         return jsonify({'error': 'Missing required fields'}), 400
 
     try:
-        # Создаем новый отзыв
+        rating = int(data['rating'])
+        if rating < 1 or rating > 5:
+            print("Ошибка: рейтинг вне диапазона")
+            return jsonify({'error': 'Rating must be between 1 and 5'}), 400
+
+        print("Создание нового отзыва...")
         new_review = Review(
             restaurant_id=data['restaurant_id'],
             username=data['username'],
-            rating=data['rating'],
+            rating=rating,
             comment=data.get('comment', '')
         )
 
         db.session.add(new_review)
-
-        # Обновляем статистику ресторана
-        restaurant = Restaurant.query.get(data['restaurant_id'])
-        if not restaurant:
-            restaurant = Restaurant(
-                id=data['restaurant_id'],
-                name=f"Restaurant {data['restaurant_id']}",
-                total_rating=0,
-                review_count=0
-            )
-            db.session.add(restaurant)
-
-        # Пересчитываем средний рейтинг
-        reviews = Review.query.filter_by(restaurant_id=data['restaurant_id']).all()
-        total_rating = sum(review.rating for review in reviews)
-        review_count = len(reviews)
-
-        restaurant.total_rating = total_rating / review_count if review_count > 0 else 0
-        restaurant.review_count = review_count
-
         db.session.commit()
+        print(f"Отзыв сохранен с ID: {new_review.id}")
+
+        print("Обновление статистики ресторана...")
+        update_restaurant_stats(data['restaurant_id'])
+        print("Статистика обновлена")
 
         return jsonify({
             'message': 'Review added successfully',
@@ -220,34 +289,43 @@ def add_review():
                 'username': new_review.username,
                 'rating': new_review.rating,
                 'comment': new_review.comment,
+                'created_at': new_review.created_at.isoformat(),
                 'likes': new_review.likes,
-                'dislikes': new_review.dislikes,
-                'created_at': new_review.created_at.isoformat()
+                'dislikes': new_review.dislikes
             }
         }), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
 
+    except Exception as e:
+        print(f"Ошибка при добавлении отзыва: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Internal server error'}), 500
 
 # Маршрут для получения отзывов
-@app.route('/api/reviews', methods=['GET'])
+@app.route('/api/reviews')
 def get_reviews():
     restaurant_id = request.args.get('restaurant_id')
     if not restaurant_id:
         return jsonify({'error': 'restaurant_id is required'}), 400
 
-    reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(Review.created_at.desc()).all()
+    reviews = Review.query.filter_by(restaurant_id=restaurant_id) \
+        .order_by(Review.created_at.desc()) \
+        .all()
 
-    return jsonify([{
+    # УБЕДИТЕСЬ что ВСЕ поля включаются в ответ
+    reviews_data = [{
         'id': review.id,
+        'restaurant_id': review.restaurant_id,
         'username': review.username,
         'rating': review.rating,
         'comment': review.comment,
-        'likes': review.likes,
-        'dislikes': review.dislikes,
-        'created_at': review.created_at.isoformat()
-    } for review in reviews])
+        'user_token': review.user_token,  # ← ЭТО ОБЯЗАТЕЛЬНО
+        'device_fingerprint': review.device_fingerprint,  # ← ЭТО ОБЯЗАТЕЛЬНО
+        'created_at': review.created_at.isoformat(),
+        'likes': review.likes or 0,
+        'dislikes': review.dislikes or 0
+    } for review in reviews]
+
+    return jsonify(reviews_data)
 
 @app.route('/api/reviews/<int:review_id>/like', methods=['POST'])
 def like_review(review_id):
@@ -319,6 +397,66 @@ def update_review(review_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': str(e)}), 500
+
+
+@app.route('/api/reviews', methods=['POST'])
+def create_review():
+    try:
+        data = request.get_json()
+        print("Received data:", data)
+
+        # Проверяем обязательные поля
+        required_fields = ['restaurant_id', 'username', 'rating', 'user_token']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+
+        # Проверяем рейтинг
+        rating = int(data['rating'])
+        if rating < 1 or rating > 5:
+            return jsonify({'error': 'Rating must be between 1 and 5'}), 400
+
+        # Сохраняем отзыв в базу данных
+        review_data = {
+            'restaurant_id': data['restaurant_id'],
+            'username': data['username'],
+            'rating': rating,
+            'comment': data.get('comment', ''),
+            'user_token': data['user_token'],
+            'ip_address': request.remote_addr
+        }
+
+        # Добавляем device_fingerprint только если он есть в данных
+        if 'device_fingerprint' in data:
+            review_data['device_fingerprint'] = data['device_fingerprint']
+
+        review = Review(**review_data)
+
+        db.session.add(review)
+        db.session.commit()
+
+        response_data = {
+            'id': review.id,
+            'restaurant_id': review.restaurant_id,
+            'username': review.username,
+            'rating': review.rating,
+            'comment': review.comment,
+            'user_token': review.user_token,
+            'created_at': review.created_at.isoformat(),
+            'likes': review.likes,
+            'dislikes': review.dislikes
+        }
+
+        # Добавляем device_fingerprint в ответ, если он есть
+        if hasattr(review, 'device_fingerprint') and review.device_fingerprint:
+            response_data['device_fingerprint'] = review.device_fingerprint
+
+        return jsonify(response_data), 201
+
+    except Exception as e:
+        print(f"Error creating review: {str(e)}")
+        db.session.rollback()
+        return jsonify({'error': 'Internal server error'}), 500
 
 @app.route('/api/reviews/<int:review_id>', methods=['DELETE'])
 def delete_review(review_id):
@@ -424,7 +562,22 @@ def places():
 
 # Создание таблицы в базе данных
 with app.app_context():
-    db.create_all()
+    # Проверяем, существует ли столбец device_fingerprint
+    try:
+        result = db.session.execute(text("PRAGMA table_info(review)"))
+        columns = [row[1] for row in result]
+
+        if 'device_fingerprint' not in columns:
+            print("Добавляем столбец device_fingerprint в таблицу review...")
+            db.session.execute(text("ALTER TABLE review ADD COLUMN device_fingerprint VARCHAR(255)"))
+            db.session.commit()
+            print("Столбец успешно добавлен!")
+        else:
+            print("Столбец device_fingerprint уже существует")
+
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        db.session.rollback()
 
 # Функция для добавления секрета в базу данных
 def add_secret(key_name, secret_value):
@@ -1340,8 +1493,8 @@ def search():
     return render_template("results.html", query=query, results=results, title="Результаты поиска")
 
 @app.route("/Restaurant", methods=["GET"])
-def Restaurant():
-    print(url_for("Restaurant"))
+def restaurant():
+    print(url_for("restaurant"))
     restaurants = Place.query.filter_by(category='Ресторан').all()
     return render_template("Restaurant.html",
                            title="Рестораны",
@@ -1462,5 +1615,7 @@ def internal_error(error):
     db.session.rollback()
     return jsonify({'message': 'Internal server error'}), 500
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)

@@ -11,6 +11,8 @@
 
     <script src="{{ url_for('static', filename='js/RegistrationLogin.js') }}"></script>
 </head>
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+
 <body>
     <!-- Объединенная навигация -->
 <nav class="navbar">
@@ -144,8 +146,10 @@
                     <div class="image-back">
                         <div class="map-container" id="map-container">
                             <h3>ул. Ломоносова, 22/2, Великий Новгород</h3>
-                            <div class="map-container">
-                                <iframe id="map_547336407" width="100%" height="100%" sandbox="allow-modals allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"></iframe>
+                            <div id="yandex-map" style="width: 500px; height: 400px;">
+                                <script type="text/javascript" charset="utf-8" async
+                                        src="https://api-maps.yandex.ru/services/constructor/1.0/js/?um=constructor%3A5a6e03b338adf645bf44cf4d3ff45a9dae7e8cf7644abacde6f0b25ba231517d&amp;width=500&amp;height=400&amp;lang=ru_RU&amp;scroll=true">
+                                </script>
                             </div>
                         </div>
 
@@ -219,18 +223,23 @@
                             <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
                         </span>
                     </div>
+                    <div class="reaction-filters">
+                        <span class="filter-btn" data-type="likes" title="Показать отзывы с лайками">
+                            <img src="{{ url_for('static', filename='Фотки зданий/Лайк.png') }}" alt="Лайки">
+                        </span>
+                        <span class="filter-btn" data-type="dislikes" title="Показать отзывы с дизлайками">
+                            <img src="{{ url_for('static', filename='Фотки зданий/Дизлайк.png') }}" alt="Дизлайки">
+                        </span>
+                    </div>
                 </div>
             </div>
 
             <!-- Контейнер для отзывов -->
             <div class="review-container">
-                <!-- Стрелочка влево -->
                 <button class="scroll-button left" onclick="scrollReviews('left')">◄</button>
-                <!-- Контейнер для отзывов -->
                 <div class="review-list" id="review-list">
                     <!-- Отзывы будут добавляться сюда -->
                 </div>
-                <!-- Стрелочка вправо -->
                 <button class="scroll-button right" onclick="scrollReviews('right')">►</button>
             </div>
 
@@ -281,26 +290,27 @@
         </div>
 
         <!-- Модальное окно для развёрнутого отзыва -->
-        <div class="modal" id="full-review-modal" style="display: none;">
+        <div class="modal" id="full-review-modal">
             <div class="modal-content">
                 <span class="close" onclick="closeFullReviewModal()">&times;</span>
                 <h2>Полный отзыв</h2>
-                <div class="review-header-wrapper">
-                    <div class="review-header">
-                        <img class="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Аватар">
-                        <div class="name-rating-modal">
-                            <div class="review-name"></div>
-                            <div class="review-rating"></div>
-                        </div>
+
+                <div class="review-header">
+                    <img class="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Аватар">
+                    <div class="name-rating-modal">
+                        <div class="review-name"></div>
+                        <div class="review-rating"></div>
                     </div>
                 </div>
+
                 <div class="review-comment"></div>
+
                 <div class="review-actions">
-                    <button class="like-btn" onclick="rateReview(true)">
+                    <button class="like-btn" onclick="rateReview(true, '${review.id || Date.now()}')">
                         <img src="{{ url_for('static', filename='Фотки зданий/Лайк.png') }}" alt="Лайк">
                         <span class="like-count">0</span>
                     </button>
-                    <button class="dislike-btn" onclick="rateReview(false)">
+                    <button class="dislike-btn" onclick="rateReview(false, '${review.id || Date.now()}')">
                         <img src="{{ url_for('static', filename='Фотки зданий/Дизлайк.png') }}" alt="Дизлайк">
                         <span class="dislike-count">0</span>
                     </button>
@@ -379,10 +389,9 @@
             &copy; 2025 Городской Гид | Все права защищены
         </div>
     </footer>
-
-    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     <script>
         // Константы
+// Константы
 const PATHS = {
     starActive: "/static/Фотки зданий/baka.png",
     starInactive: "/static/Фотки зданий/star.png",
@@ -391,27 +400,381 @@ const PATHS = {
     dislike: "/static/Фотки зданий/Дизлайк.png"
 };
 
-// Глобальные переменные
-let selectedRating = 0;
-const currentRestaurantId = 'lambs'; // ID текущего ресторана
+// Массив для хранения отзывов
+    let reviews = [];
 
-// Функция для загрузки отзывов
-async function loadReviews() {
-    try {
-        const response = await fetch(`/api/reviews?restaurant_id=${currentRestaurantId}`);
-        if (!response.ok) {
-            throw new Error('Ошибка при загрузке отзывов');
+// Глобальные переменные
+const currentRestaurantId = 'lambs';
+let selectedRating = 0;
+let lastReviewTime = localStorage.getItem('lastReviewTime') || 0;
+
+// Генерируем токен СРАЗУ при загрузке скрипта
+let userToken = localStorage.getItem('userToken') || generateUserToken();
+
+let currentFilters = {
+    rating: 0,
+    reaction: 'none'
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateFavoritesCount(); // Проверка избранного при загрузке
+    initStats(); // Загрузка статистики и отзывов Вместо updateOverallRating()
+    initFilters(); // Инициализация фильтров - ДОБАВЬТЕ ЭТУ СТРОЧКУ!
+    loadReviews(); // Загрузка отзывов
+    setInterval(saveRatingsToStorage, 30000); // Периодическое сохранение (каждые 30 секунд)
+
+    document.getElementById('full-review-modal').style.display = 'none';
+
+    // Обработчик скролла
+    const reviewList = document.getElementById('review-list');
+    if (reviewList) {
+        reviewList.addEventListener('scroll', updateScrollButtons);
+    }
+
+    // Генерируем токен
+    userToken = generateUserToken();
+    console.log('User token:', userToken);
+
+
+    // Обработчики для кнопок в карточках
+    document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const itemId = this.dataset.itemId;
+      const itemData = JSON.parse(this.dataset.item);
+      toggleFavorite(itemId, itemData);
+    });
+    });
+
+    // Синхронизация между вкладками
+    window.addEventListener('storage', function(event) {
+    if (event.key === 'favorites') {
+      updateFavoritesCount();
+    }
+    });
+
+    // Инициализация кнопки
+    const headerFavBtn = document.getElementById('header-favorites-btn');
+    const particles = headerFavBtn.querySelectorAll('.particle');
+
+    // Анимация частиц
+    headerFavBtn.addEventListener('mouseenter', function() {
+    this.classList.add('active');
+    });
+
+    headerFavBtn.addEventListener('mouseleave', function() {
+    this.classList.remove('active');
+    });
+
+    // Обработчик для кнопки закрытия
+    const closeBtn = document.querySelector('#review-modal .close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeReviewModal);
+    }
+
+    // УБЕРИТЕ все другие обработчики для review-form и оставьте только этот:
+    const reviewForm = document.getElementById('review-form');
+    if (reviewForm) {
+        // Удаляем все предыдущие обработчики
+        reviewForm.onsubmit = null;
+        reviewForm.addEventListener('submit', function(e) {
+            submitReview(e);
+        });
+    }
+
+    // Обработчик клика вне модального окна
+    const modal = document.getElementById('review-modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeReviewModal();
+            }
+        });
+    }
+
+    const stars = document.querySelectorAll('#review-stars .star');
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            selectedRating = parseInt(star.getAttribute('data-value'));
+
+            // Обновляем отображение звезд
+            stars.forEach((s, index) => {
+                const starValue = parseInt(s.getAttribute('data-value'));
+                const starImage = starValue <= selectedRating ? PATHS.starActive : PATHS.starInactive;
+                s.innerHTML = `<img src="${starImage}" alt="★">`;
+            });
+
+            document.getElementById('rating-error').style.display = 'none';
+        });
+    });
+
+
+    setTimeout(() => {updateScrollButtons();}, 500);
+    setTimeout(updateScrollButtons, 1000); // Проверяем кнопки после полной загрузки страницы
+
+    setTimeout(() => {
+        updateScrollButtons();
+        // Дополнительная проверка через секунду
+        setTimeout(updateScrollButtons, 1000);
+    }, 500);
+
+    // Остальная инициализация...
+});
+
+// Новая функция для инициализации кнопок скролла
+function initScrollButtons() {
+    const reviewList = document.getElementById('review-list');
+    const leftButton = document.querySelector('.scroll-button.left');
+    const rightButton = document.querySelector('.scroll-button.right');
+
+    if (!reviewList || !leftButton || !rightButton) {
+        console.log('Scroll elements not found during init');
+        return;
+    }
+
+    // Принудительно показываем кнопки для проверки
+    leftButton.style.display = 'block';
+    rightButton.style.display = 'block';
+
+    // Проверяем контент после небольшой задержки
+    setTimeout(() => {
+        const hasContent = reviewList.children.length > 0;
+        const canScroll = reviewList.scrollWidth > reviewList.clientWidth;
+
+        console.log('Init scroll check:', {
+            children: reviewList.children.length,
+            scrollWidth: reviewList.scrollWidth,
+            clientWidth: reviewList.clientWidth,
+            canScroll: canScroll
+        });
+
+        if (hasContent && canScroll) {
+            leftButton.style.display = 'block';
+            rightButton.style.display = 'block';
+            updateScrollButtons();
+        } else {
+            leftButton.style.display = 'none';
+            rightButton.style.display = 'none';
         }
-        const reviews = await response.json();
-        updateReviewsUI(reviews);
-        updateOverallRating();
+    }, 100);
+}
+
+// Генерация уникального токена пользователя
+// Улучшенная генерация токена
+function generateUserToken() {
+    let token = localStorage.getItem('userToken');
+
+    if (!token) {
+        const deviceId = getDeviceFingerprint();
+        token = `token-${deviceId}-${Math.random().toString(36).substr(2, 8)}-${Date.now().toString(36)}`;
+        localStorage.setItem('userToken', token);
+    }
+
+    return token;
+}
+
+function validateReviewForm() {
+    const name = document.getElementById('name').value.trim();
+    const rating = selectedRating;
+
+    if (!name) {
+        document.getElementById('name').style.borderColor = '#ff4444';
+        return false;
+    }
+
+    if (rating === 0) {
+        document.getElementById('rating-error').style.display = 'inline';
+        return false;
+    }
+
+    return true;
+}
+
+async function submitReview(e) {
+    if (e) e.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+    const comment = document.getElementById('comment').value.trim();
+
+    if (!validateReviewForm()) {
+        return false;
+    }
+
+    if (selectedRating === 0) {
+        showNotification('Пожалуйста, поставьте оценку', 'error');
+        document.getElementById('rating-error').style.display = 'inline';
+        return false;
+    }
+
+    if (!name) {
+        showNotification('Пожалуйста, укажите имя', 'error');
+        return false;
+    }
+
+    try {
+        // Сохраняем fingerprint устройства
+        const deviceFingerprint = getDeviceFingerprint();
+        console.log('Submitting review with device fingerprint:', deviceFingerprint);
+
+        const response = await fetch('/api/reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                restaurant_id: currentRestaurantId,
+                username: name,
+                rating: selectedRating,
+                comment: comment,
+                user_token: userToken,
+                device_fingerprint: deviceFingerprint
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showNotification('Отзыв успешно добавлен!', 'success');
+            closeReviewModal();
+
+            // ДОБАВЛЯЕМ user_token к данным отзыва перед отображением
+            data.user_token = userToken;
+            data.device_fingerprint = deviceFingerprint;
+
+            // Плавно обновляем только отзывы
+            await loadReviews();
+            await initStats();
+
+            // Плавная прокрутка к новому отзыву
+            setTimeout(() => {
+                const newReview = document.querySelector('.review-card:first-child');
+                if (newReview) {
+                    newReview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }, 300);
+        }
+
     } catch (error) {
         console.error('Error:', error);
-        showNotification('Ошибка при загрузке отзывов', 'error');
+        showNotification(error.message, 'error');
+        return false;
     }
 }
 
-// Функция для обновления UI с отзывами
+function showLoadingIndicator() {
+    let loader = document.getElementById('submit-loader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'submit-loader';
+        loader.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 10000;
+        `;
+        loader.innerHTML = 'Отправка отзыва...';
+        document.body.appendChild(loader);
+    }
+    loader.style.display = 'block';
+}
+
+function hideLoadingIndicator() {
+    const loader = document.getElementById('submit-loader');
+    if (loader) {
+        loader.style.display = 'none';
+    }
+}
+
+function addReviewToUIImmediately(review) {
+    const reviewList = document.getElementById('review-list');
+
+    // Убираем сообщение "Нет отзывов"
+    const noReviewsMsg = reviewList.querySelector('.no-reviews');
+    if (noReviewsMsg) {
+        noReviewsMsg.remove();
+    }
+
+    // ГАРАНТИРУЕМ что у нового отзыва есть user_token и device_fingerprint
+    if (!review.user_token) {
+        review.user_token = userToken;
+        console.log('Added user token to new review:', review.user_token);
+    }
+
+    if (!review.device_fingerprint) {
+        review.device_fingerprint = getDeviceFingerprint();
+        console.log('Added device fingerprint to new review:', review.device_fingerprint);
+    }
+
+    // Создаем элемент отзыва
+    const reviewElement = createReviewElement(review);
+
+    // Добавляем в начало списка с анимацией
+    if (reviewList.firstChild) {
+        reviewList.insertBefore(reviewElement, reviewList.firstChild);
+    } else {
+        reviewList.appendChild(reviewElement);
+    }
+
+    // Анимация появления
+    reviewElement.style.opacity = '0';
+    reviewElement.style.transform = 'translateY(-20px)';
+
+    setTimeout(() => {
+        reviewElement.style.transition = 'all 0.3s ease';
+        reviewElement.style.opacity = '1';
+        reviewElement.style.transform = 'translateY(0)';
+    }, 10);
+
+    // Обновляем скролл-кнопки
+    setTimeout(updateScrollButtons, 100);
+
+    // Добавляем в глобальный массив отзывов
+    reviews.unshift(review);
+}
+
+// Функция для отображения отзывов
+function displayReviews(reviewsData) {
+    const reviewList = document.getElementById('review-list');
+    if (!reviewList) return;
+
+    reviewList.innerHTML = '';
+    reviews = reviewsData || [];
+
+    if (!reviewsData || reviewsData.length === 0) {
+        reviewList.innerHTML = '<div class="no-reviews">Пока нет отзывов. Будьте первым!</div>';
+        updateScrollButtons();
+        return;
+    }
+
+    reviewsData.forEach(review => {
+        const reviewElement = createReviewElement(review);
+        reviewList.appendChild(reviewElement);
+    });
+
+    // Ждем отрисовки DOM
+    setTimeout(updateScrollButtons, 100);
+}
+
+// Обновление статистики
+function updateRatingStats(stats) {
+    document.getElementById('overall-rating').textContent = stats.average_rating.toFixed(1);
+    document.getElementById('total-reviews').textContent = stats.total_reviews;
+
+    // Обновляем шкалы рейтинга
+    for (let i = 1; i <= 5; i++) {
+        const count = stats.ratings[i] || 0;
+        const percentage = stats.total_reviews > 0 ? (count / stats.total_reviews) * 100 : 0;
+        const bar = document.querySelector(`.rating-bar:nth-child(${6 - i}) .fill`);
+        const countSpan = document.querySelector(`.rating-bar:nth-child(${6 - i}) span:last-child`);
+
+        if (bar) bar.style.width = `${percentage}%`;
+        if (countSpan) countSpan.textContent = count;
+    }
+}
+
+// Обновленный UI для отзывов с возможностью редактирования
 function updateReviewsUI(reviews) {
     const reviewList = document.getElementById('review-list');
     reviewList.innerHTML = '';
@@ -422,116 +785,1037 @@ function updateReviewsUI(reviews) {
     }
 
     reviews.forEach(review => {
-        const reviewElement = document.createElement('div');
-        reviewElement.className = 'review-card';
-        reviewElement.dataset.reviewId = review.id;
-
-        reviewElement.innerHTML = `
-            <div class="review-header">
-                <img class="avatar" src="${PATHS.avatar}" alt="Аватар">
-                <div class="name-rating">
-                    <div class="name">${review.username}</div>
-                    <div class="rating" data-rating="${review.rating}">
-                        ${'<img src="' + PATHS.starActive + '" alt="★">'.repeat(review.rating)}
-                        ${'<img src="' + PATHS.starInactive + '" alt="★">'.repeat(5 - review.rating)}
-                    </div>
-                </div>
-            </div>
-            <div class="comment-container">
-                <div class="comment-text">${review.comment || ''}</div>
-                ${review.comment ? '<div class="comment-blur"></div>' : ''}
-            </div>
-            <div class="review-actions">
-                <button class="like-btn" onclick="rateReview(${review.id}, true)">
-                    <img src="${PATHS.like}" alt="Лайк">
-                    <span class="like-count">${review.likes || 0}</span>
-                </button>
-                <button class="dislike-btn" onclick="rateReview(${review.id}, false)">
-                    <img src="${PATHS.dislike}" alt="Дизлайк">
-                    <span class="dislike-count">${review.dislikes || 0}</span>
-                </button>
-            </div>
-            <div class="expand" onclick="openFullReviewModal(${review.id})">Развернуть</div>
-        `;
-
-        if (review.comment) {
-            limitCommentHeight(reviewElement);
-        }
-
+        const canEdit = checkEditPermission(review);
+        const reviewElement = createReviewElement(review, canEdit);
         reviewList.appendChild(reviewElement);
     });
 
     updateReviewVisibility();
 }
 
-// Функция для отправки отзыва
-async function submitReview() {
-    const name = document.getElementById('name').value.trim();
-    const comment = document.getElementById('comment').value.trim();
+// Функция для создания элемента отзыва
+function createReviewElement(review) {
+    const reviewElement = document.createElement('div');
+    reviewElement.className = 'review-card';
+    reviewElement.dataset.reviewId = review.id || Date.now();
+    reviewElement.dataset.likes = review.likes || 0;
+    reviewElement.dataset.dislikes = review.dislikes || 0;
 
-    if (!name) {
-        showNotification('Пожалуйста, укажите имя', 'error');
-        return;
+    // Экранируем кавычки для безопасности
+    const safeComment = review.comment ? review.comment.replace(/'/g, "&#39;").replace(/"/g, "&quot;") : '';
+    const safeUsername = review.username ? review.username.replace(/'/g, "&#39;").replace(/"/g, "&quot;") : '';
+
+    // Форматируем дату
+    const reviewDate = review.created_at ?
+        formatDate(review.created_at) :
+        'Только что';
+
+    // Создаем HTML для звезд рейтинга
+    let starsHTML = '';
+    for (let i = 0; i < 5; i++) {
+        if (i < review.rating) {
+            starsHTML += `<img src="${PATHS.starActive}" alt="★" style="width:20px;height:20px;">`;
+        } else {
+            starsHTML += `<img src="${PATHS.starInactive}" alt="★" style="width:20px;height:20px;">`;
+        }
     }
 
-    if (selectedRating === 0) {
-        document.getElementById('rating-error').style.display = 'inline';
-        return;
+    // УБИРАЕМ кнопки лайков/дизлайков из карточки
+    reviewElement.innerHTML = `
+        <div class="review-header">
+            <div class="date-avatar">
+                <img class="avatar" src="${PATHS.avatar}" alt="Аватар">
+                <div class="review-date-small">${reviewDate}</div>
+            </div>
+            <div class="name-rating">
+                <div class="name">${safeUsername}</div>
+                <div class="review-rating">
+                    ${starsHTML}
+                </div>
+            </div>
+        </div>
+        <div class="comment-container">
+            <div class="comment-text">${review.comment || ''}</div>
+            ${review.comment ? '<div class="comment-blur"></div>' : ''}
+        </div>
+        ${review.comment ? `
+            <div class="review-actions-bottom">
+                <button class="expand-text-link" onclick="openFullReviewModal(${review.id || Date.now()})">
+                    Развернуть
+                </button>
+            </div>
+        ` : ''}
+    `;
+
+    // Добавляем кнопки редактирования если есть права
+    const canEdit = checkEditPermission(review);
+    if (canEdit) {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'review-actions';
+        actionsDiv.innerHTML = `
+            <button class="edit-btn" onclick="openEditReviewModal(${review.id || Date.now()}, ${review.rating}, '${safeComment}')">
+                Редактировать
+            </button>
+            <button class="delete-btn" onclick="deleteReview(${review.id || Date.now()})">
+                Удалить
+            </button>
+        `;
+        reviewElement.appendChild(actionsDiv);
     }
+
+    return reviewElement;
+}
+
+// Проверка прав на редактирование с улучшенной безопасностью
+function checkEditPermission(review) {
+    console.log('Checking edit permission for review:', review);
+    console.log('User token:', userToken);
+    console.log('Review user token:', review.user_token);
+
+    // Проверяем токен пользователя
+    if (review.user_token !== userToken) {
+        console.log('Token mismatch!');
+        console.log('Expected:', userToken);
+        console.log('Got:', review.user_token);
+        return false;
+    }
+
+    // Проверяем время (3 часа)
+    const createdAt = new Date(review.created_at);
+    const now = new Date();
+    const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
+
+    console.log('Created at:', createdAt);
+    console.log('Now:', now);
+    console.log('Hours difference:', hoursDiff);
+
+    if (hoursDiff > 3) {
+        console.log('Edit time expired');
+        return false;
+    }
+
+    // Дополнительная проверка устройства
+    const sameDevice = isSameDevice(review);
+    console.log('Same device:', sameDevice);
+
+    if (!sameDevice) {
+        console.log('Different device detected');
+        // Для новых отзывов даем 5 минут grace period
+        const minutesDiff = (now - createdAt) / (1000 * 60);
+        if (minutesDiff > 5) {
+            return false;
+        }
+    }
+
+    console.log('Edit permission GRANTED');
+    return true;
+}
+
+// Функция проверки того же устройства
+function isSameDevice(review) {
+    // Получаем fingerprint текущего устройства
+    const currentFingerprint = getDeviceFingerprint();
+
+    // Если в отзыве есть сохраненный fingerprint, сравниваем
+    if (review.device_fingerprint) {
+        return review.device_fingerprint === currentFingerprint;
+    }
+
+    // Если fingerprint нет в отзыве, считаем что это новое устройство
+    // и разрешаем редактирование только если отзыв создан менее 5 минут назад
+    const createdAt = new Date(review.created_at);
+    const now = new Date();
+    const minutesDiff = (now - createdAt) / (1000 * 60);
+
+    return minutesDiff < 5; // Разрешаем с нового устройства только первые 5 минут
+}
+
+// Форматирование даты
+function formatDate(dateString) {
+    if (!dateString) return '<div>Только что</div><div></div>';
 
     try {
-        const response = await fetch('/api/reviews', {
-            method: 'POST',
+        const date = new Date(dateString);
+        const formattedDate = date.toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'numeric',
+            year: 'numeric'
+        });
+        const formattedTime = date.toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        return `<div>${formattedDate}</div><div>${formattedTime}</div>`;
+    } catch (e) {
+        return '<div>Только что</div><div></div>';
+    }
+}
+
+// Модальное окно для редактирования
+function openEditModal(reviewId, currentRating, currentComment) {
+    const modal = document.getElementById('edit-modal');
+    modal.dataset.reviewId = reviewId;
+
+    // Установка текущего рейтинга
+    const stars = modal.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+        star.innerHTML = `<img src="${index < currentRating ? PATHS.starActive : PATHS.starInactive}" alt="★">`;
+    });
+
+    // Установка комментария
+    modal.querySelector('#edit-comment').value = currentComment || '';
+
+    // Показываем модальное окно
+    modal.style.display = 'flex';
+}
+
+// Функция для обновления отзыва
+async function updateReview() {
+    const modal = document.getElementById('edit-modal');
+    const reviewId = modal.dataset.reviewId;
+    const comment = modal.querySelector('#edit-comment').value.trim();
+    const rating = parseInt(modal.querySelector('.rating').dataset.rating);
+
+    try {
+        const response = await fetch(`/api/reviews/${reviewId}`, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                restaurant_id: currentRestaurantId,
-                username: name,
-                rating: selectedRating,
-                comment: comment
+                rating: rating,
+                comment: comment,
+                user_token: userToken
             })
         });
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Ошибка при отправке отзыва');
+            throw new Error(errorData.error || 'Ошибка при обновлении отзыва');
         }
 
-        showNotification('Отзыв успешно добавлен!');
-        closeReviewModal();
-        loadReviews(); // Перезагружаем отзывы
+        showNotification('Отзыв успешно обновлен!');
+        closeEditModal();
+        loadReviews();
     } catch (error) {
         console.error('Error:', error);
         showNotification(error.message, 'error');
     }
 }
 
-// Функция для обновления общего рейтинга
-async function updateOverallRating() {
+// Функция для удаления отзыва
+async function deleteReview(reviewId) {
+    if (!confirm('Вы уверены, что хотите удалить этот отзыв?')) return;
+
+    try {
+        const response = await fetch(`/api/reviews/${reviewId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_token: userToken
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Ошибка при удалении отзыва');
+        }
+
+        showNotification('Отзыв успешно удален!');
+        loadReviews();
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification(error.message, 'error');
+    }
+}
+
+// Закрытие модального окна редактирования
+function closeEditModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    loadReviews();
+    updateOverallRating();
+
+    const stars = document.querySelectorAll('#review-stars .star');
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            selectedRating = parseInt(star.getAttribute('data-value'));
+            stars.forEach((s, index) => {
+                s.innerHTML = `<img src="${index < selectedRating ? PATHS.starActive : PATHS.starInactive}" alt="★">`;
+            });
+        });
+    });
+});
+
+// Улучшенная функция генерации токена
+function generateEnhancedUserToken() {
+    // Собираем информацию о браузере (анонимно)
+    const browserInfo = {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        screen: `${screen.width}x${screen.height}`
+    };
+
+    // Создаем хэш на основе информации
+    const browserHash = btoa(JSON.stringify(browserInfo)).substr(0, 12);
+
+    const token = `token-${browserHash}-${Math.random().toString(36).substr(2, 6)}-${Date.now().toString(36)}`;
+
+    localStorage.setItem('userToken', token);
+    return token;
+}
+
+// Улучшенная функция получения отпечатка устройства
+function getDeviceFingerprint() {
+    const components = [
+        navigator.userAgent,
+        navigator.language,
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+        `${screen.width}x${screen.height}`,
+        navigator.platform,
+        navigator.hardwareConcurrency || 'unknown',
+        navigator.deviceMemory || 'unknown',
+        new Date().getTimezoneOffset()
+    ];
+
+    // Более стабильный хэш
+    let hash = 0;
+    const str = components.join('|');
+
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+
+    // Добавляем префикс для идентификации
+    return `fp-${Math.abs(hash).toString(36).substr(0, 10)}`;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Инициализация фильтров
+function initFilters() {
+    // Обработчики для звезд
+    const filterStars = document.querySelectorAll('#filter-stars .star');
+    filterStars.forEach(star => {
+        star.addEventListener('click', function() {
+            const value = parseInt(this.getAttribute('data-value'));
+
+            // Если кликаем на уже выбранную звезду - сбрасываем
+            if (currentFilters.rating === value) {
+                currentFilters.rating = 0;
+                resetStarFilter();
+            } else {
+                currentFilters.rating = value;
+                highlightStars(value);
+            }
+
+            applyFilters();
+        });
+    });
+
+    // Обработчики для кнопок реакций
+    const filterButtons = document.querySelectorAll('.filter-btn[data-type]');
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filterType = this.getAttribute('data-type');
+
+            // Если кликаем на уже активную кнопку - сбрасываем
+            if (currentFilters.reaction === filterType) {
+                currentFilters.reaction = 'none';
+                resetReactionFilter();
+            } else {
+                currentFilters.reaction = filterType;
+                highlightReactionButton(filterType);
+            }
+
+            applyFilters();
+        });
+    });
+
+    resetScroll();
+}
+
+function resetAllFilters() {
+    currentFilters = {
+        rating: 0,
+        reaction: 'none'
+    };
+
+    // Сбрасываем звезды
+    const filterStars = document.querySelectorAll('#filter-stars .star');
+    filterStars.forEach(star => {
+        star.innerHTML = `<img src="${PATHS.starInactive}" alt="★">`;
+    });
+
+    // Сбрасываем кнопки реакций
+    const filterButtons = document.querySelectorAll('.filter-btn[data-type]');
+    filterButtons.forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Применяем фильтры (покажет все отзывы)
+    applyFilters();
+
+    // Сбрасываем скролл
+    resetScroll();
+}
+
+function updateFilterButtons() {
+    // Обновляем кнопки реакций
+    const filterButtons = document.querySelectorAll('.filter-btn[data-type]');
+    filterButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-type') === currentFilters.reaction) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Обновляем звезды фильтра
+    const filterStars = document.querySelectorAll('#filter-stars .star');
+    filterStars.forEach((star, index) => {
+        const starValue = index + 1;
+        const starImage = starValue <= currentFilters.rating ? PATHS.starActive : PATHS.starInactive;
+        star.innerHTML = `<img src="${starImage}" alt="★">`;
+    });
+}
+
+// Функция применения фильтров
+function applyFilters() {
+    const reviewList = document.getElementById('review-list');
+    const reviewCards = reviewList.querySelectorAll('.review-card');
+    let hasMatches = false;
+
+    const oldMsg = document.getElementById('no-reviews-message');
+    if (oldMsg) oldMsg.remove();
+
+    reviewCards.forEach(card => {
+        const ratingImages = card.querySelectorAll('.review-rating img[src*="baka.png"]');
+        const cardRating = ratingImages.length;
+        const likes = parseInt(card.dataset.likes || 0);
+        const dislikes = parseInt(card.dataset.dislikes || 0);
+
+        const matchesRating = currentFilters.rating === 0 || cardRating === currentFilters.rating;
+        const matchesReaction = checkReactionMatch(likes, dislikes);
+
+        if (matchesRating && matchesReaction) {
+            card.style.display = 'flex';
+            hasMatches = true;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    if (currentFilters.reaction !== 'none' && hasMatches) {
+        sortReviewsByReaction();
+    }
+
+    if (!hasMatches) {
+        showNoReviewsMessage();
+    }
+
+    // Обновляем скролл после фильтрации
+    setTimeout(updateScrollButtons, 150);
+}
+
+function resetScroll() {
+    const reviewList = document.getElementById('review-list');
+    if (reviewList) {
+        reviewList.scrollLeft = 0;
+        setTimeout(updateScrollButtons, 150);
+    }
+}
+
+// Проверка соответствия фильтру реакций
+function checkReactionMatch(likes, dislikes) {
+    switch (currentFilters.reaction) {
+        case 'likes':
+            return likes > 0;
+        case 'dislikes':
+            return dislikes > 0;
+        case 'none':
+        default:
+            return true;
+    }
+}
+
+// Подсветка звезд фильтра
+function highlightStars(rating) {
+    const filterStars = document.querySelectorAll('#filter-stars .star');
+    filterStars.forEach((star, index) => {
+        const starValue = index + 1;
+        const starImage = starValue <= rating ? PATHS.starActive : PATHS.starInactive;
+        star.innerHTML = `<img src="${starImage}" alt="★">`;
+    });
+}
+
+// Подсветка кнопки реакции
+function highlightReactionButton(filterType) {
+    const filterButtons = document.querySelectorAll('.filter-btn[data-type]');
+    filterButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-type') === filterType) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+// Сброс фильтра звезд
+function resetStarFilter() {
+    const filterStars = document.querySelectorAll('#filter-stars .star');
+    filterStars.forEach(star => {
+        star.innerHTML = `<img src="${PATHS.starInactive}" alt="★">`;
+    });
+}
+
+// Сброс фильтра реакций
+function resetReactionFilter() {
+    const filterButtons = document.querySelectorAll('.filter-btn[data-type]');
+    filterButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-type') === 'none') {
+            btn.classList.add('active');
+        }
+    });
+}
+
+// Функция сортировки отзывов
+function sortReviews(reviewsArray) {
+    if (currentFilter.reaction === 'likes') {
+        reviewsArray.sort((a, b) => b.likes - a.likes);
+    } else if (currentFilter.reaction === 'dislikes') {
+        reviewsArray.sort((a, b) => b.dislikes - a.dislikes);
+    }
+}
+
+// Сообщение об отсутствии отзывов
+function showNoReviewsMessage() {
+    const reviewList = document.getElementById('review-list');
+    const msg = document.createElement('div');
+    msg.id = 'no-reviews-message';
+
+    let messageText = 'Отзывов нет';
+    if (currentFilters.rating !== 0) {
+        messageText += ` с ${currentFilters.rating} звездами`;
+    }
+    if (currentFilters.reaction !== 'none') {
+        messageText += currentFilters.rating !== 0 ? ' и' : ' с';
+        messageText += currentFilters.reaction === 'likes' ? ' лайками' : ' дизлайками';
+    }
+
+    msg.textContent = messageText + '!';
+    msg.style.textAlign = 'center';
+    msg.style.padding = '20px';
+    msg.style.color = '#666';
+    msg.style.width = '100%';
+
+    // Очищаем и добавляем сообщение
+    reviewList.innerHTML = '';
+    reviewList.appendChild(msg);
+
+    // Обновляем кнопки скролла
+    updateScrollButtons();
+}
+
+// Функция сброса противоположного фильтра
+function resetOppositeFilter() {
+    // При изменении звезд сбрасываем реакции
+    if (currentFilter.rating !== 0 && currentFilter.reaction !== 'none') {
+        currentFilter.reaction = 'none';
+        const filterButtons = document.querySelectorAll('.filter-btn[data-type]');
+        filterButtons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-type') === 'none') {
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    // При изменении реакций сбрасываем звезды
+    if (currentFilter.reaction !== 'none' && currentFilter.rating !== 0) {
+        currentFilter.rating = 0;
+        const filterStars = document.querySelectorAll('#filter-stars .star');
+        filterStars.forEach(star => {
+            star.innerHTML = `<img src="${PATHS.starInactive}" alt="★">`;
+        });
+    }
+}
+
+// Сортировка по реакциям
+function sortReviewsByReaction() {
+    const reviewList = document.getElementById('review-list');
+    const visibleReviews = Array.from(reviewList.querySelectorAll('.review-card'))
+        .filter(card => card.style.display !== 'none');
+
+    visibleReviews.sort((a, b) => {
+        const aLikes = parseInt(a.dataset.likes || 0);
+        const bLikes = parseInt(b.dataset.likes || 0);
+        const aDislikes = parseInt(a.dataset.dislikes || 0);
+        const bDislikes = parseInt(b.dataset.dislikes || 0);
+
+        if (currentFilters.reaction === 'likes') {
+            return bLikes - aLikes;
+        } else if (currentFilters.reaction === 'dislikes') {
+            return bDislikes - aDislikes;
+        }
+        return 0;
+    });
+
+    // Переставляем отзывы в правильном порядке
+    visibleReviews.forEach(review => {
+        reviewList.appendChild(review);
+    });
+}
+
+
+
+// ===== КОНФИГУРАЦИЯ =====
+const STORAGE_KEY = 'restaurant_reviews_ratings';
+
+// ===== ОСНОВНЫЕ ФУНКЦИИ =====
+
+// Функция для сохранения оценок в LocalStorage
+function saveRatingsToStorage() {
+    const ratingsData = {
+        version: '2.0', // Обновили версию
+        timestamp: new Date().toISOString(),
+        ratings: reviews.reduce((acc, review) => {
+            if (review.id) {
+                acc[review.id] = {
+                    likes: review.likes || 0,
+                    dislikes: review.dislikes || 0,
+                    user_ratings: review.user_ratings || {} // Храним оценки пользователей
+                };
+            }
+            return acc;
+        }, {})
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ratingsData));
+    console.log('Ratings saved to localStorage');
+}
+
+// Функция для загрузки оценок из LocalStorage
+function loadRatingsFromStorage() {
+    try {
+        const storedData = localStorage.getItem(STORAGE_KEY);
+        if (!storedData) return {};
+
+        const data = JSON.parse(storedData);
+
+        // Проверяем версию
+        if (data.version === '2.0') {
+            return data.ratings || {};
+        }
+    } catch (error) {
+        console.error('Error loading ratings from storage:', error);
+    }
+    return {};
+}
+
+// Функция для применения сохраненных оценок
+function applyStoredRatings() {
+    const storedRatings = loadRatingsFromStorage();
+
+    reviews.forEach(review => {
+        if (review.id && storedRatings[review.id]) {
+            const stored = storedRatings[review.id];
+            review.likes = stored.likes;
+            review.dislikes = stored.dislikes;
+            review.user_ratings = stored.user_ratings || {};
+        }
+    });
+
+    console.log('Stored ratings applied');
+}
+
+// ===== ОБНОВЛЕННАЯ ФУНКЦИЯ rateReview =====
+async function rateReview(isLike, reviewId) {
+    if (!reviewId) return;
+
+    try {
+        const reviewIndex = reviews.findIndex(r => r.id == reviewId);
+        if (reviewIndex === -1) return;
+
+        const review = reviews[reviewIndex];
+
+        // Сохраняем позицию скролла
+        const reviewList = document.getElementById('review-list');
+        const scrollPosition = reviewList.scrollLeft;
+
+        // Инициализируем user_ratings если нет
+        if (!review.user_ratings) {
+            review.user_ratings = {};
+        }
+
+        const userPreviousRating = review.user_ratings[userToken];
+
+        // Подсветка кнопки в модальном окне с вашими стилями
+        const modal = document.getElementById('full-review-modal');
+        if (modal && modal.dataset.reviewId == reviewId) {
+            const buttonClass = isLike ? 'like-btn' : 'dislike-btn';
+            const button = modal.querySelector(`.${buttonClass}`);
+            if (button) {
+                button.classList.add('highlight');
+                setTimeout(() => button.classList.remove('highlight'), 500);
+            }
+        }
+
+        // Логика оценки
+        if (userPreviousRating === (isLike ? 'like' : 'dislike')) {
+            removeRating(review, isLike);
+            delete review.user_ratings[userToken];
+            showNotification('Оценка отменена!');
+        } else if (userPreviousRating) {
+            removeRating(review, !isLike);
+            addRating(review, isLike);
+            review.user_ratings[userToken] = isLike ? 'like' : 'dislike';
+            showNotification(isLike ? 'Лайк поставлен!' : 'Дизлайк поставлен!');
+        } else {
+            addRating(review, isLike);
+            review.user_ratings[userToken] = isLike ? 'like' : 'dislike';
+            showNotification(isLike ? 'Лайк поставлен!' : 'Дизлайк поставлен!');
+        }
+
+        // Обновляем UI
+        updateRatingUI(reviewId, review.likes, review.dislikes);
+        saveRatingsToStorage();
+
+        // Восстанавливаем позицию скролла
+        setTimeout(() => {
+            reviewList.scrollLeft = scrollPosition;
+        }, 100);
+
+    } catch (error) {
+        console.error('Error rating review:', error);
+        showNotification('Ошибка при оценке отзыва', 'error');
+    }
+}
+
+// Функция добавления оценки
+function addRating(review, isLike) {
+    if (isLike) {
+        review.likes = (review.likes || 0) + 1;
+    } else {
+        review.dislikes = (review.dislikes || 0) + 1;
+    }
+}
+
+// Функция удаления оценки
+function removeRating(review, isLike) {
+    if (isLike) {
+        review.likes = Math.max(0, (review.likes || 0) - 1);
+    } else {
+        review.dislikes = Math.max(0, (review.dislikes || 0) - 1);
+    }
+}
+
+// Функция проверки оценки пользователя
+function getUserRating(reviewId) {
+    const review = reviews.find(r => r.id == reviewId);
+    if (!review || !review.user_ratings) return null;
+
+    return review.user_ratings[userToken] || null;
+}
+
+// Функция обновления UI
+function updateRatingUI(reviewId, likes, dislikes) {
+    // Обновляем только модальное окно (лайки/дизлайки теперь только там)
+    const modal = document.getElementById('full-review-modal');
+    if (modal && modal.dataset.reviewId == reviewId) {
+        const likeCountElem = modal.querySelector('.like-count');
+        const dislikeCountElem = modal.querySelector('.dislike-count');
+        const likeBtn = modal.querySelector('.like-btn');
+        const dislikeBtn = modal.querySelector('.dislike-btn');
+
+        if (likeCountElem) likeCountElem.textContent = likes || 0;
+        if (dislikeCountElem) dislikeCountElem.textContent = dislikes || 0;
+
+        // Убираем все активные состояния
+        if (likeBtn) likeBtn.classList.remove('active');
+        if (dislikeBtn) dislikeBtn.classList.remove('active');
+
+        // Подсвечиваем активную оценку пользователя с вашими стилями
+        const userRating = getUserRating(reviewId);
+        if (userRating === 'like' && likeBtn) {
+            likeBtn.classList.add('active');
+        } else if (userRating === 'dislike' && dislikeBtn) {
+            dislikeBtn.classList.add('active');
+        }
+    }
+
+    // Обновляем данные в карточке отзыва (только данные, без UI)
+    const reviewElement = document.querySelector(`.review-card[data-review-id="${reviewId}"]`);
+    if (reviewElement) {
+        reviewElement.dataset.likes = likes || 0;
+        reviewElement.dataset.dislikes = dislikes || 0;
+    }
+}
+
+// Функция для полного сброса оценки пользователя
+function resetUserRating(reviewId) {
+    const review = reviews.find(r => r.id == reviewId);
+    if (!review || !review.user_ratings) return;
+
+    const userRating = review.user_ratings[userToken];
+    if (!userRating) return;
+
+    // Удаляем оценку
+    if (userRating === 'like') {
+        review.likes = Math.max(0, (review.likes || 0) - 1);
+    } else {
+        review.dislikes = Math.max(0, (review.dislikes || 0) - 1);
+    }
+
+    // Удаляем запись о оценке
+    delete review.user_ratings[userToken];
+
+    // Обновляем UI
+    updateRatingUI(reviewId, review.likes, review.dislikes);
+    saveRatingsToStorage();
+
+    showNotification('Оценка сброшена!');
+}
+
+// ===== ИНИЦИАЛИЗАЦИЯ =====
+
+// В функции loadReviews() добавьте:
+// Вызовите эту функцию после загрузки отзывов
+async function loadReviews() {
+    try {
+        console.log('Loading reviews for restaurant:', currentRestaurantId);
+        const response = await fetch(`/api/reviews?restaurant_id=${currentRestaurantId}`);
+
+        if (response.ok) {
+            const reviewsData = await response.json();
+            console.log('Received reviews data:', reviewsData);
+
+            reviews = reviewsData;
+            applyStoredRatings();
+            displayReviews(reviews);
+
+            // ДЕБАГ: проверяем данные
+            debugReviews();
+        } else {
+            console.error('Failed to load reviews:', response.status);
+            throw new Error('Ошибка загрузки отзывов');
+        }
+    } catch (error) {
+        console.error('Error loading reviews:', error);
+    }
+}
+
+// Функция для проверки данных отзывов
+function debugReviews() {
+    console.log('=== DEBUG REVIEWS ===');
+    console.log('Current user token:', userToken);
+    console.log('All reviews:', reviews);
+
+    reviews.forEach((review, index) => {
+        console.log(`Review ${index}:`, {
+            id: review.id,
+            user_token: review.user_token,
+            device_fingerprint: review.device_fingerprint,
+            canEdit: checkEditPermission(review)
+        });
+    });
+}
+
+// ===== ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ =====
+
+// Функция для разворачивания/сворачивания текста
+function toggleReviewExpand(reviewId) {
+    const reviewElement = document.querySelector(`.review-card[data-review-id="${reviewId}"]`);
+    if (!reviewElement) return;
+
+    reviewElement.classList.toggle('expanded');
+
+    const button = reviewElement.querySelector('.expand-btn-bottom');
+    if (button) {
+        if (reviewElement.classList.contains('expanded')) {
+            button.textContent = 'Свернуть';
+        } else {
+            button.textContent = 'Развернуть';
+        }
+    }
+}
+
+// Установка рейтинга при редактировании
+function setRating(starElement, rating) {
+    const starsContainer = starElement.closest('.stars');
+    const stars = starsContainer.querySelectorAll('.star');
+
+    stars.forEach((star, index) => {
+        const starValue = parseInt(star.getAttribute('data-value'));
+        const starImage = starValue <= rating ? PATHS.starActive : PATHS.starInactive;
+        star.innerHTML = `<img src="${starImage}" alt="★" style="width:24px;height:24px;">`;
+    });
+
+    // Сохраняем выбранный рейтинг
+    starsContainer.dataset.rating = rating;
+}
+
+function resetReviewForm() {
+    document.getElementById('review-form').reset();
+    // Сбрасываем звезды рейтинга
+    const stars = document.querySelectorAll('#review-stars .star');
+    stars.forEach(star => {
+        star.innerHTML = `<img src="${PATHS.starInactive}" alt="★">`;
+    });
+    selectedRating = 0;
+    document.getElementById('rating-error').style.display = 'none';
+}
+
+// Инициализация статистики при загрузке страницы
+async function initStats() {
     try {
         const response = await fetch(`/api/restaurants/${currentRestaurantId}/stats`);
         if (!response.ok) {
-            throw new Error('Ошибка при загрузке рейтинга');
+            throw new Error('Ошибка при загрузке статистики');
         }
         const stats = await response.json();
-
-        document.getElementById('overall-rating').textContent = stats.average_rating.toFixed(1);
-        document.getElementById('total-reviews').textContent = stats.total_reviews;
-
-        // Обновляем статистику по звездам
-        for (let i = 1; i <= 5; i++) {
-            const count = stats.ratings[i] || 0;
-            const percentage = stats.total_reviews === 0 ? 0 : (count / stats.total_reviews) * 100;
-            const bar = document.querySelector(`.rating-bar:nth-child(${6 - i}) .fill`);
-            const countSpan = document.querySelector(`.rating-bar:nth-child(${6 - i}) span:last-child`);
-            if (bar) bar.style.width = `${percentage}%`;
-            if (countSpan) countSpan.textContent = count;
-        }
+        updateRatingStats(stats);
     } catch (error) {
         console.error('Error:', error);
+        // Устанавливаем значения по умолчанию
+        document.getElementById('overall-rating').textContent = '0.0';
+        document.getElementById('total-reviews').textContent = '0';
+
+        // Сбрасываем все бары
+        for (let i = 1; i <= 5; i++) {
+            const bar = document.querySelector(`.rating-bar:nth-child(${6 - i}) .fill`);
+            const countSpan = document.querySelector(`.rating-bar:nth-child(${6 - i}) span:last-child`);
+            if (bar) bar.style.width = '0%';
+            if (countSpan) countSpan.textContent = '0';
+        }
     }
 }
+
+// Локальное обновление статистики после добавления отзыва
+function updateStatsLocally(newRating) {
+    // Обновляем общее количество отзывов
+    const totalReviewsElem = document.getElementById('total-reviews');
+    const currentTotal = parseInt(totalReviewsElem.textContent) || 0;
+    totalReviewsElem.textContent = currentTotal + 1;
+
+    // Обновляем общий рейтинг
+    const overallRatingElem = document.getElementById('overall-rating');
+    const currentRating = parseFloat(overallRatingElem.textContent) || 0;
+    const newOverallRating = ((currentRating * currentTotal) + newRating) / (currentTotal + 1);
+    overallRatingElem.textContent = newOverallRating.toFixed(1);
+
+    // Обновляем счетчик для конкретного рейтинга
+    const ratingBars = document.querySelectorAll('.rating-bar');
+    const targetBarIndex = 6 - newRating; // Индекс бара для этого рейтинга
+    const targetBar = ratingBars[targetBarIndex - 1];
+
+    if (targetBar) {
+        const countSpan = targetBar.querySelector('span:last-child');
+        const currentCount = parseInt(countSpan.textContent) || 0;
+        countSpan.textContent = currentCount + 1;
+
+        // Обновляем ширину заполнения
+        const barFill = targetBar.querySelector('.fill');
+        const newTotal = currentTotal + 1;
+        const newPercentage = ((currentCount + 1) / newTotal) * 100;
+        barFill.style.width = `${newPercentage}%`;
+    }
+
+    // Также обновляем все остальные бары (проценты меняются)
+    updateAllBarsPercentages(currentTotal + 1);
+}
+
+// Функция для обновления процентов всех баров
+function updateAllBarsPercentages(totalReviews) {
+    if (totalReviews === 0) return;
+
+    for (let i = 1; i <= 5; i++) {
+        const barIndex = 6 - i;
+        const bar = document.querySelector(`.rating-bar:nth-child(${barIndex})`);
+
+        if (bar) {
+            const countSpan = bar.querySelector('span:last-child');
+            const count = parseInt(countSpan.textContent) || 0;
+            const percentage = (count / totalReviews) * 100;
+
+            const barFill = bar.querySelector('.fill');
+            barFill.style.width = `${percentage}%`;
+        }
+    }
+}
+
+// Обработчик изменения размера окна
+// При полной загрузке окна
+window.addEventListener('load', function() {
+    console.log('Window fully loaded - updating scroll');
+    setTimeout(updateScrollButtons, 300);
+});
+
+// При изменении размера окна
+window.addEventListener('resize', function() {
+    setTimeout(updateScrollButtons, 200);
+});
+
+// При любых изменениях DOM (MutationObserver)
+const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+        if (mutation.type === 'childList' || mutation.type === 'attributes') {
+            setTimeout(updateScrollButtons, 100);
+        }
+    });
+});
+
+// Начинаем наблюдение
+const reviewList = document.getElementById('review-list');
+if (reviewList) {
+    observer.observe(reviewList, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style']
+    });
+}
+
+// Функция для обновления общего рейтинга (только для синхронизации)
+async function updateOverallRating() {
+    try {
+        const response = await fetch(`/api/restaurants/${currentRestaurantId}/stats`);
+        if (!response.ok) return; // Не бросаем ошибку, т.к. это фоновое обновление
+
+        const stats = await response.json();
+        updateRatingStats(stats);
+    } catch (error) {
+        console.error('Error updating overall rating:', error);
+        // Не показываем уведомление, т.к. это фоновый процесс
+    }
+}
+
+// Вызываем эту функцию при загрузке страницы и после добавления отзыва
+document.addEventListener('DOMContentLoaded', () => {
+    updateOverallRating();
+    loadReviews();
+});
 
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
@@ -547,12 +1831,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Обработчик формы отзыва
-    document.getElementById('review-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        submitReview();
-    });
-
     // Загрузка отзывов
     loadReviews();
 });
@@ -566,33 +1844,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', () => {
-    loadReviews();
-
-    // Обработчик формы отзыва
-    document.getElementById('review-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        submitReview();
-    });
-});
 
 
 
 
 
-        // Обновляем обработчик формы
-document.getElementById('review-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    submitReview();
-});
+
+
 
 // Функция для показа уведомлений
 function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.textContent = message;
-
     document.body.appendChild(notification);
 
     setTimeout(() => {
@@ -601,16 +1865,25 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
-// Функция для закрытия модального окна отзыва
+// Абсолютно надежная функция закрытия
 function closeReviewModal() {
-    document.getElementById('review-modal').style.display = 'none';
-    document.getElementById('review-form').reset();
+    const modal = document.getElementById('review-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 
-    // Сбрасываем выбранные звезды
+    // Сбрасываем форму
+    const form = document.getElementById('review-form');
+    if (form) {
+        form.reset();
+    }
+
+    // Сбрасываем звезды
     const stars = document.querySelectorAll('#review-stars .star');
     stars.forEach(star => {
-        star.innerHTML = `<img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">`;
+        star.innerHTML = `<img src="${PATHS.starInactive}" alt="★">`;
     });
+
     selectedRating = 0;
 }
 
@@ -624,14 +1897,6 @@ function closeReviewModal() {
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     loadReviews();
-});
-
-
-
-
-       // Инициализация
-document.addEventListener('DOMContentLoaded', function() {
-  initFavorites();
 });
 
 function initFavorites() {
@@ -697,42 +1962,6 @@ function updateFavoritesVisibility() {
     hideHeaderButton();
   }
 }
-
-
-
-        document.addEventListener('DOMContentLoaded', function() {
-  // Инициализация кнопки
-  const headerFavBtn = document.getElementById('header-favorites-btn');
-  const particles = headerFavBtn.querySelectorAll('.particle');
-
-  // Проверка избранного при загрузке
-  updateFavoritesCount();
-
-  // Анимация частиц
-  headerFavBtn.addEventListener('mouseenter', function() {
-    this.classList.add('active');
-  });
-
-  headerFavBtn.addEventListener('mouseleave', function() {
-    this.classList.remove('active');
-  });
-
-  // Обработчики для кнопок в карточках
-  document.querySelectorAll('.js-favorite-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const itemId = this.dataset.itemId;
-      const itemData = JSON.parse(this.dataset.item);
-      toggleFavorite(itemId, itemData);
-    });
-  });
-
-  // Синхронизация между вкладками
-  window.addEventListener('storage', function(event) {
-    if (event.key === 'favorites') {
-      updateFavoritesCount();
-    }
-  });
-});
 
 // Показать кнопку в шапке
 function showHeaderButton() {
@@ -1075,7 +2304,7 @@ function updateFavoritesCount() {
         overlay.style.left = '0';
         overlay.style.width = '100%';
         overlay.style.height = '100%';
-        overlay.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        overlay.style.backgroundColor = 'rgba(0,0,0,0.9)';
         overlay.style.display = 'flex';
         overlay.style.justifyContent = 'center';
         overlay.style.alignItems = 'center';
@@ -1106,6 +2335,11 @@ function updateFavoritesCount() {
 
     // Модальное окно для отзыва
     function openReviewModal() {
+        // Генерируем/проверяем токен ДО открытия окна
+        if (!localStorage.getItem('userToken')) {
+            userToken = generateUserToken();
+        }
+
         document.getElementById('review-modal').style.display = 'flex';
     }
     // Закрытие модального окна при клике вне его области
@@ -1115,46 +2349,66 @@ function updateFavoritesCount() {
         }
     });
 
-    // Обновленный код фильтрации
+    // Обработчик для кнопки закрытия
+    document.querySelector('#review-modal .close').addEventListener('click', function() {
+        closeReviewModal();
+    });
+
     function filterReviewsByRating(rating) {
-        const reviewList = document.getElementById('review-list');
-        const reviewCards = reviewList.querySelectorAll('.review-card');
-        let hasMatches = false;
+    const reviewList = document.getElementById('review-list');
+    const reviewCards = reviewList.querySelectorAll('.review-card');
+    let hasMatches = false;
 
-        // Удаляем старое сообщение "Нет отзывов"
-        const oldMsg = document.getElementById('no-reviews-message');
-        if (oldMsg) oldMsg.remove();
+    // Удаляем старое сообщение "Нет отзывов"
+    const oldMsg = document.getElementById('no-reviews-message');
+    if (oldMsg) oldMsg.remove();
 
-        // Фильтруем отзывы
-        reviewCards.forEach(card => {
-            const cardRating = parseInt(card.querySelector('.rating').dataset.rating);
+    // Фильтруем отзывы (включая те, что еще не в БД)
+    reviewCards.forEach(card => {
+        // Ищем рейтинг двумя способами (для отзывов из БД и новых)
+        let cardRating;
 
-            if (rating === 0 || cardRating === rating) {
-                card.style.display = 'flex'; // Важно использовать flex
-                hasMatches = true;
-            } else {
-                card.style.display = 'none';
-            }
-        });
-
-        // Показываем сообщение если нет совпадений
-        if (!hasMatches && rating !== 0) {
-            const msg = document.createElement('div');
-            msg.id = 'no-reviews-message';
-            msg.textContent = 'Таких отзывов нет!';
-            msg.style.textAlign = 'center';
-            msg.style.padding = '20px';
-            msg.style.color = '#666';
-            reviewList.appendChild(msg);
+        // Способ 1: По заполненным звездам (работает для всех отзывов)
+        const filledStars = card.querySelectorAll('.review-rating img[src*="baka.png"]');
+        if (filledStars.length > 0) {
+            cardRating = filledStars.length;
+        }
+        // Способ 2: По data-атрибуту (для новых отзывов)
+        else {
+            const ratingElem = card.querySelector('.rating');
+            cardRating = ratingElem ? parseInt(ratingElem.dataset.rating) : 0;
         }
 
-        // Принудительное обновление layout
-        setTimeout(updateReviewVisibility, 50);
+        if (rating === 0 || cardRating === rating) {
+            card.style.display = 'flex';
+            hasMatches = true;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Показываем сообщение если нет совпадений
+    if (!hasMatches && rating !== 0) {
+        const msg = document.createElement('div');
+        msg.id = 'no-reviews-message';
+        msg.textContent = 'Таких отзывов нет!';
+        msg.style.textAlign = 'center';
+        msg.style.padding = '20px';
+        msg.style.color = '#666';
+        msg.style.width = '100%';
+        reviewList.appendChild(msg);
     }
+
+    // Всегда обновляем кнопки прокрутки после фильтрации
+    setTimeout(updateScrollButtons, 150);
+}
 
     // Обновленный обработчик звезд фильтра
     const filterStars = document.querySelectorAll('#filter-stars .star');
-    let currentFilter = 0;
+    let currentFilter = {
+        rating: 0,      // Фильтр по звездам (0 - все)
+        reaction: 'none' // Фильтр по реакциям ('none', 'likes', 'dislikes')
+    };
 
     filterStars.forEach(star => {
         star.addEventListener('click', function() {
@@ -1179,6 +2433,29 @@ function updateFavoritesCount() {
             filterReviewsByRating(currentFilter);
         });
     });
+
+    // Обработчики для кнопок реакций
+    const filterButtons = document.querySelectorAll('.filter-btn[data-type]');
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filterType = this.getAttribute('data-type');
+
+            // Если кликаем на уже активную кнопку - сбрасываем
+            if (currentFilter.reaction === filterType) {
+                currentFilter.reaction = 'none';
+                filterButtons.forEach(b => b.classList.remove('active'));
+                document.querySelector('.filter-btn[data-type="none"]').classList.add('active');
+            } else {
+                // Устанавливаем новый фильтр
+                currentFilter.reaction = filterType;
+                filterButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            }
+
+            applyFilters();
+        });
+    });
+
 
     // Функция показа всех отзывов
     function showAllReviews() {
@@ -1220,81 +2497,6 @@ function updateFavoritesCount() {
         });
     });
 
-    // Функция для добавления отзыва
-    const reviewForm = document.getElementById('review-form');
-    const reviewList = document.getElementById('review-list');
-    reviewForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('name').value;
-        const comment = document.getElementById('comment').value;
-
-        // Проверка, что оценка выбрана
-        if (selectedRating === 0) {
-            document.getElementById('rating-error').style.display = 'inline';
-            return;
-        } else {
-            document.getElementById('rating-error').style.display = 'none';
-        }
-
-        // Создаём новый отзыв
-        const review = {
-            id: Date.now(), // Уникальный ID для отзыва
-            name: name,
-            rating: selectedRating,
-            comment: comment,
-            likes: 0,
-            dislikes: 0
-        };
-
-        // Добавляем отзыв в массив
-        reviews.push(review);
-
-        // Обновляем статистику
-        ratingCounts[Math.floor(selectedRating)]++;
-
-        // Обновляем общую оценку
-        updateOverallRating();
-
-        // Создаём HTML для нового отзыва
-        const reviewElement = document.createElement('div');
-        reviewElement.className = 'review-card highlight';
-        reviewElement.dataset.reviewId = review.id;
-
-        reviewElement.innerHTML = `
-            <div class="review-header">
-                <img class="avatar" src="${PATHS.avatar}" alt="Аватар">
-                <div class="name-rating">
-                    <div class="name">${name}</div>
-                    <div class="rating" data-rating="${selectedRating}">
-                        ${`<img src="${PATHS.starActive}" alt="★" style="width:20px;height:20px;">`.repeat(selectedRating)}
-                        ${`<img src="${PATHS.starInactive}" alt="★" style="width:20px;height:20px;">`.repeat(5 - selectedRating)}
-                    </div>
-                </div>
-            </div>
-            <div class="comment-container">
-                <div class="comment-text">${comment || ''}</div>
-                ${comment ? '<div class="comment-blur"></div>' : ''}
-            </div>
-            <div class="expand" onclick="openFullReviewModal(${review.id})">Развернуть</div>
-        `;
-
-        // Добавляем отзыв в начало списка
-        reviewList.prepend(reviewElement);
-        if (comment) {
-            limitCommentHeight(reviewElement);
-        }
-        updateReviewVisibility(); // Всегда обновляем видимость
-
-        // Прокручиваем к началу
-        reviewList.scrollTo({ left: 0, behavior: 'smooth' });
-
-        // Сбрасываем форму
-        reviewForm.reset();
-        stars.forEach(star => star.innerHTML = `<img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★" style="width: 24px; height: 24px;">`);
-        selectedRating = 0; // Сбрасываем выбранную оценку
-        closeReviewModal();
-        updateReviewVisibility();
-    });
 
     reviewList.scrollTo({
         left: 0,
@@ -1313,55 +2515,67 @@ function updateFavoritesCount() {
         document.getElementById('full-review-modal').style.display = 'none';
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-    // Гарантированно скрываем модальное окно при загрузке
-        document.getElementById('full-review-modal').style.display = 'none';
-    });
+// Функция открытия модального окна с полным отзывом
+function openFullReviewModal(reviewId) {
+    console.log('Opening full review modal for ID:', reviewId);
 
-    // Обновленная функция открытия модального окна
-    function openFullReviewModal(reviewId) {
-        const review = reviews.find(r => r.id == reviewId);
-        if (!review) return;
-
-        const modal = document.getElementById('full-review-modal');
-        const commentElement = modal.querySelector('.review-comment');
-
-        // Сначала скрываем, потом показываем для гарантии
-        modal.style.display = 'none';
-        void modal.offsetHeight; // Принудительный reflow
-
-        // Заполняем данные
-        modal.querySelector('.review-name').textContent = review.name;
-        modal.querySelector('.review-rating').innerHTML =
-            `<img src="${PATHS.starActive}" alt="★">`.repeat(review.rating) +
-            `<img src="${PATHS.starInactive}" alt="★">`.repeat(5 - review.rating);
-
-        commentElement.innerHTML = review.comment.replace(/\n/g, '<br>');
-
-        // Сбрасываем стили перед проверкой
-        commentElement.style.maxHeight = '';
-        commentElement.style.overflowY = '';
-
-        // Принудительный reflow
-        void commentElement.offsetHeight;
-
-        // Устанавливаем фиксированную высоту для контейнера
-        const containerHeight = 370; // Фиксированная высота для скролла
-        commentElement.style.maxHeight = `${containerHeight}px`;
-        commentElement.style.overflowY = 'auto';
-
-        modal.querySelector('.like-count').textContent = review.likes;
-        modal.querySelector('.dislike-count').textContent = review.dislikes;
-
-        // Проверяем, голосовал ли уже пользователь
-        const likeBtn = modal.querySelector('.like-btn');
-        const dislikeBtn = modal.querySelector('.dislike-btn');
-        likeBtn.disabled = review.userVoted === 'like';
-        dislikeBtn.disabled = review.userVoted === 'dislike';
-
-        modal.dataset.reviewId = reviewId;
-        modal.style.display = 'flex';
+    // Ищем отзыв в глобальном массиве
+    const reviewData = reviews.find(r => r.id == reviewId);
+    if (!reviewData) {
+        console.error('Review not found:', reviewId);
+        showNotification('Отзыв не найден', 'error');
+        return;
     }
+
+    const modal = document.getElementById('full-review-modal');
+    if (!modal) {
+        console.error('Modal not found');
+        return;
+    }
+
+    // Создаем HTML для звезд рейтинга
+    let starsHTML = '';
+    for (let i = 0; i < 5; i++) {
+        if (i < reviewData.rating) {
+            starsHTML += `<img src="${PATHS.starActive}" alt="★" style="width:20px;height:20px;">`;
+        } else {
+            starsHTML += `<img src="${PATHS.starInactive}" alt="★" style="width:20px;height:20px;">`;
+        }
+    }
+
+    // Заполняем модальное окно
+    const reviewNameElem = modal.querySelector('.review-name');
+    const reviewRatingElem = modal.querySelector('.review-rating');
+    const reviewCommentElem = modal.querySelector('.review-comment');
+    const likeCountElem = modal.querySelector('.like-count');
+    const dislikeCountElem = modal.querySelector('.dislike-count');
+    const likeBtn = modal.querySelector('.like-btn');
+    const dislikeBtn = modal.querySelector('.dislike-btn');
+
+    if (reviewNameElem) reviewNameElem.textContent = reviewData.username;
+    if (reviewRatingElem) reviewRatingElem.innerHTML = starsHTML;
+    if (reviewCommentElem) reviewCommentElem.textContent = reviewData.comment;
+    if (likeCountElem) likeCountElem.textContent = reviewData.likes || 0;
+    if (dislikeCountElem) dislikeCountElem.textContent = reviewData.dislikes || 0;
+
+    // ОБНОВЛЯЕМ ОБРАБОТЧИКИ КНОПОК
+    if (likeBtn) {
+        likeBtn.onclick = () => rateReview(true, reviewId);
+    }
+    if (dislikeBtn) {
+        dislikeBtn.onclick = () => rateReview(false, reviewId);
+    }
+
+    // ДОБАВЛЯЕМ КНОПКУ РЕДАКТИРОВАНИЯ
+    addEditButtonToModal(modal, reviewData);
+
+    // Сохраняем ID отзыва
+    modal.dataset.reviewId = reviewId;
+
+    // Показываем модальное окно
+    modal.style.display = 'flex';
+    console.log('Modal displayed');
+}
 
     // При создании отзыва добавляем поле для отслеживания голосов
     const review = {
@@ -1374,105 +2588,121 @@ function updateFavoritesCount() {
         userVoted: null // 'like', 'dislike' или null
     };
 
-    // Лайки/дизлайки для модального окна
-    function rateReview(isLike) {
-        const modal = document.getElementById('full-review-modal');
-        const reviewId = modal.dataset.reviewId;
-        const review = reviews.find(r => r.id == reviewId);
+    // Функция для добавления кнопки редактирования в модальное окно
+function addEditButtonToModal(modal, reviewData) {
+    console.log('Adding edit button for review:', reviewData);
 
-        if (!review) return;
-
-        // Если пользователь уже голосовал
-        if (review.userVoted) {
-            // Отменяем предыдущий голос
-            if (review.userVoted === 'like') {
-                review.likes--;
-            } else {
-                review.dislikes--;
-            }
-
-            // Если кликнул ту же кнопку - просто сбрасываем голос
-            if ((isLike && review.userVoted === 'like') ||
-                (!isLike && review.userVoted === 'dislike')) {
-                review.userVoted = null;
-            } else {
-                // Если кликнул другую кнопку - засчитываем новый голос
-                if (isLike) {
-                    review.likes++;
-                    review.userVoted = 'like';
-                } else {
-                    review.dislikes++;
-                    review.userVoted = 'dislike';
-                }
-            }
-        } else {
-            // Первый голос
-            if (isLike) {
-                review.likes++;
-                review.userVoted = 'like';
-            } else {
-                review.dislikes++;
-                review.userVoted = 'dislike';
-            }
-        }
-
-        // Обновляем UI
-        modal.querySelector('.like-count').textContent = review.likes;
-        modal.querySelector('.dislike-count').textContent = review.dislikes;
-
-        const likeBtn = modal.querySelector('.like-btn');
-        const dislikeBtn = modal.querySelector('.dislike-btn');
-        likeBtn.disabled = review.userVoted === 'like';
-        dislikeBtn.disabled = review.userVoted === 'dislike';
-
-        // Исправленная логика затемнения иконок
-        const likeImg = likeBtn.querySelector('img');
-        const dislikeImg = dislikeBtn.querySelector('img');
-
-        if (review.userVoted === 'like') {
-            dislikeImg.style.opacity = '1';
-            likeImg.style.opacity = '0.5';
-        } else if (review.userVoted === 'dislike') {
-            dislikeImg.style.opacity = '0.5';
-            likeImg.style.opacity = '1';
-        } else {
-            dislikeImg.style.opacity = '0.5';
-            likeImg.style.opacity = '0.5';
-        }
+    // Удаляем старую кнопку редактирования если есть
+    const oldEditBtn = modal.querySelector('.edit-review-btn');
+    if (oldEditBtn) {
+        oldEditBtn.remove();
     }
 
-    // Функция для ограничения высоты текста
-    function limitCommentHeight(reviewElement) {
-        const container = reviewElement.querySelector('.comment-container');
-        const textElement = reviewElement.querySelector('.comment-text');
-        const blurElement = reviewElement.querySelector('.comment-blur');
-        const expandButton = reviewElement.querySelector('.expand');
+    // Проверяем можно ли редактировать отзыв
+    const canEdit = checkEditPermission(reviewData);
+    console.log('Can edit:', canEdit);
 
-        // Всегда показываем кнопку "Развернуть"
-        expandButton.style.display = 'block';
+    // Создаем контейнер для кнопок
+    let buttonsContainer = modal.querySelector('.modal-buttons-container');
+    if (!buttonsContainer) {
+        buttonsContainer = document.createElement('div');
+        buttonsContainer.className = 'modal-buttons-container';
+        modal.querySelector('.modal-content').appendChild(buttonsContainer);
+    }
 
-        // Если комментария нет, скрываем контейнер и размытие
-        if (!textElement.textContent.trim()) {
-            container.style.display = 'none';
-            if (blurElement) blurElement.style.display = 'none';
-            return;
-        }
+    // Создаем кнопку редактирования
+    const editButton = document.createElement('button');
+    editButton.className = `edit-review-btn ${canEdit ? '' : 'disabled'}`;
+    editButton.innerHTML = '✏️ Редактировать';
+    editButton.dataset.reviewId = reviewData.id;
 
-        // Вычисляем, нужно ли ограничивать текст
-        const lineHeight = parseInt(getComputedStyle(textElement).lineHeight);
-        const maxHeight = lineHeight * 5; // 3 строки
+    if (canEdit) {
+        editButton.onclick = () => {
+            console.log('Edit button clicked for review:', reviewData.id);
+            openEditReviewModal(reviewData.id, reviewData.rating, reviewData.comment);
+        };
+    } else {
+        editButton.onclick = () => {
+            console.log('Edit button clicked but disabled for review:', reviewData.id);
+            showEditTimeExpiredMessage(reviewData);
+        };
+        editButton.title = 'Время редактирования истекло или недоступно';
+    }
 
-        if (textElement.scrollHeight > maxHeight) {
-            container.style.maxHeight = `${maxHeight}px`;
-            if (blurElement) blurElement.style.display = 'block';
-        } else {
-            container.style.maxHeight = 'none';
-            if (blurElement) blurElement.style.display = 'none';
-        }
+    buttonsContainer.appendChild(editButton);
+    console.log('Edit button added:', editButton);
 }
 
-    // Массив для хранения отзывов
-    let reviews = [];
+// Функция показа сообщения об истечении времени редактирования
+function showEditTimeExpiredMessage(review) {
+    const createdAt = new Date(review.created_at);
+    const now = new Date();
+    const hoursDiff = (now - createdAt) / (1000 * 60 * 60);
+
+    let message;
+
+    if (hoursDiff > 3) {
+        message = 'У тебя было 3 часа чтобы всё исправить. Время редактирования истекло!';
+    } else if (review.user_token !== userToken) {
+        message = 'Это не твой отзыв! Редактирование запрещено.';
+    } else if (!isSameDevice(review)) {
+        message = 'Редактирование разрешено только с того же устройства!';
+    } else {
+        message = 'Редактирование невозможно по неизвестной причине.';
+    }
+
+    showNotification(message, 'error');
+
+    // Анимация кнопки
+    const editButton = document.querySelector('#full-review-modal .edit-review-btn');
+    if (editButton) {
+        editButton.style.animation = 'shake 0.5s ease-in-out';
+        setTimeout(() => {
+            editButton.style.animation = '';
+        }, 500);
+    }
+}
+
+// Функция для принудительного обновления счетчиков
+function updateCountersManually() {
+    const modal = document.getElementById('full-review-modal');
+    if (!modal) return;
+
+    const reviewId = modal.dataset.reviewId;
+    if (!reviewId) return;
+
+    const reviewElement = document.querySelector(`.review-card[data-review-id="${reviewId}"]`);
+    const reviewData = reviews.find(r => r.id == reviewId);
+
+    if (reviewData) {
+        const likeCountElem = modal.querySelector('.like-count');
+        const dislikeCountElem = modal.querySelector('.dislike-count');
+
+        if (likeCountElem) likeCountElem.textContent = reviewData.likes || 0;
+        if (dislikeCountElem) dislikeCountElem.textContent = reviewData.dislikes || 0;
+
+        if (reviewElement) {
+            reviewElement.dataset.likes = reviewData.likes || 0;
+            reviewElement.dataset.dislikes = reviewData.dislikes || 0;
+        }
+    }
+}
+
+// Вызовите эту функцию если нужно принудительно обновить
+
+    // Функция для ограничения высоты текста
+    // Функция для ограничения высоты длинных комментариев
+function limitCommentHeight(reviewElement) {
+    const container = reviewElement.querySelector('.comment-container');
+    const text = reviewElement.querySelector('.comment-text');
+    const blur = reviewElement.querySelector('.comment-blur');
+
+    if (text.scrollHeight > text.clientHeight) {
+        blur.style.display = 'block';
+    } else {
+        blur.style.display = 'none';
+    }
+}
 
     // Общая оценка и статистика
     let overallRating = 0;
@@ -1491,18 +2721,73 @@ function updateFavoritesCount() {
         }
     }
 
-    // Прокрутка отзывов с проверкой границ
-    function scrollReviews(direction) {
-        const reviewList = document.getElementById('review-list');
-        const scrollAmount = 300;
+    // Функция для прокрутки отзывов
+function scrollReviews(direction) {
+    const reviewList = document.getElementById('review-list');
+    const scrollAmount = 320; // Фиксированное значение
 
-        if (direction === 'left' && reviewList.scrollLeft > 0) {
-            reviewList.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-        } else if (direction === 'right' &&
-                  reviewList.scrollLeft + reviewList.clientWidth < reviewList.scrollWidth) {
-            reviewList.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-        }
+    if (direction === 'left') {
+        reviewList.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+        reviewList.scrollBy({ left: scrollAmount, behavior: 'smooth' });
     }
+
+    // Обновляем кнопки после прокрутки
+    setTimeout(updateScrollButtons, 350);
+}
+
+function updateScrollButtons() {
+    const reviewList = document.getElementById('review-list');
+    const leftButton = document.querySelector('.scroll-button.left');
+    const rightButton = document.querySelector('.scroll-button.right');
+
+    if (!reviewList || !leftButton || !rightButton) {
+        console.log('Scroll elements not found');
+        return;
+    }
+
+    // Ждем следующего tick'а для обновления DOM
+    setTimeout(() => {
+        try {
+            // Проверяем видимые отзывы
+            const visibleReviews = Array.from(reviewList.children).filter(card =>
+                card.style.display !== 'none' && window.getComputedStyle(card).display !== 'none'
+            );
+
+            const hasVisibleReviews = visibleReviews.length > 0;
+            const canScroll = reviewList.scrollWidth > reviewList.clientWidth + 2; // +2 для погрешности
+
+            console.log('Scroll state:', {
+                visibleReviews: visibleReviews.length,
+                scrollWidth: reviewList.scrollWidth,
+                clientWidth: reviewList.clientWidth,
+                canScroll: canScroll,
+                scrollLeft: reviewList.scrollLeft
+            });
+
+            if (hasVisibleReviews && canScroll) {
+                // Показываем кнопки
+                leftButton.style.display = 'flex';
+                rightButton.style.display = 'flex';
+
+                // Обновляем состояния
+                const canScrollLeft = reviewList.scrollLeft > 5;
+                const canScrollRight = reviewList.scrollLeft + reviewList.clientWidth < reviewList.scrollWidth - 5;
+
+                leftButton.style.opacity = canScrollLeft ? '1' : '0.3';
+                rightButton.style.opacity = canScrollRight ? '1' : '0.3';
+                leftButton.style.pointerEvents = canScrollLeft ? 'auto' : 'none';
+                rightButton.style.pointerEvents = canScrollRight ? 'auto' : 'none';
+            } else {
+                // Скрываем кнопки
+                leftButton.style.display = 'none';
+                rightButton.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error in updateScrollButtons:', error);
+        }
+    }, 50);
+}
 
     // Обновленная функция для обновления видимости отзывов и кнопок
     function updateReviewVisibility() {
@@ -1532,38 +2817,35 @@ function updateFavoritesCount() {
         }
     }
 
-    // Обновление состояния стрелочек при прокрутке
-    reviewList.addEventListener('scroll', function() {
-        const leftButton = document.querySelector('.scroll-button.left');
-        const rightButton = document.querySelector('.scroll-button.right');
+// Обновление состояния стрелочек при прокрутке
+reviewList.addEventListener('scroll', function() {
+    const leftButton = document.querySelector('.scroll-button.left');
+    const rightButton = document.querySelector('.scroll-button.right');
 
-        const canScrollLeft = this.scrollLeft > 0;
-        const canScrollRight = this.scrollLeft + this.clientWidth < this.scrollWidth;
+    if (!leftButton || !rightButton) return;
 
-        leftButton.style.opacity = canScrollLeft ? '1' : '0.5';
-        leftButton.style.pointerEvents = canScrollLeft ? 'auto' : 'none';
+    const canScrollLeft = this.scrollLeft > 0;
+    const canScrollRight = this.scrollLeft + this.clientWidth < this.scrollWidth - 1;
 
-        rightButton.style.opacity = canScrollRight ? '1' : '0.5';
-        rightButton.style.pointerEvents = canScrollRight ? 'auto' : 'none';
-    });
+    leftButton.style.opacity = canScrollLeft ? '1' : '0.5';
+    leftButton.style.pointerEvents = canScrollLeft ? 'auto' : 'none';
 
-    // Развёртывание отзыва
-    function expandReview(comment) {
-        alert(comment); // Можно заменить на модальное окно
-    }
-
-    //Карта
-    document.addEventListener('DOMContentLoaded', function() {
-    // Инициализация карты
-    (function(e,t){
-        var r=document.getElementById(e);
-        if(r) {
-            r.contentWindow.document.open();
-            r.contentWindow.document.write(atob(t));
-            r.contentWindow.document.close();
-        }
-    })("map_547336407", "PGJvZHk+PHN0eWxlPgogICAgICAgIGh0bWwsIGJvZHkgewogICAgICAgICAgICBtYXJnaW46IDA7CiAgICAgICAgICAgIHBhZGRpbmc6IDA7CiAgICAgICAgfQogICAgICAgIGh0bWwsIGJvZHksICNtYXAgewogICAgICAgICAgICB3aWR0aDogMTAwJTsKICAgICAgICAgICAgaGVpZ2h0OiAxMDAlOwogICAgICAgIH0KICAgICAgICAuYnVsbGV0LW1hcmtlciB7CiAgICAgICAgICAgIHdpZHRoOiAyMHB4OwogICAgICAgICAgICBoZWlnaHQ6IDIwcHg7CiAgICAgICAgICAgIGJveC1zaXppbmc6IGJvcmRlci1ib3g7CiAgICAgICAgICAgIGJhY2tncm91bmQtY29sb3I6ICNmZmY7CiAgICAgICAgICAgIGJveC1zaGFkb3c6IDAgMXB4IDNweCAwIHJnYmEoMCwgMCwgMCwgMC4yKTsKICAgICAgICAgICAgYm9yZGVyOiA0cHggc29saWQgIzAyODFmMjsKICAgICAgICAgICAgYm9yZGVyLXJhZGl1czogNTAlOwogICAgICAgIH0KICAgICAgICAucGVybWFuZW50LXRvb2x0aXAgewogICAgICAgICAgICBiYWNrZ3JvdW5kOiBub25lOwogICAgICAgICAgICBib3gtc2hhZG93OiBub25lOwogICAgICAgICAgICBib3JkZXI6IG5vbmU7CiAgICAgICAgICAgIHBhZGRpbmc6IDZweCAxMnB4OwogICAgICAgICAgICBjb2xvcjogIzI2MjYyNjsKICAgICAgICB9CiAgICAgICAgLnBlcm1hbmVudC10b29sdGlwOmJlZm9yZSB7CiAgICAgICAgICAgIGRpc3BsYXk6IG5vbmU7CiAgICAgICAgfQogICAgICAgIC5kZy1wb3B1cF9oaWRkZW5fdHJ1ZSB7CiAgICAgICAgICAgIGRpc3BsYXk6IGJsb2NrOwogICAgICAgIH0KICAgICAgICAubGVhZmxldC1jb250YWluZXIgLmxlYWZsZXQtcG9wdXAgLmxlYWZsZXQtcG9wdXAtY2xvc2UtYnV0dG9uIHsKICAgICAgICAgICAgdG9wOiAwOwogICAgICAgICAgICByaWdodDogMDsKICAgICAgICAgICAgd2lkdGg6IDIwcHg7CiAgICAgICAgICAgIGhlaWdodDogMjBweDsKICAgICAgICAgICAgZm9udC1zaXplOiAyMHB4OwogICAgICAgICAgICBsaW5lLWhlaWdodDogMTsKICAgICAgICB9CiAgICA8L3N0eWxlPjxkaXYgaWQ9Im1hcCI+PC9kaXY+PHNjcmlwdCB0eXBlPSJ0ZXh0L2phdmFzY3JpcHQiIHNyYz0iaHR0cHM6Ly9tYXBzLmFwaS4yZ2lzLnJ1LzIuMC9sb2FkZXIuanM/cGtnPWZ1bGwmYW1wO3NraW49bGlnaHQiPjwvc2NyaXB0PjxzY3JpcHQ+KGZ1bmN0aW9uKGUpe3ZhciB0PUpTT04ucGFyc2UoZSkscj10Lm9yZGVyZWRHZW9tZXRyaWVzLG49dC5tYXBQb3NpdGlvbixhPXQuaXNXaGVlbFpvb21FbmFibGVkO2Z1bmN0aW9uIG8oZSl7cmV0dXJuIGRlY29kZVVSSUNvbXBvbmVudChhdG9iKGUpLnNwbGl0KCIiKS5tYXAoZnVuY3Rpb24oZSl7cmV0dXJuIiUiKygiMDAiK2UuY2hhckNvZGVBdCgwKS50b1N0cmluZygxNikpLnNsaWNlKC0yKX0pLmpvaW4oIiIpKX1ERy50aGVuKGZ1bmN0aW9uKCl7dmFyIGU9REcubWFwKCJtYXAiLHtjZW50ZXI6W24ubGF0LG4ubG9uXSx6b29tOm4uem9vbSxzY3JvbGxXaGVlbFpvb206YSx6b29tQ29udHJvbDohYX0pO0RHLmdlb0pTT04ocix7c3R5bGU6ZnVuY3Rpb24oZSl7dmFyIHQscixuLGEsbztyZXR1cm57ZmlsbENvbG9yOm51bGw9PT0odD1lKXx8dm9pZCAwPT09dD92b2lkIDA6dC5wcm9wZXJ0aWVzLmZpbGxDb2xvcixmaWxsT3BhY2l0eTpudWxsPT09KHI9ZSl8fHZvaWQgMD09PXI/dm9pZCAwOnIucHJvcGVydGllcy5maWxsT3BhY2l0eSxjb2xvcjpudWxsPT09KG49ZSl8fHZvaWQgMD09PW4/dm9pZCAwOm4ucHJvcGVydGllcy5zdHJva2VDb2xvcix3ZWlnaHQ6bnVsbD09PShhPWUpfHx2b2lkIDA9PT1hP3ZvaWQgMDphLnByb3BlcnRpZXMuc3Ryb2tlV2lkdGgsb3BhY2l0eTpudWxsPT09KG89ZSl8fHZvaWQgMD09PW8/dm9pZCAwOm8ucHJvcGVydGllcy5zdHJva2VPcGFjaXR5fX0scG9pbnRUb0xheWVyOmZ1bmN0aW9uKGUsdCl7cmV0dXJuInJhZGl1cyJpbiBlLnByb3BlcnRpZXM/REcuY2lyY2xlKHQsZS5wcm9wZXJ0aWVzLnJhZGl1cyk6REcubWFya2VyKHQse2ljb246ZnVuY3Rpb24oZSl7cmV0dXJuIERHLmRpdkljb24oe2h0bWw6IjxkaXYgY2xhc3M9J2J1bGxldC1tYXJrZXInIHN0eWxlPSdib3JkZXItY29sb3I6ICIrZSsiOyc+PC9kaXY+IixjbGFzc05hbWU6Im92ZXJyaWRlLWRlZmF1bHQiLGljb25TaXplOlsyMCwyMF0saWNvbkFuY2hvcjpbMTAsMTBdfSl9KGUucHJvcGVydGllcy5jb2xvcil9KX0sb25FYWNoRmVhdHVyZTpmdW5jdGlvbihlLHQpe2UucHJvcGVydGllcy5kZXNjcmlwdGlvbiYmdC5iaW5kUG9wdXAobyhlLnByb3BlcnRpZXMuZGVzY3JpcHRpb24pLHtjbG9zZUJ1dHRvbjohMCxjbG9zZU9uRXNjYXBlS2V5OiEwfSksZS5wcm9wZXJ0aWVzLnRpdGxlJiZ0LmJpbmRUb29sdGlwKG8oZS5wcm9wZXJ0aWVzLnRpdGxlKSx7cGVybWFuZW50OiEwLG9wYWNpdHk6MSxjbGFzc05hbWU6InBlcm1hbmVudC10b29sdGlwIn0pfX0pLmFkZFRvKGUpfSl9KSgneyJvcmRlcmVkR2VvbWV0cmllcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7ImNvbG9yIjoiIzAwMDAwMCIsInRpdGxlIjoiMEpIUXNOR0EwTERSaU5DNjBMZz0iLCJkZXNjcmlwdGlvbiI6IlBIQSswS0RRdGRHQjBZTFF2dEdBMExEUXZTRENxOUNSMExEUmdOQ3cwWWpRdXRDNHdyc2cwTC9SZ05DMTBMVFF1OUN3MExQUXNOQzEwWUlnMFlIUXN0QyswTGpRdkNEUXM5QyswWUhSZ3RHUDBMd2cwTEhRdTlHTzBMVFFzQ0RRczlHQTBZUFF0OUM0MEwzUmdkQzYwTDdRdVNEUXV0R0QwWVhRdmRDNExDRFF2OUdBMExqUXM5QyswWUxRdnRDeTBMdlF0ZEM5MEwzUmk5QzFJTkMvMEw0ZzBZTFJnTkN3MExUUXVOR0cwTGpRdnRDOTBMM1JpOUM4SU5HQTBMWFJodEMxMEwvUmd0Q3cwTHd1UEM5d1BnPT0iLCJ6SW5kZXgiOjEwMDAwMDAwMDB9LCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9pbnQiLCJjb29yZGluYXRlcyI6WzMxLjIzOTgwMyw1OC41MzE3MzNdfSwiaWQiOjczMX1dLCJtYXBQb3NpdGlvbiI6eyJsYXQiOjU4LjUzMTY3NjIxMDAwNzg2LCJsb24iOjMxLjI0MTk4NDM2NzM3MDYwNSwiem9vbSI6MTZ9LCJpc1doZWVsWm9vbUVuYWJsZWQiOnRydWV9Jyk8L3NjcmlwdD48c2NyaXB0IGFzeW5jPSIiIHNyYz0iaHR0cHM6Ly93d3cuZ29vZ2xldGFnbWFuYWdlci5jb20vZ3RhZy9qcz9pZD1HLVQ4NktNRDAzQzciPjwvc2NyaXB0PjxzY3JpcHQgaWQ9Imdvb2dsZS1hbmFseXRpY3MiPgogICAgICB3aW5kb3cuZGF0YUxheWVyID0gd2luZG93LmRhdGFMYXllciB8fCBbXTsKICAgICAgZnVuY3Rpb24gZ3RhZygpe2RhdGFMYXllci5wdXNoKGFyZ3VtZW50cyk7fQogICAgICBndGFnKCdqcycsIG5ldyBEYXRlKCkpOwogICAgICBndGFnKCdjb25maWcnLCAnRy1UODZLTUQwM0M3JywgeyJjb29raWVfZmxhZ3MiOiJTYW1lU2l0ZT1Ob25lOyBTZWN1cmU7IFBhcnRpdGlvbmVkIiwiY29va2llX3VwZGF0ZSI6ZmFsc2V9KTsKICAgICAgdHJ1ZSAmJiBndGFnKCdldmVudCcsICdmcm9tX2lmcmFtZScpOwogICAgPC9zY3JpcHQ+PC9ib2R5Pg==");
+    rightButton.style.opacity = canScrollRight ? '1' : '0.5';
+    rightButton.style.pointerEvents = canScrollRight ? 'auto' : 'none';
 });
+
+    // Функция для разворачивания отзыва
+function expandReview(reviewId) {
+    const review = reviews.find(r => r.id === reviewId);
+    if (!review) return;
+
+    const modal = document.getElementById('full-review-modal');
+    modal.querySelector('.review-name').textContent = review.username;
+    modal.querySelector('.review-rating').innerHTML =
+        `${'<img src="{{ url_for('static', filename='Фотки зданий/baka.png') }}" alt="★" style="width:20px;height:20px;">'.repeat(review.rating)}`;
+    modal.querySelector('.review-comment').textContent = review.comment;
+    modal.style.display = 'flex';
+}
 
 // Глобальные переменные
 let currentUser = null; // Должно устанавливаться при авторизации
@@ -1571,75 +2853,6 @@ let currentRestaurant = {
     id: 'lambs',
     name: 'Барашки'
 };
-
-// Обновляем обработчик формы
-document.getElementById('review-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    submitReview();
-});
-
-// Функция для обновления отзыва
-async function updateReview(reviewId, rating, comment) {
-    try {
-        const token = localStorage.getItem('token');
-
-        const response = await fetch(`/api/reviews/${reviewId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': token
-            },
-            body: JSON.stringify({
-                rating: rating,
-                comment: comment
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.message || 'Ошибка при обновлении отзыва');
-        }
-
-        // Обновляем UI
-        if (data.restaurant.rating) {
-            updateRestaurantRating(data.restaurant.rating);
-        }
-        updateReviewInUI(reviewId, data.review);
-
-        showNotification(data.message);
-    } catch (error) {
-        showNotification(error.message, 'error');
-    }
-}
-
-// Функция для удаления отзыва
-async function deleteReview(reviewId) {
-    try {
-        const token = localStorage.getItem('token');
-
-        const response = await fetch(`/api/reviews/${reviewId}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': token
-            }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            throw new Error(data.message || 'Ошибка при удалении отзыва');
-        }
-
-        // Обновляем UI
-        updateRestaurantRating(data.restaurant.rating, data.restaurant.review_count);
-        removeReviewFromUI(reviewId);
-
-        showNotification(data.message);
-    } catch (error) {
-        showNotification(error.message, 'error');
-    }
-}
 
 // Функция для проверки можно ли редактировать отзыв
 function checkReviewEditAbility(review) {
@@ -1737,12 +2950,6 @@ function addReviewToUI(review) {
     }, 10);
 }
 
-// Обновляем обработчик формы
-document.getElementById('review-form').addEventListener('submit', function(e) {
-    e.preventDefault(); // Это предотвращает перезагрузку страницы
-    submitReview();
-});
-
 function updateReviewInUI(reviewId, updatedData) {
     const reviewElement = document.querySelector(`.review-card[data-review-id="${reviewId}"]`);
     if (!reviewElement) return;
@@ -1786,38 +2993,52 @@ function removeReviewFromUI(reviewId) {
     }
 }
 
-// Модальное окно для редактирования отзыва
+// Функция открытия модального окна редактирования
 function openEditReviewModal(reviewId, currentRating, currentComment) {
     const modal = document.getElementById('edit-review-modal');
-    const form = modal.querySelector('form');
+    if (!modal) {
+        console.error('Edit modal not found');
+        return;
+    }
 
-    form.dataset.reviewId = reviewId;
+    modal.dataset.reviewId = reviewId;
 
-    // Устанавливаем текущие значения
-    modal.querySelectorAll('.star').forEach((star, index) => {
-        star.classList.toggle('filled', index < currentRating);
+    // Устанавливаем текущий рейтинг
+    const stars = modal.querySelectorAll('.star');
+    stars.forEach((star, index) => {
+        const starValue = index + 1;
+        const starImage = starValue <= currentRating ? PATHS.starActive : PATHS.starInactive;
+        star.innerHTML = `<img src="${starImage}" alt="★" style="width:24px;height:24px;">`;
+        star.onclick = () => setEditRating(star, starValue);
     });
 
-    modal.querySelector('textarea').value = currentComment || '';
+    // Сохраняем рейтинг
+    modal.querySelector('.rating').dataset.rating = currentRating;
+
+    // Устанавливаем комментарий
+    modal.querySelector('#edit-comment').value = currentComment || '';
 
     // Показываем модальное окно
     modal.style.display = 'flex';
 }
 
-function closeEditReviewModal() {
-    document.getElementById('edit-review-modal').style.display = 'none';
+// Функция установки рейтинга при редактировании
+function setEditRating(starElement, rating) {
+    const starsContainer = starElement.closest('.stars');
+    const stars = starsContainer.querySelectorAll('.star');
+
+    stars.forEach((star, index) => {
+        const starValue = index + 1;
+        const starImage = starValue <= rating ? PATHS.starActive : PATHS.starInactive;
+        star.innerHTML = `<img src="${starImage}" alt="★" style="width:24px;height:24px;">`;
+    });
+
+    // Сохраняем выбранный рейтинг
+    starsContainer.dataset.rating = rating;
 }
 
-// Вспомогательные функции
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+function closeEditReviewModal() {
+    document.getElementById('edit-review-modal').style.display = 'none';
 }
 
 // Инициализация при загрузке страницы
@@ -1827,16 +3048,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Загрузка данных ресторана
     loadRestaurantData();
-
-    // Обработчики для модального окна добавления отзыва
-    document.getElementById('review-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const rating = this.querySelector('.star.filled').length;
-        const comment = this.querySelector('textarea').value;
-
-        submitReview(rating, comment);
-    });
 
     // Обработчики для модального окна редактирования отзыва
     document.getElementById('edit-review-form').addEventListener('submit', function(e) {
