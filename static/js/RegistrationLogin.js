@@ -58,48 +58,48 @@ document.querySelectorAll('.btnA, .btnB').forEach(function(button) {
 });
 
 // Обработчик для формы регистрации
-document.getElementById('regForm').onsubmit = function(event) {
-    event.preventDefault(); // Предотвращаем отправку формы
+    document.getElementById('regForm').onsubmit = function(event) {
+        event.preventDefault(); // Предотвращаем отправку формы
 
-    // Получаем данные из формы
-    const username = document.getElementById('username1').value;
-    const password = document.getElementById('password1').value;
-    const confirmPassword = document.getElementById('password2').value;
-    const secretKey = document.getElementById('secret_key').value;
+        // Получаем данные из формы
+        const username = document.getElementById('username1').value;
+        const password = document.getElementById('password1').value;
+        const confirmPassword = document.getElementById('password2').value;
+        const secretKey = document.getElementById('secret_key').value;
 
-    // Проверка совпадения паролей
-    if (password !== confirmPassword) {
-        alert('Пароли не совпадают');
-        return;
-    }
-
-    // Отправляем данные на сервер
-    fetch('/register', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-            'username': username,
-            'password': password,
-            'secret_key': secretKey
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('welcomeUser').innerText = data.username;
-            document.getElementById('userInfo').style.display = 'block'; // Показываем информацию о пользователе
-            document.getElementById('overlay').style.display = 'none';
-            document.getElementById('content_window2').classList.remove('show');
-            document.getElementById('content_window2').style.display = 'none'; // Скрываем окно
-            document.getElementById('loginButton').style.display = 'none';
-            document.getElementById('registerButton').style.display = 'none';
-            localStorage.setItem('username', data.username);
-        } else {
-            alert(data.message); // Показываем сообщение об ошибке
+        // Проверка совпадения паролей
+        if (password !== confirmPassword) {
+            alert('Пароли не совпадают');
+            return;
         }
-    });
+
+        // Отправляем данные на сервер
+        fetch('/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'username': username,
+                'password': password,
+                'secret_key': secretKey
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('welcomeUser').innerText = data.username;
+                document.getElementById('userInfo').style.display = 'block'; // Показываем информацию о пользователе
+                document.getElementById('overlay').style.display = 'none';
+                document.getElementById('content_window2').classList.remove('show');
+                document.getElementById('content_window2').style.display = 'none'; // Скрываем окно
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('registerButton').style.display = 'none';
+                localStorage.setItem('username', data.username);
+            } else {
+                alert(data.message); // Показываем сообщение об ошибке
+            }
+        });
 };
 
 // Обработчик для формы входа

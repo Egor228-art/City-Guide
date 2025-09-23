@@ -99,7 +99,8 @@
             <!-- Кнопки будут добавлены через JavaScript -->
         </ul>
         <div id="loading" style="display: none; text-align: center; padding: 20px;">
-            Загрузка...
+            <div class="loading-spinner"></div>
+            <p>Загрузка...</p>
         </div>
     </div>
 
@@ -189,10 +190,277 @@
     <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
 
     <script>
-        // Управление скроллом
-        let lastScroll = 0;
-        const navbar = document.querySelector('.navbar');
-        const smartPagination = document.querySelector('.smart-pagination');
+// Управление скроллом
+let lastScroll = 0;
+const navbar = document.querySelector('.navbar');
+const smartPagination = document.querySelector('.smart-pagination');
+let currentPage = {{ current_page|default(1) }};
+let totalPages = {{ total_pages|default(1) }};
+let isLoading = false;
+
+window.addEventListener('scroll', function() {
+    const currentScroll = window.pageYOffset;
+
+    if (currentScroll <= 10) {
+        navbar.style.transform = 'translateY(0)';
+        smartPagination.style.top = '95px';
+    }
+    else if (currentScroll > lastScroll) {
+        navbar.style.transform = 'translateY(-100%)';
+        smartPagination.style.top = '0';
+    }
+    else {
+        navbar.style.transform = 'translateY(0)';
+        smartPagination.style.top = '95px';
+    }
+
+    lastScroll = currentScroll;
+
+    // Проверка для бесконечной прокрутки
+    checkInfiniteScroll();
+});
+
+// Функция для проверки необходимости подгрузки
+function checkInfiniteScroll() {
+    if (isLoading || currentPage >= totalPages) return;
+
+    const scrollHeight = document.documentElement.scrollHeight;
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const clientHeight = window.innerHeight || document.documentElement.clientHeight;
+
+    // Подгружаем когда осталось 300px до конца страницы
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+        loadPage(currentPage + 1, true); // true - для бесконечной прокрутки
+    }
+}
+
+// Функция загрузки страницы
+function loadPage(pageNumber, isInfiniteScroll = false) {
+    if (isLoading) return;
+
+    isLoading = true;
+    showLoading();
+
+    fetch(`/restaurants?page=${pageNumber}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.restaurants && data.restaurants.length > 0) {
+            currentPage = data.current_page;
+            totalPages = data.total_pages;
+
+            if (!isInfiniteScroll) {
+                // Обычная пагинация - заменяем контент
+                replaceRestaurants(data.restaurants);
+            } else {
+                // Бесконечная прокрутка - добавляем контент
+                appendRestaurants(data.restaurants);
+            }
+
+            // Обновляем пагинацию
+            initPagination(totalPages, currentPage);
+
+            // Прокручиваем к верху если это не бесконечная прокрутка
+            if (!isInfiniteScroll && pageNumber > 1) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading page:', error);
+    })
+    .finally(() => {
+        isLoading = false;
+        hideLoading();
+    });
+}
+
+// Функция замены ресторанов
+function replaceRestaurants(restaurants) {
+    const container = document.querySelector('.restaurants-container');
+    container.innerHTML = '';
+    appendRestaurants(restaurants);
+}
+
+// Функция добавления ресторанов
+function appendRestaurants(restaurants) {
+    const container = document.querySelector('.restaurants-container');
+
+    restaurants.forEach((place, index) => {
+        const card = createRestaurantCard(place, container.children.length + index);
+        container.appendChild(card);
+    });
+}
+
+// Функция создания карточки ресторана
+function createRestaurantCard(place, index) {
+    const card = document.createElement('div');
+    card.className = 'restaurant-card';
+    card.style.animationDelay = (index * 0.1) + 's';
+
+    const url = place.id == 2 ? '/lambs' : `/restaurant/${place.id}`;
+    card.onclick = () => window.location.href = url;
+
+    const imagePath = place.image_path ? `/static/${place.image_path}` : '/static/Фотки зданий/default.png';
+
+    card.innerHTML = `
+        <div class="image-wrapper">
+            <img class="restaurant-image"
+                 src="${imagePath}"
+                 alt="${place.title || 'Название не указано'}">
+        </div>
+        <div class="restaurant-info">
+            <h3 class="restaurant-name">${place.title || 'Название не указано'}</h3>
+            <p class="restaurant-description">
+                ${place.description || 'Описание отсутствует'}
+            </p>
+            <div class="restaurant-contacts">
+                <div>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    <span>${place.telephone || 'Телефон не указан'}</span>
+                </div>
+                <div class="metka">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <span>${place.address || 'Адрес не указан'}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    return card;
+}
+
+// Показать/скрыть индикатор загрузки
+function showLoading() {
+    const loading = document.getElementById('loading');
+    if (loading) {
+        loading.style.display = 'block';
+    }
+}
+
+function hideLoading() {
+    const loading = document.getElementById('loading');
+    if (loading) {
+        loading.style.display = 'none';
+    }
+}
+
+// Инициализация пагинации
+function initPagination(totalPages, currentPage) {
+    const pagination = document.getElementById('pagination');
+    if (!pagination) return;
+
+    pagination.innerHTML = '';
+
+    // Кнопка "В начало"
+    addPageItem(pagination, '««', 1, currentPage === 1 ? 'arrow disabled' : 'arrow');
+
+    // Кнопка "Назад"
+    addPageItem(pagination, '«', currentPage - 1, currentPage === 1 ? 'arrow disabled' : 'arrow');
+
+    // Показываем страницы
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    if (currentPage <= 3) {
+        endPage = Math.min(5, totalPages);
+    }
+    if (currentPage >= totalPages - 2) {
+        startPage = Math.max(1, totalPages - 4);
+    }
+
+    if (startPage > 1) {
+        addPageItem(pagination, 1, 1);
+        if (startPage > 2) addEllipsis(pagination);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        addPageItem(pagination, i, i, i === currentPage ? 'active' : '');
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) addEllipsis(pagination);
+        addPageItem(pagination, totalPages, totalPages);
+    }
+
+    // Кнопка "Вперед"
+    addPageItem(pagination, '»', currentPage + 1, currentPage === totalPages ? 'arrow disabled' : 'arrow');
+
+    // Кнопка "В конец"
+    addPageItem(pagination, '»»', totalPages, currentPage === totalPages ? 'arrow disabled' : 'arrow');
+}
+
+function addPageItem(container, text, pageNumber, className = '') {
+    const li = document.createElement('li');
+    li.className = 'page-item';
+
+    const a = document.createElement('a');
+    a.className = `page-link ${className}`;
+    a.href = '#';
+    a.textContent = text;
+
+    if (!className.includes('disabled')) {
+        a.onclick = function(e) {
+            e.preventDefault();
+            loadPage(pageNumber);
+        };
+    }
+
+    li.appendChild(a);
+    container.appendChild(li);
+}
+
+function addEllipsis(container) {
+    const li = document.createElement('li');
+    li.className = 'page-item';
+    li.innerHTML = '<span class="ellipsis">...</span>';
+    container.appendChild(li);
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация пагинации
+    initPagination(totalPages, currentPage);
+
+    // Анимация загрузки карточек
+    const cards = document.querySelectorAll('.restaurant-card');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = (index * 0.1) + 's';
+    });
+});
+
+// Обработчики для карточек
+document.querySelectorAll('.restaurant-card').forEach(card => {
+    card.addEventListener('click', function() {
+        const onclickAttr = this.getAttribute('onclick');
+        if (onclickAttr) {
+            const match = onclickAttr.match(/window\.location\.href\s*=\s*'([^']+)'/);
+            if (match && match[1]) {
+                window.location.href = match[1];
+            }
+        }
+    });
+});
+
+
+
+
+
+
+
 
         window.addEventListener('scroll', function() {
             const currentScroll = window.pageYOffset;
@@ -226,99 +494,6 @@
             // Инициализация пагинации
             initPagination(10, 1); // Всего 10 страниц, текущая 1
         });
-
-        // Функция инициализации пагинации
-        function initPagination(totalPages, currentPage) {
-            const pagination = document.getElementById('pagination');
-            pagination.innerHTML = '';
-
-            // Кнопка "В начало"
-            if (currentPage > 1) {
-                addPageItem(pagination, '««', 1, 'arrow');
-            } else {
-                addPageItem(pagination, '««', 1, 'arrow disabled');
-            }
-
-            // Кнопка "Назад"
-            if (currentPage > 1) {
-                addPageItem(pagination, '«', currentPage - 1, 'arrow');
-            } else {
-                addPageItem(pagination, '«', currentPage - 1, 'arrow disabled');
-            }
-
-            // Всегда показываем первую страницу
-            if (currentPage > 3) {
-                addPageItem(pagination, 1, 1);
-                if (currentPage > 4) {
-                    addEllipsis(pagination);
-                }
-            }
-
-            // Показываем 2 страницы перед текущей
-            for (let i = Math.max(1, currentPage - 2); i < currentPage; i++) {
-                addPageItem(pagination, i, i);
-            }
-
-            // Текущая страница
-            addPageItem(pagination, currentPage, currentPage, 'active');
-
-            // Показываем 2 страницы после текущей
-            for (let i = currentPage + 1; i <= Math.min(totalPages, currentPage + 2); i++) {
-                addPageItem(pagination, i, i);
-            }
-
-            // Всегда показываем последнюю страницу
-            if (currentPage < totalPages - 2) {
-                if (currentPage < totalPages - 3) {
-                    addEllipsis(pagination);
-                }
-                addPageItem(pagination, totalPages, totalPages);
-            }
-
-            // Кнопка "Вперед"
-            if (currentPage < totalPages) {
-                addPageItem(pagination, '»', currentPage + 1, 'arrow');
-            } else {
-                addPageItem(pagination, '»', currentPage + 1, 'arrow disabled');
-            }
-
-            // Кнопка "В конец"
-            if (currentPage < totalPages) {
-                addPageItem(pagination, '»»', totalPages, 'arrow');
-            } else {
-                addPageItem(pagination, '»»', totalPages, 'arrow disabled');
-            }
-            // Инициализация при загрузке
-            document.addEventListener('DOMContentLoaded', function() {
-                initPagination(10, 1);
-            });
-        }
-
-        function addPageItem(container, text, pageNumber, className = '') {
-            const li = document.createElement('li');
-            li.className = 'page-item';
-
-            const a = document.createElement('a');
-            a.className = `page-link ${className}`;
-            a.href = `?page=${pageNumber}`;
-            a.textContent = text;
-            a.onclick = function(e) {
-                e.preventDefault();
-                // Здесь можно добавить загрузку страницы через AJAX
-                console.log(`Переход на страницу ${pageNumber}`);
-                initPagination(10, pageNumber); // Обновляем пагинацию
-            };
-
-            li.appendChild(a);
-            container.appendChild(li);
-        }
-
-        function addEllipsis(container) {
-            const li = document.createElement('li');
-            li.className = 'page-item';
-            li.innerHTML = '<span class="ellipsis">...</span>';
-            container.appendChild(li);
-        }
 
         // Обработчики для карточек
         document.querySelectorAll('.restaurant-card').forEach(card => {

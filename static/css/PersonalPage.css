@@ -1771,6 +1771,8 @@ body.no-scroll {
 
 
 
+
+
 /* Стили для временной подсветки кнопок */
 .like-btn.highlight {
     color: #00a820;
@@ -2042,4 +2044,252 @@ body.no-scroll {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-5px); }
     75% { transform: translateX(5px); }
+}
+
+
+
+
+.review-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.like-btn, .dislike-btn, .edit-btn {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.like-btn.active, .dislike-btn.active {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.edit-btn {
+    background-color: #2196F3;
+    color: white;
+}
+
+.star {
+    cursor: pointer;
+    font-size: 24px;
+    color: #ccc;
+}
+
+.star.active {
+    color: #ffc107;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+
+
+
+
+
+/* Стили для модального окна редактирования */
+.form-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.btn-cancel {
+    padding: 10px 20px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-save {
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.btn-cancel:hover {
+    background-color: #5a6268;
+}
+
+.btn-save:hover {
+    background-color: #218838;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+
+
+/* Стили для заблокированных кнопок */
+.edit-review-btn.disabled {
+    background-color: #ccc !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+.edit-time-expired {
+    color: #ff6b6b;
+    font-size: 14px;
+    text-align: center;
+    padding: 10px;
+    background-color: #fff5f5;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+/* Стили для модального окна редактирования */
+.modal-action-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.edit-review-btn, .delete-review-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.edit-review-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.edit-review-btn:hover:not(.disabled) {
+    background-color: #45a049;
+}
+
+.delete-review-btn {
+    background-color: #f44336;
+    color: white;
+}
+
+.delete-review-btn:hover {
+    background-color: #da190b;
+}
+
+
+
+
+/* Стили для сообщений о времени */
+.edit-time-expired {
+    color: #ff6b6b;
+    font-size: 14px;
+    text-align: center;
+    padding: 8px;
+    background-color: #fff5f5;
+    border-radius: 5px;
+    margin: 5px 0;
+    border-left: 3px solid #ff6b6b;
+}
+
+.delete-time-expired {
+    color: #ff9500;
+    font-size: 14px;
+    text-align: center;
+    padding: 8px;
+    background-color: #fffaf0;
+    border-radius: 5px;
+    margin: 5px 0;
+    border-left: 3px solid #ff9500;
+}
+
+.no-actions-message {
+    color: #666;
+    font-size: 14px;
+    text-align: center;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    margin: 10px 0;
+    border: 1px dashed #ddd;
+}
+
+/* Стили для модального окна */
+.modal-action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modal-action-buttons button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.edit-review-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.edit-review-btn:hover {
+    background-color: #45a049;
+    transform: translateY(-1px);
+}
+
+.delete-review-btn {
+    background-color: #f44336;
+    color: white;
+}
+
+.delete-review-btn:hover {
+    background-color: #da190b;
+    transform: translateY(-1px);
+}
+
+
+
+/* Стили для кастомного модального окна подтверждения */
+#delete-confirmation-modal button {
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+#delete-confirmation-modal button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+#delete-confirmation-modal #confirm-delete:hover {
+    background: #d32f2f;
+}
+
+#delete-confirmation-modal #cancel-delete:hover {
+    background: #e0e0e0;
 }

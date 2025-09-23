@@ -499,7 +499,7 @@
     </routine>
     <schema id="191" parent="1" name="main">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2025-09-09.13:36:13</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2025-09-12.10:09:29</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="192" parent="16">
       <ArgumentDirection>R</ArgumentDirection>
@@ -1711,113 +1711,126 @@
       <Position>10</Position>
       <StoredType>VARCHAR(45)|0s</StoredType>
     </column>
-    <key id="587" parent="557">
+    <column id="587" parent="557" name="device_fingerprint">
+      <Position>11</Position>
+      <StoredType>VARCHAR(255)|0s</StoredType>
+    </column>
+    <column id="588" parent="557" name="updated_at">
+      <Position>12</Position>
+      <StoredType>DATETIME|0s</StoredType>
+    </column>
+    <column id="589" parent="557" name="user_ratings">
+      <DefaultExpression>&quot;{}&quot;</DefaultExpression>
+      <Position>13</Position>
+      <StoredType>TEXT|0s</StoredType>
+    </column>
+    <key id="590" parent="557">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <column id="588" parent="558" name="id">
+    <column id="591" parent="558" name="id">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="589" parent="558" name="user_hash">
+    <column id="592" parent="558" name="user_hash">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>VARCHAR(64)|0s</StoredType>
     </column>
-    <column id="590" parent="558" name="last_review_time">
+    <column id="593" parent="558" name="last_review_time">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>DATETIME|0s</StoredType>
     </column>
-    <column id="591" parent="558" name="restaurant_id">
+    <column id="594" parent="558" name="restaurant_id">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StoredType>VARCHAR(50)|0s</StoredType>
     </column>
-    <index id="592" parent="558" name="ix_review_limits_user_hash">
+    <index id="595" parent="558" name="ix_review_limits_user_hash">
       <ColNames>user_hash</ColNames>
     </index>
-    <index id="593" parent="558" name="ix_review_limits_restaurant_id">
+    <index id="596" parent="558" name="ix_review_limits_restaurant_id">
       <ColNames>restaurant_id</ColNames>
     </index>
-    <key id="594" parent="558">
+    <key id="597" parent="558">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <column id="595" parent="559" name="id">
+    <column id="598" parent="559" name="id">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="596" parent="559" name="key_name">
+    <column id="599" parent="559" name="key_name">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>VARCHAR(255)|0s</StoredType>
     </column>
-    <column id="597" parent="559" name="secret_value">
+    <column id="600" parent="559" name="secret_value">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>VARCHAR(255)|0s</StoredType>
     </column>
-    <index id="598" parent="559" name="sqlite_autoindex_secret_1">
+    <index id="601" parent="559" name="sqlite_autoindex_secret_1">
       <ColNames>key_name</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="599" parent="559">
+    <key id="602" parent="559">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="600" parent="559">
+    <key id="603" parent="559">
       <ColNames>key_name</ColNames>
       <UnderlyingIndexName>sqlite_autoindex_secret_1</UnderlyingIndexName>
     </key>
-    <column id="601" parent="560" name="type">
+    <column id="604" parent="560" name="type">
       <Position>1</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="602" parent="560" name="name">
+    <column id="605" parent="560" name="name">
       <Position>2</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="603" parent="560" name="tbl_name">
+    <column id="606" parent="560" name="tbl_name">
       <Position>3</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="604" parent="560" name="rootpage">
+    <column id="607" parent="560" name="rootpage">
       <Position>4</Position>
       <StoredType>INT|0s</StoredType>
     </column>
-    <column id="605" parent="560" name="sql">
+    <column id="608" parent="560" name="sql">
       <Position>5</Position>
       <StoredType>TEXT|0s</StoredType>
     </column>
-    <column id="606" parent="561" name="id">
+    <column id="609" parent="561" name="id">
       <NotNull>1</NotNull>
       <Position>1</Position>
       <StoredType>INTEGER|0s</StoredType>
     </column>
-    <column id="607" parent="561" name="username">
+    <column id="610" parent="561" name="username">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StoredType>VARCHAR(80)|0s</StoredType>
     </column>
-    <column id="608" parent="561" name="password">
+    <column id="611" parent="561" name="password">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StoredType>VARCHAR(120)|0s</StoredType>
     </column>
-    <index id="609" parent="561" name="sqlite_autoindex_user_1">
+    <index id="612" parent="561" name="sqlite_autoindex_user_1">
       <ColNames>username</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="610" parent="561">
+    <key id="613" parent="561">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="611" parent="561">
+    <key id="614" parent="561">
       <ColNames>username</ColNames>
       <UnderlyingIndexName>sqlite_autoindex_user_1</UnderlyingIndexName>
     </key>
