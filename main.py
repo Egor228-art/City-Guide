@@ -99,62 +99,6 @@ def create_user_hash(request):
     user_agent = request.headers.get('User-Agent', '')
     return hashlib.sha256(f"{ip}_{user_agent}".encode()).hexdigest()
 
-@app.route('/api/reviews', methods=['GET', 'POST'])
-def handle_reviews():
-    if request.method == 'GET':
-        restaurant_id = request.args.get('restaurant_id')
-        if not restaurant_id:
-            return jsonify({'error': 'restaurant_id is required'}), 400
-
-        reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(Review.created_at.desc()).all()
-        reviews_data = [{
-            'id': review.id,
-            'username': review.username,
-            'rating': review.rating,
-            'comment': review.comment,
-            'created_at': review.created_at.isoformat()
-        } for review in reviews]
-
-        return jsonify(reviews_data)
-
-    elif request.method == 'POST':
-        data = request.get_json()
-
-        if not data or 'restaurant_id' not in data or 'username' not in data or 'rating' not in data:
-            return jsonify({'error': 'Missing required fields'}), 400
-
-        try:
-            rating = int(data['rating'])
-            if rating < 1 or rating > 5:
-                return jsonify({'error': 'Rating must be between 1 and 5'}), 400
-
-            new_review = Review(
-                restaurant_id=data['restaurant_id'],
-                username=data['username'],
-                rating=rating,
-                comment=data.get('comment', '')
-            )
-
-            db.session.add(new_review)
-            db.session.commit()
-
-            # Обновляем статистику ресторана
-            update_restaurant_stats(data['restaurant_id'])
-
-            return jsonify({
-                'message': 'Review added successfully',
-                'review': {
-                    'id': new_review.id,
-                    'username': new_review.username,
-                    'rating': new_review.rating,
-                    'comment': new_review.comment,
-                    'created_at': new_review.created_at.isoformat()
-                }
-            }), 201
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': str(e)}), 500
-
 def update_restaurant_stats(restaurant_id):
     reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
 
@@ -310,71 +254,10 @@ def check_columns_exist():
 
 check_columns_exist()
 
-@app.route('/api/reviews/<int:review_id>/rate', methods=['POST'])
-def rate_review(review_id):
-    try:
-        data = request.get_json()
-        review = Review.query.get_or_404(review_id)
-        user_token = data.get('user_token')
-        is_like = data.get('is_like')  # True или False
-
-        if not user_token:
-            return jsonify({'error': 'User token required'}), 400
-
-        # Инициализируем user_ratings если нет
-        if not review.user_ratings:
-            review.user_ratings = {}
-
-        previous_rating = review.user_ratings.get(user_token)
-
-        # Упрощенная логика:
-        # 1. Если пользователь уже поставил такую же оценку - снимаем её
-        # 2. Если пользователь меняет оценку - меняем
-        # 3. Если новая оценка - добавляем
-
-        if previous_rating:
-            if (is_like and previous_rating == 'like') or (not is_like and previous_rating == 'dislike'):
-                # Снимаем оценку
-                if previous_rating == 'like':
-                    review.likes = max(0, review.likes - 1)
-                else:
-                    review.dislikes = max(0, review.dislikes - 1)
-                del review.user_ratings[user_token]
-            else:
-                # Меняем оценку
-                if previous_rating == 'like':
-                    review.likes = max(0, review.likes - 1)
-                    review.dislikes += 1
-                    review.user_ratings[user_token] = 'dislike'
-                else:
-                    review.dislikes = max(0, review.dislikes - 1)
-                    review.likes += 1
-                    review.user_ratings[user_token] = 'like'
-        else:
-            # Новая оценка
-            if is_like:
-                review.likes += 1
-                review.user_ratings[user_token] = 'like'
-            else:
-                review.dislikes += 1
-                review.user_ratings[user_token] = 'dislike'
-
-        db.session.commit()
-
-        return jsonify({
-            'likes': review.likes,
-            'dislikes': review.dislikes,
-            'user_rating': review.user_ratings.get(user_token)
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/reviews/<int:review_id>', methods=['PUT'])
 def edit_review(review_id):
     try:
-        print(f"=== НАЧАЛО ОБРАБОТКИ ЗАПРОСА НА ОБНОВЛЕНИЕ ОТЗЫВА {review_id} ===")
+        print(f"=== ОБНОВЛЕНИЕ ОТЗЫВА {review_id} ===")
 
         data = request.get_json()
         print(f"Полученные данные: {data}")
@@ -402,25 +285,18 @@ def edit_review(review_id):
         if not device_fingerprint:
             return jsonify({'error': 'Device fingerprint required'}), 400
 
-        # Разрешаем редактирование legacy-отзывов
-        if review.user_token is None or review.device_fingerprint is None:
-            print("Legacy-отзыв: разрешаем редактирование и обновляем поля")
+        # ВАЖНОЕ ИСПРАВЛЕНИЕ: Если отзыв без user_token, ОБНОВЛЯЕМ его
+        if review.user_token is None:
+            print("🔄 Отзыв без user_token - обновляем токены")
             review.user_token = user_token
             review.device_fingerprint = device_fingerprint
-
+        # Если user_token не совпадает - ошибка (кроме случая когда это legacy)
         elif review.user_token != user_token:
-            print("Ошибка: несовпадение user_token")
+            print("❌ Ошибка: несовпадение user_token")
             return jsonify({'error': 'Permission denied - user token mismatch'}), 403
 
-        elif review.device_fingerprint != device_fingerprint:
-            print("Ошибка: несовпадение device_fingerprint")
-            return jsonify({'error': 'Permission denied - device mismatch'}), 403
-
-        # ИСПРАВЛЕНИЕ ОШИБКИ С ВРЕМЕНЕМ:
-        # Приводим оба времени к одному формату
-        now_utc = datetime.utcnow()  # Используем UTC без временной зоны
-
-        # Если created_at имеет временную зону, убираем ее
+        # Проверяем время (3 часа)
+        now_utc = datetime.utcnow()
         if review.created_at.tzinfo is not None:
             created_at_naive = review.created_at.replace(tzinfo=None)
         else:
@@ -431,52 +307,87 @@ def edit_review(review_id):
         print(f"Прошло времени с создания: {hours_diff:.2f} часов")
 
         if hours_diff > 3:
-            print("Ошибка: время редактирования истекло")
+            print("❌ Время редактирования истекло")
             return jsonify({'error': 'Editing time expired (3 hours limit)'}), 403
 
         # Обновляем поля
         if 'rating' in data:
             new_rating = data['rating']
-            print(f"Обновление рейтинга: {review.rating} -> {new_rating}")
+            print(f"🔄 Обновление рейтинга: {review.rating} -> {new_rating}")
             review.rating = new_rating
 
         if 'comment' in data:
             new_comment = data['comment']
-            print(f"Обновление комментария: {review.comment} -> {new_comment}")
+            print(f"🔄 Обновление комментария: {review.comment} -> {new_comment}")
             review.comment = new_comment
 
         # Устанавливаем время обновления
-        review.updated_at = datetime.utcnow()  # Тоже без временной зоны
-        print(f"Установлено время обновления: {review.updated_at}")
+        review.updated_at = datetime.utcnow()
+        print(f"🕐 Установлено время обновления: {review.updated_at}")
 
         # Сохраняем в БД
         db.session.commit()
-        print("Изменения успешно сохранены в БД")
+        print("✅ Изменения успешно сохранены в БД")
 
         # Обновляем статистику ресторана
         update_restaurant_stats(review.restaurant_id)
-        print("Статистика ресторана обновлена")
+        print("📊 Статистика ресторана обновлена")
 
+        # ВАЖНО: Возвращаем ОБНОВЛЕННЫЕ данные
         response_data = {
             'success': True,
             'message': 'Review updated successfully',
             'review': {
                 'id': review.id,
+                'username': review.username,
                 'rating': review.rating,
                 'comment': review.comment,
-                'updated_at': review.updated_at.isoformat() if review.updated_at else None
+                'updated_at': review.updated_at.isoformat() if review.updated_at else None,
+                'user_token': review.user_token,  # ✅ Теперь будет правильный user_token
+                'device_fingerprint': review.device_fingerprint,  # ✅ Теперь будет правильный device_fingerprint
+                'created_at': review.created_at.isoformat(),
+                'likes': review.likes or 0,
+                'dislikes': review.dislikes or 0,
+                'user_ratings': review.user_ratings or {}
             }
         }
 
-        print(f"Отправляем ответ: {response_data}")
+        print(f"📤 Отправляем ответ: {response_data}")
         return jsonify(response_data)
 
     except Exception as e:
-        print(f"!!! КРИТИЧЕСКАЯ ОШИБКА: {str(e)}")
+        print(f"❌ ОШИБКА: {str(e)}")
         import traceback
         traceback.print_exc()
         db.session.rollback()
         return jsonify({'error': 'Internal server error'}), 500
+
+def check_database_structure():
+    try:
+        conn = sqlite3.connect('instance/database.db')
+        cursor = conn.cursor()
+
+        # Проверяем структуру таблицы review
+        cursor.execute("PRAGMA table_info(review)")
+        columns = cursor.fetchall()
+
+        print("=== СТРУКТУРА ТАБЛИЦЫ REVIEW ===")
+        for column in columns:
+            print(f"Column: {column[1]}, Type: {column[2]}, Nullable: {column[3]}")
+
+        # Проверяем есть ли данные в столбцах
+        cursor.execute("SELECT id, user_token, device_fingerprint FROM review LIMIT 5")
+        sample_data = cursor.fetchall()
+
+        print("=== ДАННЫЕ В ТАБЛИЦЕ ===")
+        for row in sample_data:
+            print(f"ID: {row[0]}, User Token: {row[1]}, Device Fingerprint: {row[2]}")
+
+        conn.close()
+    except Exception as e:
+        print(f"Ошибка при проверке БД: {e}")
+
+check_database_structure()
 
 @app.route('/api/reviews/<int:review_id>/can_edit', methods=['GET'])
 def check_can_edit(review_id):
@@ -573,57 +484,6 @@ def get_restaurant(restaurant_id):
         print(f"Error in get_restaurant: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-# Обновленный маршрут для добавления отзыва
-@app.route('/api/reviews', methods=['POST'])
-def add_review():
-    print("=== ПОЛУЧЕН ЗАПРОС НА ДОБАВЛЕНИЕ ОТЗЫВА ===")
-    data = request.get_json()
-    print(f"Данные отзыва: {data}")
-
-    if not data or 'restaurant_id' not in data or 'username' not in data or 'rating' not in data:
-        print("Ошибка: отсутствуют обязательные поля")
-        return jsonify({'error': 'Missing required fields'}), 400
-
-    try:
-        rating = int(data['rating'])
-        if rating < 1 or rating > 5:
-            print("Ошибка: рейтинг вне диапазона")
-            return jsonify({'error': 'Rating must be between 1 and 5'}), 400
-
-        print("Создание нового отзыва...")
-        new_review = Review(
-            restaurant_id=data['restaurant_id'],
-            username=data['username'],
-            rating=rating,
-            comment=data.get('comment', '')
-        )
-
-        db.session.add(new_review)
-        db.session.commit()
-        print(f"Отзыв сохранен с ID: {new_review.id}")
-
-        print("Обновление статистики ресторана...")
-        update_restaurant_stats(data['restaurant_id'])
-        print("Статистика обновлена")
-
-        return jsonify({
-            'message': 'Review added successfully',
-            'review': {
-                'id': new_review.id,
-                'username': new_review.username,
-                'rating': new_review.rating,
-                'comment': new_review.comment,
-                'created_at': new_review.created_at.isoformat(),
-                'likes': new_review.likes,
-                'dislikes': new_review.dislikes
-            }
-        }), 201
-
-    except Exception as e:
-        print(f"Ошибка при добавлении отзыва: {e}")
-        db.session.rollback()
-        return jsonify({'error': 'Internal server error'}), 500
-
 # Маршрут для получения отзывов
 @app.route('/api/reviews')
 def get_reviews():
@@ -636,22 +496,136 @@ def get_reviews():
             .order_by(Review.created_at.desc()) \
             .all()
 
-        reviews_data = [{
-            'id': review.id,
-            # ... остальные поля ...
-        } for review in reviews]
+        reviews_data = []
+        for review in reviews:
+            review_data = {
+                'id': review.id,
+                'username': review.username,
+                'rating': review.rating,
+                'comment': review.comment,
+                'created_at': review.created_at.isoformat(),
+                'likes': review.likes or 0,
+                'dislikes': review.dislikes or 0,
+                'user_token': review.user_token,  # ✅ Возвращаем как есть
+                'device_fingerprint': review.device_fingerprint,  # ✅ Возвращаем как есть
+                'user_ratings': review.user_ratings or {}
+            }
+            reviews_data.append(review_data)
 
-        # Добавляем заголовки против кеширования
-        response = jsonify(reviews_data)
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        # print(f"✅ Возвращаем {len(reviews_data)} отзывов")
+        # for i, rd in enumerate(reviews_data[:3]):
+        #     print(f"  📤 Отзыв {i+1}: id={rd['id']}, user_token='{rd['user_token']}'")
 
-        return response
+        # Логируем токены для отладки
+        for i, rd in enumerate(reviews_data[:5]):
+            print(
+                f"  📤 Отзыв {i + 1}: id={rd['id']}, user_token='{rd['user_token']}', device_fingerprint='{rd['device_fingerprint']}'")
+
+        return jsonify(reviews_data)
 
     except Exception as e:
-        print(f"Ошибка при получении отзывов: {str(e)}")
+        print(f"❌ Ошибка при получении отзывов: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/reviews/<int:review_id>/rate', methods=['POST'])
+def handle_review_rating(review_id):
+    try:
+        data = request.get_json()
+        print(f"=== ОБРАБОТКА ОЦЕНКИ ОТЗЫВА ===")
+        print(f"Полученные данные: {data}")
+
+        # Поддерживаем оба формата для обратной совместимости
+        action = data.get('action')
+        user_token = data.get('user_token')
+
+        if not user_token:
+            return jsonify({'error': 'User token required'}), 400
+
+        # Находим отзыв
+        review = Review.query.get(review_id)
+        if not review:
+            return jsonify({'error': 'Review not found'}), 404
+
+        # Инициализируем user_ratings если нет
+        if not review.user_ratings:
+            review.user_ratings = {}
+
+        # Получаем текущую оценку пользователя
+        current_user_rating = review.user_ratings.get(user_token)
+        print(f"Текущая оценка пользователя в БД: {current_user_rating}")
+
+        new_likes = review.likes
+        new_dislikes = review.dislikes
+        new_user_rating = None
+
+        # УПРОЩЕННАЯ ЛОГИКА: отправка like/dislike переключает оценку
+        if action == 'like':
+            if current_user_rating == 'like':
+                # Снимаем лайк
+                new_likes = max(0, review.likes - 1)
+                if user_token in review.user_ratings:
+                    del review.user_ratings[user_token]
+                new_user_rating = None
+                print("Лайк снят")
+            else:
+                # Ставим лайк (если был дизлайк - меняем)
+                if current_user_rating == 'dislike':
+                    new_dislikes = max(0, review.dislikes - 1)
+                new_likes = review.likes + 1
+                review.user_ratings[user_token] = 'like'
+                new_user_rating = 'like'
+                print("Лайк поставлен или изменен с дизлайка")
+
+        elif action == 'dislike':
+            if current_user_rating == 'dislike':
+                # Снимаем дизлайк
+                new_dislikes = max(0, review.dislikes - 1)
+                if user_token in review.user_ratings:
+                    del review.user_ratings[user_token]
+                new_user_rating = None
+                print("Дизлайк снят")
+            else:
+                # Ставим дизлайк (если был лайк - меняем)
+                if current_user_rating == 'like':
+                    new_likes = max(0, review.likes - 1)
+                new_dislikes = review.dislikes + 1
+                review.user_ratings[user_token] = 'dislike'
+                new_user_rating = 'dislike'
+                print("Дизлайк поставлен или изменен с лайка")
+
+        else:
+            return jsonify({'error': 'Invalid action. Use "like" or "dislike"'}), 400
+
+        # Обновляем счетчики
+        review.likes = new_likes
+        review.dislikes = new_dislikes
+
+        # Помечаем user_ratings как измененное поле
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(review, "user_ratings")
+
+        # Сохраняем в БД
+        db.session.commit()
+
+        # Обновляем объект из БД
+        db.session.refresh(review)
+
+        print(f"Результат: лайки={review.likes}, дизлайки={review.dislikes}, user_rating={review.user_ratings.get(user_token)}")
+        print("===============================")
+
+        return jsonify({
+            'likes': review.likes,
+            'dislikes': review.dislikes,
+            'user_rating': review.user_ratings.get(user_token),
+            'user_ratings': review.user_ratings or {}
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Ошибка в handle_review_rating: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/reviews/<int:review_id>/like', methods=['POST'])
 def like_review(review_id):
@@ -722,66 +696,151 @@ def update_review(review_id):
 
 @app.route('/api/reviews', methods=['POST'])
 def create_review():
-    try:
-        data = request.get_json()
-        print("=== НОВЫЙ ОТЗЫВ ===")
-        print("Данные от клиента:", data)
-        print("Заголовки:", dict(request.headers))
+    if request.method == 'GET':
+        restaurant_id = request.args.get('restaurant_id')
+        if not restaurant_id:
+            return jsonify({'error': 'restaurant_id is required'}), 400
 
-        # Проверяем обязательные поля
-        required_fields = ['restaurant_id', 'username', 'rating', 'user_token', 'device_fingerprint']
-        missing_fields = [field for field in required_fields if field not in data]
-
-        if missing_fields:
-            print(f"Отсутствуют поля: {missing_fields}")
-            return jsonify({'error': f'Missing required fields: {missing_fields}'}), 400
-
-        # Проверяем рейтинг
-        rating = int(data['rating'])
-        if rating < 1 or rating > 5:
-            return jsonify({'error': 'Rating must be between 1 and 5'}), 400
-
-        # Сохраняем отзыв в базу данных
-        review = Review(
-            restaurant_id=data['restaurant_id'],
-            username=data['username'],
-            rating=rating,
-            comment=data.get('comment', ''),
-            user_token=data['user_token'],
-            device_fingerprint=data['device_fingerprint'],
-            ip_address=request.remote_addr
-        )
-
-        print(f"Создаем отзыв:")
-        print(f"  user_token: {review.user_token}")
-        print(f"  device_fingerprint: {review.device_fingerprint}")
-
-        db.session.add(review)
-        db.session.commit()
-
-        print(f"Отзыв создан успешно! ID: {review.id}")
-        print("===================")
-
-        return jsonify({
+        reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(Review.created_at.desc()).all()
+        reviews_data = [{
             'id': review.id,
-            'restaurant_id': review.restaurant_id,
             'username': review.username,
             'rating': review.rating,
             'comment': review.comment,
-            'user_token': review.user_token,
-            'device_fingerprint': review.device_fingerprint,
             'created_at': review.created_at.isoformat(),
-            'likes': review.likes,
-            'dislikes': review.dislikes
-        }), 201
+            'likes': review.likes or 0,
+            'dislikes': review.dislikes or 0,
+            'user_token': review.user_token,  # ✅ Добавляем
+            'device_fingerprint': review.device_fingerprint,  # ✅ Добавляем
+            'user_ratings': review.user_ratings or {}
+        } for review in reviews]
 
-    except Exception as e:
-        print(f"Ошибка при создании отзыва: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        db.session.rollback()
-        return jsonify({'error': 'Internal server error'}), 500
+        return jsonify(reviews_data)
 
+    elif request.method == 'POST':
+        # НОВЫЙ КОД создания отзыва
+        try:
+            data = request.get_json()
+            print("=== СОЗДАНИЕ ОТЗЫВА ===")
+            print("Полные данные от клиента:", data)
+
+            if not data:
+                return jsonify({'error': 'No data provided'}), 400
+
+            # Проверяем обязательные поля
+            required_fields = ['restaurant_id', 'username', 'rating']
+            missing_fields = [field for field in required_fields if field not in data]
+
+            if missing_fields:
+                return jsonify({'error': f'Missing required fields: {missing_fields}'}), 400
+
+            # Проверяем рейтинг
+            rating = int(data['rating'])
+            if rating < 1 or rating > 5:
+                return jsonify({'error': 'Rating must be between 1 and 5'}), 400
+
+            # Извлекаем токены
+            user_token = data.get('user_token')
+            device_fingerprint = data.get('device_fingerprint')
+
+            # print(f"📝 Полученные токены - user_token: '{user_token}', device_fingerprint: '{device_fingerprint}'")
+            # print(f"🔍 ПЕРЕД СОХРАНЕНИЕМ:")
+            # print(f"   user_token: '{review.user_token}'")
+            # print(f"   device_fingerprint: '{review.device_fingerprint}'")
+
+            # Создаем отзыв
+            review = Review(
+                restaurant_id=data['restaurant_id'],
+                username=data['username'],
+                rating=rating,
+                comment=data.get('comment', ''),
+                user_token=user_token,
+                device_fingerprint=device_fingerprint,
+                ip_address=request.remote_addr,
+                likes=0,
+                dislikes=0,
+                user_ratings={}
+            )
+
+            print(f"🔍 ПЕРЕД СОХРАНЕНИЕМ:")
+            print(f"   user_token: '{review.user_token}'")
+            print(f"   device_fingerprint: '{review.device_fingerprint}'")
+
+            # Сохраняем в БД
+            db.session.add(review)
+            db.session.commit()
+
+            # ОБНОВЛЯЕМ объект из БД
+            db.session.refresh(review)
+
+            # print(f"🔍 ПОСЛЕ СОХРАНЕНИЯ:")
+            # print(f"   user_token в БД: '{review.user_token}'")
+            # print(f"   device_fingerprint в БД: '{review.device_fingerprint}'")
+
+            # Обновляем статистику ресторана
+            update_restaurant_stats(data['restaurant_id'])
+
+            # ВАЖНО: Возвращаем ВСЕ поля
+            response_data = {
+                'success': True,
+                'message': 'Review added successfully',
+                'review': {
+                    'id': review.id,
+                    'restaurant_id': review.restaurant_id,
+                    'username': review.username,
+                    'rating': review.rating,
+                    'comment': review.comment,
+                    'created_at': review.created_at.isoformat(),
+                    'likes': review.likes,
+                    'dislikes': review.dislikes,
+                    'user_token': review.user_token,  # ✅ Возвращаем
+                    'device_fingerprint': review.device_fingerprint,  # ✅ Возвращаем
+                    'user_ratings': review.user_ratings
+                }
+            }
+
+            print("✅ Отправляем ответ клиенту:", response_data)
+            return jsonify(response_data), 201
+
+        except Exception as e:
+            print(f"❌ Ошибка при создании отзыва: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({'error': 'Internal server error'}), 500
+
+
+@app.route('/api/debug_current_endpoint', methods=['POST'])
+def debug_current_endpoint():
+    """Проверка какой endpoint сейчас активен"""
+    print("=== DEBUG: ТЕКУЩИЙ ENDPOINT ВЫЗВАН ===")
+    data = request.get_json()
+    print("Данные:", data)
+
+    # Создаем тестовый отзыв
+    review = Review(
+        restaurant_id=data['restaurant_id'],
+        username=data['username'],
+        rating=data['rating'],
+        comment=data.get('comment', ''),
+        user_token=data['user_token'],
+        device_fingerprint=data['device_fingerprint'],
+        ip_address=request.remote_addr
+    )
+
+    db.session.add(review)
+    db.session.commit()
+    db.session.refresh(review)
+
+    return jsonify({
+        'success': True,
+        'endpoint': 'debug_current_endpoint',
+        'review': {
+            'id': review.id,
+            'user_token': review.user_token,
+            'device_fingerprint': review.device_fingerprint
+        }
+    })
 
 @app.route('/api/fix_legacy_reviews', methods=['POST'])
 def fix_legacy_reviews():
@@ -803,7 +862,7 @@ def fix_legacy_reviews():
 
 @app.route('/api/migrate_legacy_reviews', methods=['POST'])
 def migrate_legacy_reviews():
-    """Миграция старых отзывов без user_token и device_fingerprint"""
+    """Миграция legacy отзывов ТОЛЬКО для текущего пользователя"""
     try:
         data = request.get_json()
         user_token = data.get('user_token')
@@ -812,18 +871,21 @@ def migrate_legacy_reviews():
         if not user_token or not device_fingerprint:
             return jsonify({'error': 'User token and device fingerprint required'}), 400
 
-        # Находим все отзывы без user_token
+        # Находим legacy отзывы для текущего пользователя (по IP или другим признакам)
+        # Например, можно мигрировать отзывы с определенного IP
+        user_ip = request.remote_addr
+
+        # Ищем legacy отзывы с текущего IP
         legacy_reviews = Review.query.filter(
-            (Review.user_token.is_(None)) | (Review.device_fingerprint.is_(None))
+            (Review.user_token.startswith('legacy_token_')) &
+            (Review.ip_address == user_ip)
         ).all()
 
         migrated_count = 0
         for review in legacy_reviews:
-            # Заполняем недостающие поля
-            if review.user_token is None:
-                review.user_token = user_token
-            if review.device_fingerprint is None:
-                review.device_fingerprint = device_fingerprint
+            # Заменяем legacy токены на реальные
+            review.user_token = user_token
+            review.device_fingerprint = device_fingerprint
             migrated_count += 1
 
         db.session.commit()
@@ -867,25 +929,76 @@ def test_create_review():
 
 @app.route('/api/debug/reviews')
 def debug_review(review_id):
-    """Функция для отладки конкретного отзыва"""
+    """Отладочная информация по отзыву"""
     try:
         review = Review.query.get(review_id)
-        if review:
-            print(f"=== ДЕБАГ ОТЗЫВА {review_id} ===")
-            print(f"ID: {review.id}")
-            print(f"Restaurant ID: {review.restaurant_id}")
-            print(f"Username: {review.username}")
-            print(f"Rating: {review.rating}")
-            print(f"Comment: {review.comment}")
-            print(f"Created at: {review.created_at}")
-            print(f"User token: {review.user_token}")
-            print(f"Device fingerprint: {review.device_fingerprint}")
-            print(f"Updated at: {review.updated_at}")
-            print("===============================")
-        else:
-            print(f"Отзыв {review_id} не найден")
+        if not review:
+            return jsonify({'error': 'Review not found'}), 404
+
+        return jsonify({
+            'id': review.id,
+            'username': review.username,
+            'user_token': review.user_token,
+            'device_fingerprint': review.device_fingerprint,
+            'created_at': review.created_at.isoformat(),
+            'ip_address': review.ip_address
+        })
     except Exception as e:
-        print(f"Ошибка при отладке отзыва: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/test_review_creation', methods=['POST'])
+def test_review_creation():
+    """Тестовое создание отзыва для отладки"""
+    try:
+        data = request.get_json()
+        print("=== ТЕСТОВОЕ СОЗДАНИЕ ОТЗЫВА ===")
+        print("Данные:", data)
+
+        # Создаем тестовый отзыв
+        review = Review(
+            restaurant_id=data['restaurant_id'],
+            username=data['username'],
+            rating=data['rating'],
+            comment=data.get('comment', ''),
+            user_token=data['user_token'],
+            device_fingerprint=data['device_fingerprint'],
+            ip_address=request.remote_addr,
+            likes=0,
+            dislikes=0,
+            user_ratings={}
+        )
+
+        print(f"Перед сохранением - user_token: '{review.user_token}'")
+        print(f"Перед сохранением - device_fingerprint: '{review.device_fingerprint}'")
+
+        db.session.add(review)
+        db.session.commit()
+        db.session.refresh(review)
+
+        print(f"После сохранения - user_token: '{review.user_token}'")
+        print(f"После сохранения - device_fingerprint: '{review.device_fingerprint}'")
+
+        # Возвращаем полные данные
+        return jsonify({
+            'success': True,
+            'review': {
+                'id': review.id,
+                'username': review.username,
+                'rating': review.rating,
+                'comment': review.comment,
+                'created_at': review.created_at.isoformat(),
+                'user_token': review.user_token,
+                'device_fingerprint': review.device_fingerprint,
+                'likes': review.likes,
+                'dislikes': review.dislikes,
+                'user_ratings': review.user_ratings
+            }
+        })
+
+    except Exception as e:
+        print(f"Ошибка: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/debug/review/<int:review_id>')
 def debug_review_endpoint(review_id):
@@ -908,41 +1021,34 @@ def test_simple_update():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@app.route('/api/fix_reviews', methods=['POST'])
-def fix_existing_reviews():
-    """Временная функция для исправления существующих отзывов"""
-    try:
-        reviews = Review.query.all()
-        fixed_count = 0
-
-        for review in reviews:
-            if not review.user_token or not review.device_fingerprint:
-                # Генерируем значения для старых отзывов
-                review.user_token = f'legacy_token_{review.id}'
-                review.device_fingerprint = f'legacy_device_{review.id}'
-                fixed_count += 1
-
-        db.session.commit()
-        return jsonify({'message': f'Fixed {fixed_count} reviews'})
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/reviews/<int:review_id>', methods=['DELETE'])
 def delete_review(review_id):
-    review = Review.query.get(review_id)
-    if not review:
-        return jsonify({'error': 'Review not found'}), 404
-
     try:
         data = request.get_json()
-        user_token = data.get('user_token') if data else None
-        device_fingerprint = data.get('device_fingerprint') if data else None
+        print(f"=== УДАЛЕНИЕ ОТЗЫВА {review_id} ===")
+        print(f"Данные: {data}")
 
-        # Проверяем права
-        if not user_token or review.user_token != user_token:
-            return jsonify({'error': 'Permission denied'}), 403
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        user_token = data.get('user_token')
+        device_fingerprint = data.get('device_fingerprint')
+
+        if not user_token or not device_fingerprint:
+            return jsonify({'error': 'User token and device fingerprint required'}), 400
+
+        # Находим отзыв
+        review = Review.query.get(review_id)
+        if not review:
+            return jsonify({'error': 'Review not found'}), 404
+
+        print(f"User token в отзыве: {review.user_token}")
+        print(f"User token из запроса: {user_token}")
+
+        # Проверяем права на удаление
+        if not review.user_token or review.user_token != user_token:
+            print("Ошибка: несовпадение user_token")
+            return jsonify({'error': 'Permission denied - user token mismatch'}), 403
 
         # Проверяем время удаления (6 часов)
         now_utc = datetime.utcnow()
@@ -954,37 +1060,34 @@ def delete_review(review_id):
         time_diff = now_utc - created_at_naive
         hours_diff = time_diff.total_seconds() / 3600
 
+        print(f"Прошло времени с создания: {hours_diff:.2f} часов")
+
         if hours_diff > 6:
+            print("Ошибка: время удаления истекло")
             return jsonify({'error': 'Deletion time expired (6 hours limit)'}), 403
 
-        restaurant = Restaurant.query.get(review.restaurant_id)
+        # Сохраняем restaurant_id для обновления статистики
+        restaurant_id = review.restaurant_id
 
         # Удаляем отзыв
         db.session.delete(review)
-
-        # Обновляем статистику ресторана
-        if restaurant and restaurant.review_count > 0:
-            if restaurant.review_count == 1:
-                restaurant.total_rating = 0
-            else:
-                total = (restaurant.total_rating * restaurant.review_count) - review.rating
-                restaurant.total_rating = total / (restaurant.review_count - 1)
-
-            restaurant.review_count -= 1
-            restaurant.last_updated = datetime.utcnow()
-
         db.session.commit()
 
+        # Обновляем статистику ресторана
+        update_restaurant_stats(restaurant_id)
+
+        print("Отзыв успешно удален")
         return jsonify({
             'message': 'Review deleted successfully',
-            'restaurant': {
-                'rating': restaurant.total_rating if restaurant else None,
-                'review_count': restaurant.review_count if restaurant else None
-            }
+            'restaurant_id': restaurant_id
         })
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': str(e)}), 500
+        print(f"Ошибка при удалении отзыва: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @app.route('/add_place', methods=['GET', 'POST'])
@@ -1121,6 +1224,49 @@ def migrate_review_table():
         raise e
     finally:
         conn.close()
+
+@app.route('/api/reviews/<int:review_id>/migrate', methods=['POST'])
+def migrate_review(review_id):
+    """Миграция legacy отзыва на текущего пользователя"""
+    try:
+        data = request.get_json()
+        user_token = data.get('user_token')
+        device_fingerprint = data.get('device_fingerprint')
+
+        if not user_token or not device_fingerprint:
+            return jsonify({'error': 'User token and device fingerprint required'}), 400
+
+        # Находим отзыв
+        review = Review.query.get(review_id)
+        if not review:
+            return jsonify({'error': 'Review not found'}), 404
+
+        # Проверяем что это legacy отзыв
+        if not review.user_token or not review.user_token.startswith('legacy_token_'):
+            return jsonify({'error': 'Not a legacy review'}), 400
+
+        # Дополнительные проверки можно добавить здесь
+        # Например, проверка по IP, username и т.д.
+
+        # Мигрируем отзыв
+        review.user_token = user_token
+        review.device_fingerprint = device_fingerprint
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Review migrated successfully',
+            'review': {
+                'id': review.id,
+                'user_token': review.user_token,
+                'device_fingerprint': review.device_fingerprint
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # Функция для добавления секрета в базу данных
 def add_secret(key_name, secret_value):

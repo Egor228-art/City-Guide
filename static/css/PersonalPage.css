@@ -2293,3 +2293,134 @@ body.no-scroll {
 #delete-confirmation-modal #cancel-delete:hover {
     background: #e0e0e0;
 }
+
+
+@keyframes clickAnimation {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.9); }
+    100% { transform: scale(1); }
+}
+
+.click-animation {
+    animation: clickAnimation 0.3s ease;
+}
+
+
+
+
+
+/* Стили для кнопок действий в модальном окне */
+.modal-action-buttons {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.edit-review-btn, .delete-review-btn {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.edit-review-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.edit-review-btn:hover {
+    background-color: #45a049;
+}
+
+.delete-review-btn {
+    background-color: #f44336;
+    color: white;
+}
+
+.delete-review-btn:hover {
+    background-color: #da190b;
+}
+
+.edit-time-expired, .delete-time-expired {
+    text-align: center;
+    padding: 8px;
+    border-radius: 5px;
+}
+
+.edit-time-expired {
+    background-color: #fff5f5;
+    border: 1px solid #ffcdd2;
+}
+
+.delete-time-expired {
+    background-color: #fff3e0;
+    border: 1px solid #ffe0b2;
+}
+
+.no-actions-message {
+    margin-top: 15px;
+    text-align: center;
+}
+
+
+
+
+/* Добавьте в ваш CSS */
+.modal-action-buttons {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.edit-review-btn {
+    padding: 8px 16px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.edit-review-btn:hover {
+    background: #0056b3;
+}
+
+.delete-review-btn {
+    padding: 8px 16px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.delete-review-btn:hover {
+    background: #c82333;
+}
+
+.debug-info {
+    background: #f8f9fa;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #666;
+    border-left: 4px solid #ccc;
+}
+
+.debug-info code {
+    background: #e9ecef;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+}
