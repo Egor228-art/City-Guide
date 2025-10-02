@@ -122,8 +122,7 @@
                         <!-- Кнопка на карточке заведения -->
                         <button class="favorite-btn js-favorite-btn"
                                 data-item-id="lambs"
-                                data-item='{"id":"lambs","name":"Ресторан Lambs"}'
-                                onclick="toggleFavorite('lambs', this)">
+                                data-item='{"id":"lambs","name":"Барашки","description":"Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.","image":"{{ url_for('static', filename='Фотки зданий/Барашки.png') }}","address":"ул. Ломоносова, 22/2, Великий Новгород","telephone":"+7 (8162) 55-53-22","category":"Ресторан","page_url":"/Restaurant/lambs"}'>
                           ❤
                         </button>
                         <!-- Кнопка развернуть в правом нижнем углу -->
@@ -163,10 +162,12 @@
             <div class="details-section">
                 <h1>Барашки</h1>
                 <p>Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.</p>
-                <svg style="width: 18px; height: 18px; font-size: 17px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                </svg>
-                <p>+7 (8162) 55-53-22</p>
+                <div class="contact-info" style="display: flex; align-items: center; gap: 8px;">
+                    <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    <p style="margin: 0;">+7 (8162) 55-53-22</p>
+                </div>
             </div>
         </div>
 
@@ -263,7 +264,7 @@
                 <h2>Оставить отзыв</h2>
                 <form id="review-form">
                     <label class="review-form-name" for="name">Имя:</label>
-                    <input type="text" id="name" required><br><br>
+                    <input class="pp" type="text" id="name" required><br><br>
                     <label>Оценка: <span id="rating-error" style="color: red; display: none; font-size: 11px">*Обязательное поле</span></label>
                     <div class="stars" id="review-stars">
                         <span class="star" data-value="1">
@@ -348,11 +349,11 @@
 
                 <div class="form-group">
                     <label for="edit-comment">Комментарий:</label>
-                    <textarea id="edit-comment" rows="4" required></textarea>
+                    <textarea id="edit-comment" rows="4" style="width: 430px;" required></textarea>
                 </div>
 
                 <div class="form-buttons">
-                    <button type="button" class="btn-cancel" onclick="closeEditModal()">Отмена</button>
+                    <button style="margin-right: 100px;" type="button" class="review-form-button" onclick="closeEditModal()">Отмена</button>
                     <button type="submit" class="btn-save">Сохранить изменения</button>
                 </div>
             </form>
@@ -439,6 +440,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initStats(); // Загрузка статистики и отзывов Вместо updateOverallRating()
     initFilters(); // Инициализация фильтров - ДОБАВЬТЕ ЭТУ СТРОЧКУ!
     loadReviews(); // Загрузка отзывов
+    updateFavoritesCount();
+    markExistingFavorites();
+    initFavorites();
     setInterval(saveRatingsToStorage, 30000); // Периодическое сохранение (каждые 30 секунд)
 
     document.getElementById('full-review-modal').style.display = 'none';
@@ -446,6 +450,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Генерируем/восстанавливаем токен
     userToken = localStorage.getItem('userToken') || generateUserToken();
     console.log('User token при загрузке:', userToken);
+    console.log('DOM loaded, initializing favorites...');
 
     // Сохраняем токен в localStorage
     localStorage.setItem('userToken', userToken);
@@ -562,6 +567,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Остальная инициализация...
 });
 
+// Также инициализируем когда вся страница загружена
+window.addEventListener('load', function() {
+    console.log('Window loaded, finalizing favorites initialization...');
+    setTimeout(initFavorites, 100);
+});
+
 // Новая функция для инициализации кнопок скролла
 function initScrollButtons() {
     const reviewList = document.getElementById('review-list');
@@ -666,11 +677,156 @@ function trackPageReload() {
     }
 }
 
-// Улучшенная функция создания отзыва с защитой от перезагрузки
+// Функция для красивого форматирования времени
+function formatTimeUntilNextReview() {
+    const timeUntilNext = getTimeUntilNextReview();
+    if (!timeUntilNext) return null;
+
+    const { hours, minutes } = timeUntilNext;
+
+    if (hours > 0 && minutes > 0) {
+        return `${hours}ч ${minutes}м`;
+    } else if (hours > 0) {
+        return `${hours}ч`;
+    } else if (minutes > 0) {
+        return `${minutes}м`;
+    } else {
+        return 'менее минуты';
+    }
+}
+
+// Функция обновления лимита после отправки отзыва
+function updateUserReviewLimit() {
+    try {
+        const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+        reviewLimits[userToken] = {
+            lastReviewDate: new Date().toISOString()
+        };
+        localStorage.setItem('reviewLimits', JSON.stringify(reviewLimits));
+        console.log('✅ Лимит обновлен для пользователя:', userToken);
+    } catch (error) {
+        console.error('Error updating review limit:', error);
+    }
+}
+
+// Функция проверки лимита отзывов (1 в день)
+function canUserPostReview() {
+    try {
+        const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+        const userLimit = reviewLimits[userToken];
+
+        if (!userLimit) {
+            return true; // Пользователь еще не оставлял отзывов
+        }
+
+        const lastReviewDate = new Date(userLimit.lastReviewDate);
+        const today = new Date();
+
+        // Проверяем, был ли отзыв сегодня
+        const canPost = lastReviewDate.toDateString() !== today.toDateString();
+        console.log('🔍 Проверка лимита:', {
+            userToken: userToken,
+            lastReviewDate: lastReviewDate.toDateString(),
+            today: today.toDateString(),
+            canPost: canPost
+        });
+
+        return canPost;
+
+    } catch (error) {
+        console.error('Error checking review limit:', error);
+        return true; // В случае ошибки разрешаем отправку
+    }
+}
+
+// Функция получения времени до следующего отзыва
+function getTimeUntilNextReview() {
+    try {
+        const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+        const userLimit = reviewLimits[userToken];
+
+        if (!userLimit) {
+            return null;
+        }
+
+        const lastReviewDate = new Date(userLimit.lastReviewDate);
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+
+        const timeDiff = tomorrow - today;
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+
+        console.log('⏰ Время до следующего отзыва:', { hours, minutes });
+
+        return { hours, minutes };
+    } catch (error) {
+        console.error('Error getting time until next review:', error);
+        return null;
+    }
+}
+
+// Функция показа уведомлений
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease;
+    `;
+
+    if (type === 'error') {
+        notification.style.backgroundColor = '#f44336';
+    } else if (type === 'success') {
+        notification.style.backgroundColor = '#4CAF50';
+    } else {
+        notification.style.backgroundColor = '#2196F3';
+    }
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 5000);
+}
+
+// Обновленная функция отправки отзыва
 async function submitReview(e) {
     if (e) e.preventDefault();
 
-    console.log('=== ОТПРАВКА ОТЗЫВА ===');
+    console.log('=== ОТПРАВКА ОТЗЫВА С ПРОВЕРКОЙ ЛИМИТА ===');
+
+    // Проверяем лимит
+    if (!canUserPostReview()) {
+        const timeUntilNext = getTimeUntilNextReview();
+        let message = 'Вы уже оставляли отзыв сегодня. ';
+
+        if (timeUntilNext) {
+            const formattedTime = formatTimeUntilNextReview();
+            message += `Следующий отзыв можно будет оставить через ${formattedTime}`;
+        }
+
+        showNotification(message, 'error');
+        return false;
+    }
 
     const name = document.getElementById('name').value.trim();
     const comment = document.getElementById('comment').value.trim();
@@ -687,16 +843,12 @@ async function submitReview(e) {
         return false;
     }
 
-    // console.log('Данные формы:');
-    // console.log('  Имя:', name);
-    // console.log('  Комментарий:', comment);
-    // console.log('  Рейтинг:', selectedRating);
-    // console.log('  User token:', userToken);
-    // console.log('  Device fingerprint:', deviceFingerprint);
-    // console.log('Отправляемые данные:', payload);
-    // console.log('Полный ответ сервера:', data);
-
     // Блокируем повторные отправки
+    if (reviewCreationInProgress) {
+        console.log('Предотвращена повторная отправка отзыва');
+        return false;
+    }
+
     reviewCreationInProgress = true;
     const submitButton = document.querySelector('#review-form button[type="submit"]');
     const originalText = submitButton.textContent;
@@ -728,40 +880,47 @@ async function submitReview(e) {
 
         if (response.ok) {
             if (data.review) {
-                reviews.unshift(data.review);
-                addReviewToUIImmediately(data.review);
+                // ОБНОВЛЯЕМ ЛИМИТ ПОЛЬЗОВАТЕЛЯ
+                updateUserReviewLimit();
 
-                // ВАЖНО: Принудительно обновляем порядок после добавления
+                console.log('✅ Лимит обновлен, отзыв добавлен');
+
+                // Добавляем отзыв в UI
+                const existingIndex = reviews.findIndex(r => r.id === data.review.id);
+
+                if (existingIndex === -1) {
+                    reviews.unshift(data.review);
+                } else {
+                    reviews[existingIndex] = data.review;
+                }
+
+                // Перезагружаем отзывы
+                await loadReviews();
+
+                // Закрываем модальное окно
+                closeReviewModal();
+
+                // Сбрасываем форму
+                resetReviewForm();
+
+                // Обновляем статистику
                 setTimeout(() => {
-                    refreshReviewsOrder();
-                    applyFilters(); // Переприменяем фильтры
-                }, 200);
+                    initStats();
+                }, 500);
 
-                // Добавляем в глобальный массив
-                reviews.unshift(data.review);
-                // console.log('Отзыв добавлен в глобальный массив с user_token:', data.review.user_token);
+                // Показываем успешное уведомление
+                showNotification('Отзыв успешно добавлен!', 'success');
+
+            } else {
+                throw new Error('Отзыв не вернулся с сервера');
             }
-
-            // НЕМЕДЛЕННО добавляем отзыв в UI
-            addReviewToUIImmediately(data.review);
-
-            // Закрываем модальное окно
-            closeReviewModal();
-
-            // Сбрасываем форму
-            resetReviewForm();
-
-            // Обновляем статистику
-            setTimeout(() => {
-                initStats();
-            }, 500);
-
         } else {
             throw new Error(data.error || 'Ошибка при добавлении отзыва');
         }
 
     } catch (error) {
         console.error('Ошибка:', error);
+        showNotification('Ошибка при отправке отзыва', 'error');
     } finally {
         // Разблокируем кнопку
         reviewCreationInProgress = false;
@@ -999,7 +1158,7 @@ function createReviewElement(review) {
         </div>
         <div class="comment-container">
             <div class="comment-text">${review.comment || ''}</div>
-            ${review.comment ? '<div class="comment-blur"></div>' : ''}
+            <div class="comment-blur"></div>
         </div>
         ${review.comment ? `
             <div class="review-actions-bottom">
@@ -2474,19 +2633,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-
-
-// Функция для показа уведомлений
-function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => {
-        notification.classList.add('fade-out');
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
+// Функция для сброса лимитов (для отладки)
+function resetReviewLimits() {
+    localStorage.removeItem('reviewLimits');
+    console.log('Лимиты отзывов сброшены');
+    showNotification('Лимиты отзывов сброшены', 'info');
 }
 
 // Абсолютно надежная функция закрытия
@@ -2524,32 +2675,212 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initFavorites() {
-  updateFavoritesVisibility();
+    console.log('Initializing favorites...');
 
-  window.addEventListener('storage', function(event) {
-    if (event.key === 'favorites') {
-      updateFavoritesVisibility();
-    }
-  });
+    // Обновляем счетчик
+    updateFavoritesCount();
+
+    // Отмечаем существующие избранные
+    markExistingFavorites();
+
+    // Добавляем обработчики для всех кнопок избранного
+    document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+        // Удаляем старые обработчики
+        btn.replaceWith(btn.cloneNode(true));
+    });
+
+    // Добавляем новые обработчики
+    document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+        btn.addEventListener('click', function(event) {
+            console.log('Favorite button clicked');
+            const itemId = this.dataset.itemId;
+            const itemData = JSON.parse(this.dataset.item);
+            toggleFavorite(event, itemId, itemData);
+        });
+    });
+
+    // Синхронизация между вкладками
+    window.addEventListener('storage', function(event) {
+        if (event.key === 'favorites') {
+            console.log('Favorites updated from storage');
+            updateFavoritesCount();
+            markExistingFavorites();
+        }
+    });
+
+    console.log('Favorites initialized');
 }
 
-// Основная функция переключения
-function toggleFavorite(itemId, itemData) {
-  const favorites = JSON.parse(localStorage.getItem('favorites')) || {};
+function toggleFavorite(event, itemId, itemData) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
 
-  if (favorites[itemId]) {
-    delete favorites[itemId];
-  } else {
-    favorites[itemId] = itemData;
-  }
+    const button = event ? event.currentTarget : this;
 
-  localStorage.setItem('favorites', JSON.stringify(favorites));
+    try {
+        // Если данные не переданы, пытаемся получить из data-атрибутов
+        if (!itemData && button) {
+            const itemDataStr = button.getAttribute('data-item');
+            if (itemDataStr) {
+                itemData = JSON.parse(itemDataStr);
+            }
+        }
 
-  // Принудительное обновление интерфейса
-  forceUIUpdate();
+        // Если itemId не передан, получаем из данных
+        if (!itemId && itemData) {
+            itemId = itemData.id;
+        }
 
-  // Оповещение других вкладок
-  window.dispatchEvent(new Event('storageUpdate'));
+        if (!itemId || !itemData) {
+            console.error('Missing item data for favorite toggle');
+            return;
+        }
+
+        const favorites = getFavorites();
+        const existingIndex = favorites.findIndex(fav => fav.id === itemId);
+
+        if (existingIndex === -1) {
+            // Добавляем в избранное
+            favorites.push(itemData);
+            if (button) button.classList.add('active');
+            console.log(`✅ "${itemData.name}" добавлен в избранное`);
+
+            // Показываем уведомление
+            showFavoriteNotification(`"${itemData.name}" добавлен в избранное`, 'success');
+        } else {
+            // Удаляем из избранного
+            favorites.splice(existingIndex, 1);
+            if (button) button.classList.remove('active');
+            console.log(`❌ "${itemData.name}" удален из избранного`);
+
+            // Показываем уведомление
+            showFavoriteNotification(`"${itemData.name}" удален из избранного`, 'remove');
+        }
+
+        saveFavorites(favorites);
+        updateFavoritesCount();
+
+        // Обновляем состояние всех кнопок на странице
+        markExistingFavorites();
+
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+    }
+}
+
+// Функция для показа уведомлений об избранном
+function showFavoriteNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `favorite-notification ${type}`;
+    notification.textContent = message;
+
+    notification.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: ${type === 'success' ? '#4CAF50' : '#ff4757'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease;
+        max-width: 300px;
+    `;
+
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+        notification.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Обновленная функция отметки существующих избранных
+function markExistingFavorites() {
+    try {
+        const favorites = getFavorites();
+        console.log(`Marking existing favorites: ${favorites.length} items`);
+
+        document.querySelectorAll('.js-favorite-btn').forEach(btn => {
+            try {
+                const itemData = JSON.parse(btn.getAttribute('data-item'));
+                if (itemData && itemData.id) {
+                    const isFavorite = favorites.some(fav => fav.id === itemData.id);
+                    if (isFavorite) {
+                        btn.classList.add('active');
+                        console.log(`Marked as favorite: ${itemData.name}`);
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                }
+            } catch (error) {
+                console.error('Error marking favorite button:', error);
+            }
+        });
+    } catch (error) {
+        console.error('Error in markExistingFavorites:', error);
+    }
+}
+
+// Обновленная функция обновления счетчика
+function updateFavoritesCount() {
+    try {
+        const favorites = getFavorites();
+        const count = favorites.length;
+        const counter = document.getElementById('favorites-count');
+        const headerBtn = document.getElementById('header-favorites-btn');
+
+        console.log(`Updating favorites count: ${count}`);
+
+        if (counter) {
+            counter.textContent = count;
+        }
+
+        if (headerBtn) {
+            if (count > 0) {
+                headerBtn.style.display = 'inline-block';
+                setTimeout(() => {
+                    headerBtn.style.opacity = '1';
+                    headerBtn.style.transform = 'translateY(0)';
+                }, 10);
+            } else {
+                headerBtn.style.opacity = '0';
+                headerBtn.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    headerBtn.style.display = 'none';
+                }, 300);
+            }
+        }
+    } catch (error) {
+        console.error('Error updating favorites count:', error);
+    }
+}
+
+// Вспомогательные функции
+function getFavorites() {
+    try {
+        return JSON.parse(localStorage.getItem('favorites')) || [];
+    } catch (error) {
+        console.error('Error getting favorites:', error);
+        return [];
+    }
+}
+
+function saveFavorites(favorites) {
+    try {
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+        // Триггерим custom event для синхронизации между компонентами
+        window.dispatchEvent(new Event('favoritesUpdated'));
+    } catch (error) {
+        console.error('Error saving favorites:', error);
+    }
 }
 
 // Обновление интерфейса с анимацией
@@ -2606,24 +2937,6 @@ function hideHeaderButton() {
     setTimeout(() => {
       btn.style.display = 'none';
     }, 300); // Должно совпадать с длительностью transition
-  }
-}
-
-// Обновление счетчика и видимости кнопки
-function updateFavoritesCount() {
-  const favorites = JSON.parse(localStorage.getItem('favorites')) || {};
-  const count = Object.keys(favorites).length;
-  const counter = document.getElementById('favorites-count');
-  const headerBtn = document.getElementById('header-favorites-btn');
-
-  if (counter) counter.textContent = count;
-
-  if (headerBtn) {
-    if (count > 0) {
-      showHeaderButton();
-    } else {
-      hideHeaderButton();
-    }
   }
 }
 
@@ -2957,15 +3270,30 @@ function updateFavoritesCount() {
         document.getElementById('menu-modal').style.display = 'none';
     }
 
-    // Модальное окно для отзыва
-    function openReviewModal() {
-        // Генерируем/проверяем токен ДО открытия окна
-        if (!localStorage.getItem('userToken')) {
-            userToken = generateUserToken();
+// Обновленная функция открытия модального окна отзыва
+function openReviewModal() {
+    // Проверяем лимит перед открытием
+    if (!canUserPostReview()) {
+        const timeUntilNext = getTimeUntilNextReview();
+        let message = 'Вы уже оставляли отзыв сегодня. ';
+
+        if (timeUntilNext) {
+            const formattedTime = formatTimeUntilNextReview();
+            message += `Следующий отзыв можно будет оставить через ${formattedTime}`;
         }
 
-        document.getElementById('review-modal').style.display = 'flex';
+        showNotification(message, 'error');
+        return;
     }
+
+    // Генерируем/проверяем токен ДО открытия окна
+    if (!localStorage.getItem('userToken')) {
+        userToken = generateUserToken();
+    }
+
+    document.getElementById('review-modal').style.display = 'flex';
+}
+
     // Закрытие модального окна при клике вне его области
     document.getElementById('review-modal').addEventListener('click', function(e) {
         if (e.target === this) {
@@ -3349,14 +3677,14 @@ function addEditDeleteButtonsToModal(modal, reviewData) {
     // Создаем контейнер для кнопок
     const buttonsContainer = document.createElement('div');
     buttonsContainer.className = 'modal-action-buttons';
-    buttonsContainer.style.cssText = 'margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; flex-wrap: wrap;';
+    buttonsContainer.style.cssText = 'justify-content: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; display: flex; gap: 10px; flex-wrap: wrap;';
 
     // Кнопка редактирования (только для автора)
     if (canEdit) {
         const editButton = document.createElement('button');
         editButton.className = 'edit-review-btn';
         editButton.innerHTML = '✏️ Редактировать';
-        editButton.style.cssText = 'padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;';
+        editButton.style.cssText = 'padding: 8px 16px; background: rgb(40, 167, 69); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;';
         editButton.onclick = (e) => {
             e.stopPropagation();
             closeFullReviewModal();
@@ -3373,6 +3701,68 @@ function addEditDeleteButtonsToModal(modal, reviewData) {
         timeMessage.style.cssText = 'color: #ff6b6b; font-size: 14px; padding: 8px 12px; background: #fff5f5; border-radius: 4px; border: 1px solid #ffd6d6;';
         buttonsContainer.appendChild(timeMessage);
     }
+
+    // Функция проверки лимита отзывов (1 в день)
+function canUserPostReview() {
+    try {
+        const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+        const userLimit = reviewLimits[userToken];
+
+        if (!userLimit) {
+            return true; // Пользователь еще не оставлял отзывов
+        }
+
+        const lastReviewDate = new Date(userLimit.lastReviewDate);
+        const today = new Date();
+
+        // Проверяем, был ли отзыв сегодня
+        return lastReviewDate.toDateString() !== today.toDateString();
+
+    } catch (error) {
+        console.error('Error checking review limit:', error);
+        return true; // В случае ошибки разрешаем отправку
+    }
+}
+
+// Функция обновления лимита после отправки отзыва
+function updateUserReviewLimit() {
+    try {
+        const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+        reviewLimits[userToken] = {
+            lastReviewDate: new Date().toISOString()
+        };
+        localStorage.setItem('reviewLimits', JSON.stringify(reviewLimits));
+    } catch (error) {
+        console.error('Error updating review limit:', error);
+    }
+}
+
+// Функция получения времени до следующего отзыва
+function getTimeUntilNextReview() {
+    try {
+        const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+        const userLimit = reviewLimits[userToken];
+
+        if (!userLimit) {
+            return null;
+        }
+
+        const lastReviewDate = new Date(userLimit.lastReviewDate);
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+
+        const timeDiff = tomorrow - today;
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+
+        return { hours, minutes };
+    } catch (error) {
+        console.error('Error getting time until next review:', error);
+        return null;
+    }
+}
 
     // Кнопка удаления (только для автора)
     if (canDelete) {
