@@ -118,18 +118,18 @@
                 <div class="image-flip-container">
                     <!-- Передняя сторона (картинка) -->
                     <div class="image-front" >
-                        <img src="{{ url_for('static', filename='Фотки зданий/Brewmen.png') }}" alt="Ресторан Brewmen">
+                        <img src="{{ url_for('static', filename='Фотки зданий/ПиццаФабрика.png') }}" alt="Ресторан ПиццаФабрика">
                         <!-- Кнопка на карточке заведения -->
                         <button class="favorite-btn js-favorite-btn"
-                                data-item-id="Brewmen"
-                                data-item='{"id":"Brewmen",
-                                            "name":"Brewmen",
-                                            "description":"Ресторан Brewmen — это место, где вы можете попробовать крафтовое пиво собственного производства, а также настойки и наливки.",
-                                            "image":"{{ url_for('static', filename='Фотки зданий/Brewmen.png') }}",
-                                            "address":"ул. Ломоносова, 22/2, Великий Новгород",
-                                            "telephone":"+7 (966) 702-88-35",
+                                data-item-id="PizzaFactory"
+                                data-item='{"id":"PizzaFactory",
+                                            "name":"ПиццаФабрика",
+                                            "description":"Ресторан «ПиццаФабрика» — это идеальное место для семейного отдыха.",
+                                            "image":"{{ url_for('static', filename='Фотки зданий/ПиццаФабрика.png') }}",
+                                            "address":"Большая Санкт-Петербургская ул., 39, корп. 22",
+                                            "telephone":"8 (800) 550-06-00",
                                             "category":"Ресторан",
-                                            "page_url":"/Restaurant/Brewmen"}'>
+                                            "page_url":"/Restaurant/PizzaFactory"}'>
                           ❤
                         </button>
                         <!-- Кнопка развернуть в правом нижнем углу -->
@@ -167,8 +167,8 @@
 
             <!-- Правая часть: описание -->
             <div class="details-section">
-                <h1 style="margin-right: 900px;">Brewmen</h1>
-                <p>Ресторан Brewmen — это место, где вы можете попробовать крафтовое пиво собственного производства, а также настойки и наливки.</p>
+                <h1 style="margin-right: 900px;">ПиццаФабрика</h1>
+                <p>Ресторан «ПиццаФабрика» — это идеальное место для семейного отдыха.</p>
                 <div class="contact-info" style="display: flex; align-items: center; gap: 8px;">
                     <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
@@ -367,7 +367,7 @@
         </div>
     </div>
 
-        <!-- Модальное окно "О проекте" -->
+    <!-- Модальное окно "О проекте" -->
     <div class="modal" id="aboutModal">
         <div class="modal-content">
             <span class="close-modal" id="closeModal">&times;</span>
@@ -425,7 +425,7 @@
         </div>
     </footer>
     <script>
-
+        // Константы
 // Константы
 const PATHS = {
     starActive: "/static/Фотки зданий/baka.png",
@@ -598,13 +598,15 @@ contactsLink.addEventListener('click', function(e) {
     }, 2000);
 });
 
+//Кнопки Футера - Конец
+
 // Массив для хранения отзывов
     let reviews = [];
     // Переменная для хранения текущего рейтинга при редактировании
 let editRating = 0;
 
 // Глобальные переменные
-const currentRestaurantId = 'Brewmen';
+const currentRestaurantId = 'PizzaFactory';
 let selectedRating = 0;
 let lastReviewTime = localStorage.getItem('lastReviewTime') || 0;
 // Глобальные переменные для управления лайками/дизлайками
@@ -2164,7 +2166,7 @@ function showRatingNotification(newRating, previousRating) {
 async function testServerResponse() {
     try {
         const testData = {
-            restaurant_id: 'Brewmen',
+            restaurant_id: 'PizzaFactory',
             username: 'test',
             rating: 5,
             comment: 'test',
@@ -4451,8 +4453,8 @@ function expandReview(reviewId) {
 // Глобальные переменные
 let currentUser = null; // Должно устанавливаться при авторизации
 let currentRestaurant = {
-    id: 'Brewmen',
-    name: 'Brewmen'
+    id: 'PizzaFactory',
+    name: 'PizzaFactory'
 };
 
 // Функция для проверки можно ли редактировать отзыв

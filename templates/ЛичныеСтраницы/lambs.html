@@ -122,7 +122,14 @@
                         <!-- Кнопка на карточке заведения -->
                         <button class="favorite-btn js-favorite-btn"
                                 data-item-id="lambs"
-                                data-item='{"id":"lambs","name":"Барашки","description":"Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.","image":"{{ url_for('static', filename='Фотки зданий/Барашки.png') }}","address":"ул. Ломоносова, 22/2, Великий Новгород","telephone":"+7 (8162) 55-53-22","category":"Ресторан","page_url":"/Restaurant/lambs"}'>
+                                data-item='{"id":"lambs",
+                                            "name":"Барашки",
+                                            "description":"Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.",
+                                            "image":"{{ url_for('static', filename='Фотки зданий/Барашки.png') }}",
+                                            "address":"ул. Ломоносова, 22/2, Великий Новгород",
+                                            "telephone":"+7 (8162) 55-53-22",
+                                            "category":"Ресторан",
+                                            "page_url":"/Restaurant/lambs"}'>
                           ❤
                         </button>
                         <!-- Кнопка развернуть в правом нижнем углу -->
@@ -133,8 +140,8 @@
                         <div class="schedule-dropdown">
                             <button class="schedule-btn">График работы ▼</button>
                             <div class="schedule-content" id="schedule-content">
-                                Пн-Пт: 10:00 - 22:00<br>
-                                Сб-Вс: 11:00 - 23:00
+                                Пн-Чт: 12:00 - 23:00<br>
+                                Пт-Вс: 12:00 - 00:00
                             </div>
                         </div>
                         <!-- Кнопка меню по центру снизу -->
@@ -160,13 +167,27 @@
 
             <!-- Правая часть: описание -->
             <div class="details-section">
-                <h1>Барашки</h1>
+                <h1 style="margin-right: 900px;">Барашки</h1>
                 <p>Ресторан «Барашки» предлагает своим гостям блюда грузинской кухни, приготовленные по традиционным рецептам.</p>
                 <div class="contact-info" style="display: flex; align-items: center; gap: 8px;">
                     <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                     </svg>
                     <p style="margin: 0;">+7 (8162) 55-53-22</p>
+                </div>
+                <!-- Теги заведения -->
+                <div class="tags-section">
+                    <h3>Особенности</h3>
+                    <div class="tags-container">
+                        <div class="tags-scroller">
+                            <span class="tag">Грузинская кухня</span>
+                            <span class="tag">Панорамный вид</span>
+                            <span class="tag">Ресторан</span>
+                            <span class="tag">Кафе</span>
+                        </div>
+                        <button class="tags-scroll-btn left" onclick="scrollTags('left')">‹</button>
+                        <button class="tags-scroll-btn right" onclick="scrollTags('right')">›</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -360,6 +381,24 @@
         </div>
     </div>
 
+    <!-- Модальное окно "О проекте" -->
+    <div class="modal" id="aboutModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <h2>О проекте "Городской Гид"</h2>
+            <p>"Городской Гид" - это цифровой путеводитель по Великому Новгороду, созданный для жителей и его гостей. Наш проект объединяет в себе информацию о самых интересных местах, достопримечательностях, кафе, ресторанах и музеях.</p>
+            <p>Мы стремимся сделать пребывание в Великом Новгороде максимально комфортным и интересным, предоставляя актуальную информацию о городе в удобном формате.</p>
+            <p>Наш гид регулярно обновляется и пополняется новыми локациями, чтобы вы всегда могли найти что-то интересное для себя.</p>
+            <h3>Наши цели:</h3>
+            <ul>
+                <li>Популяризация культурного наследия Великого Новгорода</li>
+                <li>Упрощение навигации по городу для туристов</li>
+                <li>Поддержка местного бизнеса</li>
+                <li>Создание сообщества любителей города</li>
+            </ul>
+        </div>
+    </div>
+
     <!-- Городской силуэт перед футером -->
     <div class="skyscrapers"></div>
 
@@ -370,25 +409,25 @@
                 <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" style="width: 120px;" alt="Логотип">
                 <p>Городской гид - ваш путеводитель по лучшим местам Великого Новгорода</p>
                 <div class="socials">
-                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
-                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" style="margin-bottom: 0; margin-top: 8px" alt="YouTube"></a>
-                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
-                    <a href="#"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+                    <a href="https://web.telegram.org/"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
+                    <a href="https://www.youtube.com/"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" style="margin-bottom: 0; margin-top: 8px" alt="YouTube"></a>
+                    <a href="https://vk.ru/"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
+                    <a href="https://ok.ru/"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
                 </div>
             </div>
 
             <div class="footer-section links">
                 <h3>Навигация</h3>
                 <ul>
-                    <li><a href="#">Главная</a></li>
-                    <li><a href="#">О проекте</a></li>
-                    <li><a href="#">Контакты</a></li>
-                    <li><a href="#">Помощь</a></li>
+                    <li><a href="#" id="homeLink">Главная</a></li>
+                    <li><a href="#" id="aboutLink">О проекте</a></li>
+                    <li><a href="#" id="contactsLink">Контакты</a></li>
+                    <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
                 </ul>
             </div>
 
             <div class="footer-section contact">
-                <h3>Контакты</h3>
+                <h3 id="contactsTitle">Контакты</h3>
                 <p><i class="phone-icon"></i> +7 (123) 456-78-90</p>
                 <p><i class="email-icon"></i> info@gorodskoygid.ru</p>
                 <p><i class="location-icon"></i> Великий Новгород</p>
@@ -410,6 +449,171 @@ const PATHS = {
     dislike: "/static/Фотки зданий/Дизлайк.png"
 };
 
+//Кнопки Футера - Начало
+
+const homeLink = document.getElementById('homeLink');
+const aboutLink = document.getElementById('aboutLink');
+const contactsLink = document.getElementById('contactsLink');
+const helpLink = document.getElementById('helpLink');
+const aboutModal = document.getElementById('aboutModal');
+const closeModal = document.getElementById('closeModal');
+const arrowContainer = document.getElementById('arrowContainer');
+const arrowLine = document.getElementById('arrowLine');
+const arrowHead = document.getElementById('arrowHead');
+const contactsTitle = document.getElementById('contactsTitle');
+
+// Обработчик для кнопки "Главная"
+homeLink.addEventListener('click', function(e) {
+    e.preventDefault();
+    // В реальном приложении здесь будет переход на главную страницу
+    window.location.href = "/";
+});
+
+// Обработчик для кнопки "О проекте"
+aboutLink.addEventListener('click', function(e) {
+    e.preventDefault();
+    aboutModal.style.display = 'flex';
+});
+
+// Обработчик для закрытия модального окна
+closeModal.addEventListener('click', function() {
+    aboutModal.style.display = 'none';
+});
+
+// Закрытие модального окна при клике вне его
+window.addEventListener('click', function(e) {
+    if (e.target === aboutModal) {
+        aboutModal.style.display = 'none';
+    }
+});
+
+// Обработчик для кнопки "Контакты"
+contactsLink.addEventListener('click', function(e) {
+    e.preventDefault();
+
+    // Получаем позиции элементов относительно документа
+    const contactsLinkRect = contactsLink.getBoundingClientRect();
+    const contactsTitle = document.querySelector('.footer-section.contact h3');
+    const contactsTitleRect = contactsTitle.getBoundingClientRect();
+
+    // Добавляем scroll offset к координатам
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+    const startX = contactsLinkRect.left + scrollX + contactsLinkRect.width + 10;
+    const startY = contactsLinkRect.top + scrollY + contactsLinkRect.height / 2;
+
+    const endX = contactsTitleRect.left + scrollX - 5;
+    const endY = contactsTitleRect.top + scrollY + contactsTitleRect.height;
+
+    // Удаляем предыдущую стрелку если есть
+    const existingArrow = document.querySelector('.arrow-to-contacts');
+    if (existingArrow) {
+        existingArrow.remove();
+    }
+
+    // Создаем контейнер для SVG стрелки
+    const arrowContainer = document.createElement('div');
+    arrowContainer.className = 'arrow-to-contacts';
+    document.body.appendChild(arrowContainer);
+
+    // Создаем SVG для стрелки с завитушкой
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.pointerEvents = 'none';
+
+    // Вычисляем границы для SVG
+    const minX = Math.min(startX, endX) - 50;
+    const minY = Math.min(startY, endY) - 50;
+    const maxX = Math.max(startX, endX) + 50;
+    const maxY = Math.max(startY, endY) + 50;
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    // Создаем путь с завитушкой
+    const path = document.createElementNS(svgNS, "path");
+    const curveIntensity = 80;
+
+    // Путь с красивой кривой
+    const pathData = `M ${startX - minX} ${startY - minY}
+                     C ${startX - minX + curveIntensity} ${startY - minY - curveIntensity},
+                       ${endX - minX - curveIntensity} ${endY - minY - curveIntensity},
+                       ${endX - minX} ${endY - minY}`;
+
+    path.setAttribute("d", pathData);
+    path.setAttribute("class", "arrow-path");
+    path.style.filter = 'drop-shadow(0 0 2px rgba(52, 152, 219, 0.5))';
+
+    // Создаем головку стрелки
+    const arrowHead = document.createElementNS(svgNS, "polygon");
+    arrowHead.setAttribute("points", "0,0 -10,-7 -10,7");
+    arrowHead.setAttribute("class", "arrow-head");
+    arrowHead.setAttribute("fill", "#3498db");
+
+    // Вычисляем угол для головки стрелки
+    const pathElement = document.createElementNS(svgNS, "path");
+    pathElement.setAttribute("d", pathData);
+    const pathLength = pathElement.getTotalLength();
+    const point = pathElement.getPointAtLength(Math.max(0, pathLength - 1));
+    const pointBefore = pathElement.getPointAtLength(Math.max(0, pathLength - 20));
+    const angle = Math.atan2(point.y - pointBefore.y, point.x - pointBefore.x) * 180 / Math.PI;
+
+    arrowHead.setAttribute("transform", `translate(${endX - minX},${endY - minY}) rotate(${angle})`);
+    arrowHead.style.filter = 'drop-shadow(0 0 2px rgba(52, 152, 219, 0.5))';
+
+    // Устанавливаем размеры SVG
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    arrowContainer.style.width = width + 'px';
+    arrowContainer.style.height = height + 'px';
+    arrowContainer.style.left = minX + 'px';
+    arrowContainer.style.top = minY + 'px';
+    arrowContainer.style.position = 'absolute'; // Меняем fixed на absolute
+
+    svg.appendChild(path);
+    svg.appendChild(arrowHead);
+    arrowContainer.appendChild(svg);
+
+    // Показываем стрелку
+    arrowContainer.style.opacity = '1';
+    arrowContainer.style.transition = 'opacity 0.5s';
+
+    // Добавляем класс для подчёркивания
+    contactsTitle.classList.add('contacts-underline');
+
+    // Анимируем прорисовку пути
+    setTimeout(() => {
+        path.style.transition = 'stroke-dashoffset 1.2s ease-in-out';
+        path.style.strokeDashoffset = '0';
+        setTimeout(() => {contactsTitle.classList.add('animate');}, 450)
+    }, 100);
+
+    // Анимируем появление головки стрелки и подчёркивание
+    setTimeout(() => {
+        arrowHead.style.opacity = '1';
+        arrowHead.style.transition = 'opacity 0.3s ease-in-out';
+    }, 550);
+
+    // Удаляем стрелку через 3 секунды
+    setTimeout(() => {
+        arrowContainer.style.opacity = '0';
+        contactsTitle.classList.remove('animate');
+
+        setTimeout(() => {
+            if (arrowContainer.parentNode) {
+                arrowContainer.parentNode.removeChild(arrowContainer);
+            }
+            contactsTitle.classList.remove('contacts-underline');
+        }, 500);
+    }, 2000);
+});
+
+//Кнопки Футера - Конец
+
 // Массив для хранения отзывов
     let reviews = [];
     // Переменная для хранения текущего рейтинга при редактировании
@@ -427,7 +631,7 @@ let pageReloaded = false;
 let reviewCreationInProgress = false;
 
 // Генерируем токен СРАЗУ при загрузке скрипта
-let userToken = localStorage.getItem('userToken') || generateUserToken();
+let userToken = localStorage.getItem('userToken') || generatePersistentUserToken();
 
 let currentFilters = {
     rating: 0,
@@ -440,7 +644,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initStats(); // Загрузка статистики и отзывов Вместо updateOverallRating()
     initFilters(); // Инициализация фильтров - ДОБАВЬТЕ ЭТУ СТРОЧКУ!
     loadReviews(); // Загрузка отзывов
-    updateFavoritesCount();
     markExistingFavorites();
     initFavorites();
     setInterval(saveRatingsToStorage, 30000); // Периодическое сохранение (каждые 30 секунд)
@@ -448,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('full-review-modal').style.display = 'none';
 
     // Генерируем/восстанавливаем токен
-    userToken = localStorage.getItem('userToken') || generateUserToken();
+    userToken = localStorage.getItem('userToken') || generatePersistentUserToken();
     console.log('User token при загрузке:', userToken);
     console.log('DOM loaded, initializing favorites...');
 
@@ -459,6 +662,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const reviewList = document.getElementById('review-list');
     if (reviewList) {
         reviewList.addEventListener('scroll', updateScrollButtons);
+    }
+
+    const tagsScroller = document.querySelector('.tags-scroller');
+    if (tagsScroller) {
+        tagsScroller.addEventListener('scroll', updateTagsScrollButtons);
+        setTimeout(updateTagsScrollButtons, 100);
     }
 
     // Генерируем токен
@@ -573,6 +782,34 @@ window.addEventListener('load', function() {
     setTimeout(initFavorites, 100);
 });
 
+// Функции для скроллера тегов
+function scrollTags(direction) {
+    const scroller = document.querySelector('.tags-scroller');
+    const scrollAmount = 200;
+
+    if (direction === 'left') {
+        scroller.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+        scroller.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+
+    setTimeout(updateTagsScrollButtons, 150);
+}
+
+function updateTagsScrollButtons() {
+    const scroller = document.querySelector('.tags-scroller');
+    const leftBtn = document.querySelector('.tags-scroll-btn.left');
+    const rightBtn = document.querySelector('.tags-scroll-btn.right');
+
+    if (!scroller || !leftBtn || !rightBtn) return;
+
+    const canScrollLeft = scroller.scrollLeft > 0;
+    const canScrollRight = scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1;
+
+    leftBtn.classList.toggle('hidden', !canScrollLeft);
+    rightBtn.classList.toggle('hidden', !canScrollRight);
+}
+
 // Новая функция для инициализации кнопок скролла
 function initScrollButtons() {
     const reviewList = document.getElementById('review-list');
@@ -672,7 +909,7 @@ function trackPageReload() {
         pageReloaded = true;
 
         // Восстанавливаем userToken после перезагрузки
-        userToken = localStorage.getItem('userToken') || generateUserToken();
+        userToken = localStorage.getItem('userToken') || generatePersistentUserToken();
         console.log('🔄 UserToken после перезагрузки:', userToken);
     }
 }
@@ -814,10 +1051,10 @@ async function submitReview(e) {
 
     console.log('=== ОТПРАВКА ОТЗЫВА С ПРОВЕРКОЙ ЛИМИТА ===');
 
-    // Проверяем лимит
-    if (!canUserPostReview()) {
-        const timeUntilNext = getTimeUntilNextReview();
-        let message = 'Вы уже оставляли отзыв сегодня. ';
+    // 🔥 Проверяем лимит для КОНКРЕТНОГО ресторана
+    if (!canUserPostReview(currentRestaurantId)) {
+        const timeUntilNext = getTimeUntilNextReview(currentRestaurantId);
+        let message = 'Вы уже оставляли отзыв для этого заведения сегодня. ';
 
         if (timeUntilNext) {
             const formattedTime = formatTimeUntilNextReview();
@@ -869,21 +1106,19 @@ async function submitReview(e) {
 
         const response = await fetch('/api/reviews', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
         const data = await response.json();
-        console.log('Полный ответ сервера:', data);
 
         if (response.ok) {
+            // ✅ Успех - сохраняем в localStorage
             if (data.review) {
-                // ОБНОВЛЯЕМ ЛИМИТ ПОЛЬЗОВАТЕЛЯ
-                updateUserReviewLimit();
+                // 🔥 ОБНОВЛЯЕМ ЛИМИТ ДЛЯ КОНКРЕТНОГО РЕСТОРАНА
+                updateUserReviewLimit(currentRestaurantId);
 
-                console.log('✅ Лимит обновлен, отзыв добавлен');
+                console.log('✅ Лимит обновлен, отзыв добавлен для ресторана:', currentRestaurantId);
 
                 // Добавляем отзыв в UI
                 const existingIndex = reviews.findIndex(r => r.id === data.review.id);
@@ -915,7 +1150,14 @@ async function submitReview(e) {
                 throw new Error('Отзыв не вернулся с сервера');
             }
         } else {
-            throw new Error(data.error || 'Ошибка при добавлении отзыва');
+            // ❌ Ошибка от сервера
+            if (data.error && data.error.includes('уже оставляли отзыв')) {
+                // ⚡ СИНХРОНИЗАЦИЯ: пользователь очистил localStorage, но на сервере отзыв есть
+                updateUserReviewLimit(currentRestaurantId); // Восстанавливаем localStorage
+                showNotification(data.error, 'error');
+            } else {
+                throw new Error(data.error);
+            }
         }
 
     } catch (error) {
@@ -1832,38 +2074,17 @@ async function rateReview(isLike, reviewId) {
         console.log(`reviewId=${reviewId}, isLike=${isLike}`);
 
         const review = reviews.find(r => r.id == reviewId);
-        if (!review) {
-            return;
-        }
+        if (!review) return;
 
-        // Получаем текущую оценку пользователя
         const currentUserRating = getUserRating(reviewId);
-        console.log(`Текущая оценка пользователя: ${currentUserRating}`);
+        let action = isLike ? 'like' : 'dislike';
 
-        // Определяем действие для сервера - УПРОЩЕННАЯ ЛОГИКА
-        let action;
+        console.log(`Определено действие: ${action}`);
 
-        if (isLike) {
-            // Если уже стоит лайк - снимаем (отправляем like повторно для снятия)
-            // Сервер сам разберется с логикой снятия
-            action = 'like';
-        } else {
-            // Если уже стоит дизлайк - снимаем (отправляем dislike повторно для снятия)
-            action = 'dislike';
-        }
-
-        console.log(`Определено действие: ${action} (isLike=${isLike}, currentRating=${currentUserRating})`);
-
-        // Отправляем запрос на сервер
         const response = await fetch(`/api/reviews/${reviewId}/rate`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: action,
-                user_token: userToken
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action, user_token: userToken })
         });
 
         if (!response.ok) {
@@ -1877,15 +2098,10 @@ async function rateReview(isLike, reviewId) {
         // Обновляем данные отзыва
         updateReviewData(reviewId, data);
 
-        // Обновляем UI
-        updateReviewUI(reviewId, data.likes, data.dislikes, data.user_rating);
-
-        // Показываем уведомление
-        if (data.user_rating === null) {
-        } else {
-        }
-
-        console.log(`=== ОЦЕНКА ЗАВЕРШЕНА ===`);
+        // Обновляем UI после завершения анимации
+        setTimeout(() => {
+            updateReviewUI(reviewId, data.likes, data.dislikes, data.user_rating);
+        }, 600);
 
     } catch (error) {
         console.error('Ошибка при оценке отзыва:', error);
@@ -2640,6 +2856,35 @@ function resetReviewLimits() {
     showNotification('Лимиты отзывов сброшены', 'info');
 }
 
+// 🔥 Улучшенная защита от очистки кэша
+function generatePersistentUserToken() {
+    let token = localStorage.getItem('userToken');
+
+    if (!token) {
+        // Создаем более устойчивый токен на основе нескольких факторов
+        const persistentData = {
+            userAgent: navigator.userAgent,
+            language: navigator.language,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            screen: `${screen.width}x${screen.height}`,
+            hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
+            // Добавляем случайные данные для уникальности
+            random: Math.random().toString(36).substr(2, 10),
+            timestamp: Date.now().toString(36)
+        };
+
+        const persistentString = JSON.stringify(persistentData);
+        token = 'token-' + btoa(persistentString).substr(0, 32);
+
+        localStorage.setItem('userToken', token);
+        console.log('🆕 Сгенерирован новый устойчивый user token:', token);
+    } else {
+        console.log('🔄 Восстановлен существующий user token:', token);
+    }
+
+    return token;
+}
+
 // Абсолютно надежная функция закрытия
 function closeReviewModal() {
     const modal = document.getElementById('review-modal');
@@ -3272,10 +3517,10 @@ function hideHeaderButton() {
 
 // Обновленная функция открытия модального окна отзыва
 function openReviewModal() {
-    // Проверяем лимит перед открытием
-    if (!canUserPostReview()) {
-        const timeUntilNext = getTimeUntilNextReview();
-        let message = 'Вы уже оставляли отзыв сегодня. ';
+    // 🔥 Проверяем лимит для КОНКРЕТНОГО ресторана
+    if (!canUserPostReview(currentRestaurantId)) {
+        const timeUntilNext = getTimeUntilNextReview(currentRestaurantId);
+        let message = 'Вы уже оставляли отзыв для этого заведения сегодня. ';
 
         if (timeUntilNext) {
             const formattedTime = formatTimeUntilNextReview();
@@ -3422,16 +3667,47 @@ function openReviewModal() {
     let likeCount = 0;
     let dislikeCount = 0;
 
+function animateReaction(isLike) {
+    const likeBtn = document.querySelector('#full-review-modal .like-btn');
+    const dislikeBtn = document.querySelector('#full-review-modal .dislike-btn');
+    const currentUserRating = getUserRating(currentReviewId);
+
+    // Определяем какая анимация нужна
+    if (isLike) {
+        if (currentUserRating === 'like') {
+            // Снимаем лайк - анимация отмены
+            likeBtn.classList.add('cancel-animate');
+            setTimeout(() => likeBtn.classList.remove('cancel-animate'), 500);
+        } else {
+            // Ставим лайк - анимация установки
+            likeBtn.classList.add('animate');
+            setTimeout(() => likeBtn.classList.remove('animate'), 600);
+        }
+    } else {
+        if (currentUserRating === 'dislike') {
+            // Снимаем дизлайк - анимация отмены
+            dislikeBtn.classList.add('cancel-animate');
+            setTimeout(() => dislikeBtn.classList.remove('cancel-animate'), 500);
+        } else {
+            // Ставим дизлайк - анимация установки
+            dislikeBtn.classList.add('animate');
+            setTimeout(() => dislikeBtn.classList.remove('animate'), 600);
+        }
+    }
+}
+
 // ===== ОБНОВЛЕННЫЕ ОБРАБОТЧИКИ КНОПОК =====
 
-// Функции для лайка и дизлайка
+// Обновленные функции для анимации лайков/дизлайков
 function likeReview() {
     if (!currentReviewId) return;
+    animateReaction(true);
     rateReview(true, currentReviewId);
 }
 
 function dislikeReview() {
     if (!currentReviewId) return;
+    animateReaction(false);
     rateReview(false, currentReviewId);
 }
 
@@ -3703,7 +3979,7 @@ function addEditDeleteButtonsToModal(modal, reviewData) {
     }
 
     // Функция проверки лимита отзывов (1 в день)
-function canUserPostReview() {
+function canUserPostReview(restaurantId = null) {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         const userLimit = reviewLimits[userToken];
@@ -3715,30 +3991,44 @@ function canUserPostReview() {
         const lastReviewDate = new Date(userLimit.lastReviewDate);
         const today = new Date();
 
-        // Проверяем, был ли отзыв сегодня
-        return lastReviewDate.toDateString() !== today.toDateString();
+        // 🔥 ВАЖНОЕ ИЗМЕНЕНИЕ: Проверяем по конкретному ресторану
+        if (restaurantId && userLimit.restaurantId === restaurantId) {
+            const canPost = lastReviewDate.toDateString() !== today.toDateString();
+            console.log('🔍 Проверка лимита для ресторана:', {
+                restaurantId: restaurantId,
+                lastReviewDate: lastReviewDate.toDateString(),
+                today: today.toDateString(),
+                canPost: canPost
+            });
+            return canPost;
+        }
+
+        // Если restaurantId не указан или не совпадает, разрешаем
+        return true;
 
     } catch (error) {
         console.error('Error checking review limit:', error);
-        return true; // В случае ошибки разрешаем отправку
+        return true;
     }
 }
 
 // Функция обновления лимита после отправки отзыва
-function updateUserReviewLimit() {
+function updateUserReviewLimit(restaurantId) {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         reviewLimits[userToken] = {
-            lastReviewDate: new Date().toISOString()
+            lastReviewDate: new Date().toISOString(),
+            restaurantId: restaurantId // 🔥 Сохраняем ID ресторана
         };
         localStorage.setItem('reviewLimits', JSON.stringify(reviewLimits));
+        console.log('✅ Лимит обновлен для пользователя:', userToken, 'и ресторана:', restaurantId);
     } catch (error) {
         console.error('Error updating review limit:', error);
     }
 }
 
 // Функция получения времени до следующего отзыва
-function getTimeUntilNextReview() {
+function getTimeUntilNextReview(restaurantId = null) {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         const userLimit = reviewLimits[userToken];
@@ -3747,17 +4037,24 @@ function getTimeUntilNextReview() {
             return null;
         }
 
-        const lastReviewDate = new Date(userLimit.lastReviewDate);
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(0, 0, 0, 0);
+        // 🔥 Проверяем только если это тот же ресторан
+        if (restaurantId && userLimit.restaurantId === restaurantId) {
+            const lastReviewDate = new Date(userLimit.lastReviewDate);
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
 
-        const timeDiff = tomorrow - today;
-        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+            const timeDiff = tomorrow - today;
+            const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+            const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
 
-        return { hours, minutes };
+            console.log('⏰ Время до следующего отзыва для ресторана:', { hours, minutes, restaurantId });
+
+            return { hours, minutes };
+        }
+
+        return null;
     } catch (error) {
         console.error('Error getting time until next review:', error);
         return null;

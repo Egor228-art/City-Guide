@@ -18,13 +18,13 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 MOSCOW_TZ = pytz.timezone('Europe/Moscow')
-def get_moscow_time():
-    return datetime.now(MOSCOW_TZ).replace(tzinfo=None)  # Убираем временную зону для совместимости
 
 db = SQLAlchemy(app)
 admin = Admin(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, db) #Обнавление столбцов в бд
+def get_moscow_time():
+    return datetime.now(MOSCOW_TZ).replace(tzinfo=None)  # Убираем временную зону для совместимости
 
 # Убедитесь, что эти настройки добавлены перед созданием приложения
 UPLOAD_FOLDER = os.path.join('static', 'Фотки зданий')
@@ -36,6 +36,12 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 
 # Создаем папку при запуске
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Определяем модель пользователя
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), nullable=False, unique=True)
+    password = db.Column(db.String(150), nullable=False)
 
 # Определение модели для хранения секретов
 class Secret(db.Model):
@@ -50,6 +56,7 @@ class Place(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100), nullable=True)
     description = db.Column(db.Text, nullable=True)
+    tags = db.Column(db.Text, nullable=True)
     telephone = db.Column(db.String(20), nullable=True)
     address = db.Column(db.String(200), nullable=True)
     image_path = db.Column(db.String(200), nullable=True)
@@ -57,7 +64,6 @@ class Place(db.Model):
 
     def __repr__(self):
         return f'<Place {self.title}>'
-
 
 # Модели базы данных
 class Restaurant(db.Model):
@@ -82,6 +88,8 @@ class Review(db.Model):
     device_fingerprint = db.Column(db.String(255))  # Добавляем это поле
     ip_address = db.Column(db.String(45))  # Для ограничения по IP
     user_ratings = db.Column(db.JSON, default=dict)
+
+# def register_user(username, password, secret_key):
 
 # Хелпер-функции
 def get_client_hash(request):
@@ -119,7 +127,6 @@ def update_restaurant_stats(restaurant_id):
     restaurant.review_count = review_count
     db.session.commit()
 
-
 # Псевдокод для серверной проверки
 def check_review_limit(user_token, ip_address, restaurant_id):
     # Проверяем количество отзывов с этим токеном за последние 24 часа
@@ -146,6 +153,22 @@ def can_delete(self):
     """Проверка возможности удаления (6 часов)"""
     time_diff = datetime.now(timezone.utc) - self.created_at
     return time_diff.total_seconds() <= 6 * 3600
+
+# Функция для добавления секрета в базу данных
+def add_secret(key_name, secret_value):
+    with app.app_context():
+        existing_secret = Secret.query.filter_by(key_name=key_name).first()
+        if existing_secret:
+            return
+        new_secret = Secret(key_name=key_name, secret_value=secret_value)
+        db.session.add(new_secret)
+        db.session.commit()
+
+# Функция для получения секрета из базы данных
+def get_secret(key_name):
+    with app.app_context():
+        secret = Secret.query.filter_by(key_name=key_name).first()
+        return secret.secret_value if secret else None
 
 # Обновим endpoint проверки редактирования
 @app.route('/api/reviews/<int:review_id>/permissions', methods=['GET'])
@@ -423,6 +446,45 @@ def get_time_left(created_at):
     time_passed = datetime.now(timezone.utc) - created_at
     time_left = 3 * 3600 - time_passed.total_seconds()
     return max(0, time_left)  # Не отрицательное значение
+
+def register_user(username, password, secret_key):
+    try:
+        if secret_key != app.config['SECRET_KEY']:
+            return False, "Неверный секретный ключ."
+
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return False, "Пользователь с таким логином уже существует."
+
+        # Хеширование пароля
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+        new_user = User(username=username, password=hashed_password)
+        db.session.add(new_user)
+        db.session.commit()
+        return True, "Пользователь успешно зарегистрирован."
+
+    except Exception as e:
+        return False, str(e)
+
+
+# Добавьте эту функцию для проверки лимита отзывов
+def check_review_limit_per_restaurant(user_token, restaurant_id):
+    """Проверяет лимит отзывов (1 отзыв в день на ресторан)"""
+    try:
+        # Проверяем отзывы за последние 24 часа для этого пользователя и ресторана
+        time_limit = datetime.now() - timedelta(hours=24)
+
+        recent_reviews_count = Review.query.filter(
+            Review.user_token == user_token,
+            Review.restaurant_id == restaurant_id,
+            Review.created_at >= time_limit
+        ).count()
+
+        return recent_reviews_count < 1
+    except Exception as e:
+        print(f"Error checking review limit: {e}")
+        return True
 
 @app.route('/api/reviews/<int:review_id>', methods=['PUT', 'DELETE'])
 def handle_single_review(review_id):
@@ -718,7 +780,6 @@ def create_review():
         return jsonify(reviews_data)
 
     elif request.method == 'POST':
-        # НОВЫЙ КОД создания отзыва
         try:
             data = request.get_json()
             print("=== СОЗДАНИЕ ОТЗЫВА ===")
@@ -742,15 +803,17 @@ def create_review():
             # Извлекаем токены
             user_token = data.get('user_token')
             device_fingerprint = data.get('device_fingerprint')
+            restaurant_id = data['restaurant_id']
 
-            # print(f"📝 Полученные токены - user_token: '{user_token}', device_fingerprint: '{device_fingerprint}'")
-            # print(f"🔍 ПЕРЕД СОХРАНЕНИЕМ:")
-            # print(f"   user_token: '{review.user_token}'")
-            # print(f"   device_fingerprint: '{review.device_fingerprint}'")
+            # 🔥 ВАЖНОЕ ИЗМЕНЕНИЕ: Проверяем лимит отзывов для КОНКРЕТНОГО ресторана
+            if not check_review_limit_per_restaurant(user_token, restaurant_id):
+                return jsonify({
+                    'error': f'Вы уже оставляли отзыв для этого заведения сегодня. Следующий отзыв можно будет оставить через 24 часа.'
+                }), 429
 
             # Создаем отзыв
             review = Review(
-                restaurant_id=data['restaurant_id'],
+                restaurant_id=restaurant_id,
                 username=data['username'],
                 rating=rating,
                 comment=data.get('comment', ''),
@@ -773,13 +836,8 @@ def create_review():
             # ОБНОВЛЯЕМ объект из БД
             db.session.refresh(review)
 
-            # print(f"🔍 ПОСЛЕ СОХРАНЕНИЯ:")
-            # print(f"   user_token в БД: '{review.user_token}'")
-            # print(f"   device_fingerprint в БД: '{review.device_fingerprint}'")
-
             # Обновляем статистику ресторана
-            update_restaurant_stats(data['restaurant_id'])
-
+            update_restaurant_stats(restaurant_id)
             # ВАЖНО: Возвращаем ВСЕ поля
             response_data = {
                 'success': True,
@@ -793,12 +851,11 @@ def create_review():
                     'created_at': review.created_at.isoformat(),
                     'likes': review.likes,
                     'dislikes': review.dislikes,
-                    'user_token': review.user_token,  # ✅ Возвращаем
-                    'device_fingerprint': review.device_fingerprint,  # ✅ Возвращаем
+                    'user_token': review.user_token,
+                    'device_fingerprint': review.device_fingerprint,
                     'user_ratings': review.user_ratings
                 }
             }
-
             print("✅ Отправляем ответ клиенту:", response_data)
             return jsonify(response_data), 201
 
@@ -808,7 +865,6 @@ def create_review():
             traceback.print_exc()
             db.session.rollback()
             return jsonify({'error': 'Internal server error'}), 500
-
 
 @app.route('/api/debug_current_endpoint', methods=['POST'])
 def debug_current_endpoint():
@@ -900,33 +956,6 @@ def migrate_legacy_reviews():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/test_create', methods=['POST'])
-def test_create_review():
-    """Тестовое создание отзыва с фиксированными данными"""
-    try:
-        review = Review(
-            restaurant_id='lambs',
-            username='test_user',
-            rating=5,
-            comment='Test comment',
-            user_token='test_token_123',
-            device_fingerprint='test_fingerprint_123',
-            ip_address='127.0.0.1'
-        )
-
-        db.session.add(review)
-        db.session.commit()
-
-        return jsonify({
-            'id': review.id,
-            'user_token': review.user_token,
-            'device_fingerprint': review.device_fingerprint,
-            'status': 'created'
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/debug/reviews')
 def debug_review(review_id):
     """Отладочная информация по отзыву"""
@@ -945,7 +974,6 @@ def debug_review(review_id):
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/api/test_review_creation', methods=['POST'])
 def test_review_creation():
@@ -1268,53 +1296,11 @@ def migrate_review(review_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-# Функция для добавления секрета в базу данных
-def add_secret(key_name, secret_value):
-    with app.app_context():
-        existing_secret = Secret.query.filter_by(key_name=key_name).first()
-        if existing_secret:
-            return
-        new_secret = Secret(key_name=key_name, secret_value=secret_value)
-        db.session.add(new_secret)
-        db.session.commit()
-
-# Функция для получения секрета из базы данных
-def get_secret(key_name):
-    with app.app_context():
-        secret = Secret.query.filter_by(key_name=key_name).first()
-        return secret.secret_value if secret else None
-
 # Получение секретного ключа из базы данных и настройка Flask-приложения
 app.config['SECRET_KEY'] = get_secret('SECRET_KEY')
 
-# Определяем модель пользователя
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), nullable=False, unique=True)
-    password = db.Column(db.String(150), nullable=False)
-
 with app.app_context():
     db.create_all()
-
-def register_user(username, password, secret_key):
-    try:
-        if secret_key != app.config['SECRET_KEY']:
-            return False, "Неверный секретный ключ."
-
-        existing_user = User.query.filter_by(username=username).first()
-        if existing_user:
-            return False, "Пользователь с таким логином уже существует."
-
-        # Хеширование пароля
-        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-
-        new_user = User(username=username, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        return True, "Пользователь успешно зарегистрирован."
-
-    except Exception as e:
-        return False, str(e)
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -2157,6 +2143,10 @@ def index():
 
     return render_template("index.html", title="Городской гид")
 
+@app.route("/test", methods=['GET', 'POST'])
+def test():
+    return render_template("ЛичныеСтраницы/test.html", title="Городской гид")
+
 @app.route("/search", methods=["POST"])
 def search():
     query = request.form.get("query")
@@ -2189,12 +2179,120 @@ def restaurant():
                            title="Рестораны",
                            restaurants=restaurants)
 
-@app.route('/restaurant/<int:id>')
+@app.route('/Restaurant/<int:id>')
 def restaurant_page(id):
     place = Place.query.get_or_404(id)
     template_map = {
+        1: 'ЛичныеСтраницы/Brewmen.html',
         2: 'ЛичныеСтраницы/lambs.html',
-        3: 'ЛичныеСтраницы/test.html',
+        3: 'ЛичныеСтраницы/Gurmetto.html',
+        4: 'ЛичныеСтраницы/PizzaFactory.html',
+        5: 'ЛичныеСтраницы/Иль-де-Франс.html',
+        6: 'ЛичныеСтраницы/Пряник.html',
+        7: 'ЛичныеСтраницы/Marusya.html',
+        8: 'ЛичныеСтраницы/Проун.html',
+        9: 'ЛичныеСтраницы/ПхалиХинкали.html',
+        10: 'ЛичныеСтраницы/Мамонт.html',
+        11: 'ЛичныеСтраницы/География.html',
+        12: 'ЛичныеСтраницы/Токио-City.html',
+        13: 'ЛичныеСтраницы/Чародейка.html',
+        14: 'ЛичныеСтраницы/Napoli.html',
+        15: 'ЛичныеСтраницы/Legenda.html',
+        16: 'ЛичныеСтраницы/Сытый гусь.html',
+        17: 'ЛичныеСтраницы/Дом Берга.html',
+        18: 'ЛичныеСтраницы/Рестобар Кружечный Двор.html',
+        19: 'ЛичныеСтраницы/Bistro Palazzo 5.html',
+        20: 'ЛичныеСтраницы/Фрегат Флагман.html',
+        21: 'ЛичныеСтраницы/Тепло траттория.html',
+        22: 'ЛичныеСтраницы/Сказка.html',
+        23: 'ЛичныеСтраницы/Чайхана Сказка.html',
+        24: 'ЛичныеСтраницы/Наffига козе баян?!.html',
+        25: 'ЛичныеСтраницы/Хурма.html',
+        26: 'ЛичныеСтраницы/My Kitchen.html',
+        27: 'ЛичныеСтраницы/Фазенда.html',
+        28: 'ЛичныеСтраницы/Mbur.html',
+        29: 'ЛичныеСтраницы/На Солнце.html',
+        30: 'ЛичныеСтраницы/Шаурpoint.html',
+        31: 'ЛичныеСтраницы/Дорадо.html',
+        32: 'ЛичныеСтраницы/Лимузин.html',
+        33: 'ЛичныеСтраницы/Персона.html',
+        34: 'ЛичныеСтраницы/Бруклин.html',
+        35: 'ЛичныеСтраницы/Изюм.html',
+        36: 'ЛичныеСтраницы/Mycroft.html',
+        37: 'ЛичныеСтраницы/Хлебник.html',
+        38: 'ЛичныеСтраницы/Время Ч.html',
+        39: 'ЛичныеСтраницы/МамаСушиПицца.html',
+        40: 'ЛичныеСтраницы/Ромитто.html',
+        41: 'ЛичныеСтраницы/Колобок.html',
+        42: 'ЛичныеСтраницы/Старик Хинкалыч.html',
+        43: 'ЛичныеСтраницы/Садко.html',
+        44: 'ЛичныеСтраницы/Юрьевское Подворье.html',
+        45: 'ЛичныеСтраницы/Шкипер.html',
+        46: 'ЛичныеСтраницы/Диез.html',
+        47: 'ЛичныеСтраницы/Cafe Le Chocolat.html',
+        48: 'ЛичныеСтраницы/Гипер Лента.html',
+        49: 'ЛичныеСтраницы/ВкусВилл.html',
+        50: 'ЛичныеСтраницы/Дикси.html',
+        51: 'ЛичныеСтраницы/Дикси1.html',
+        52: 'ЛичныеСтраницы/Дикси2.html',
+        53: 'ЛичныеСтраницы/Перекрёсток.html',
+        54: 'ЛичныеСтраницы/Магнит.html',
+        55: 'ЛичныеСтраницы/Магнит1.html',
+        56: 'ЛичныеСтраницы/Магнит2.html',
+        57: 'ЛичныеСтраницы/Пятёрочка.html',
+        58: 'ЛичныеСтраницы/Пятёрочка1.html',
+        59: 'ЛичныеСтраницы/Осень.html',
+        60: 'ЛичныеСтраницы/Осень1.html',
+        61: 'ЛичныеСтраницы/Осень2.html',
+        62: 'ЛичныеСтраницы/Осень3.html',
+        63: 'ЛичныеСтраницы/Осень4.html',
+        64: 'ЛичныеСтраницы/Осень5.html',
+        65: 'ЛичныеСтраницы/Верный.html',
+        66: 'ЛичныеСтраницы/Верный1.html',
+        67: 'ЛичныеСтраницы/Десяточка.html',
+        68: 'ЛичныеСтраницы/Градусы.html',
+        69: 'ЛичныеСтраницы/Магазинъ.html',
+        70: 'ЛичныеСтраницы/Светофор.html',
+        71: 'ЛичныеСтраницы/Продукты 24.html',
+        72: 'ЛичныеСтраницы/Музей народного деревянного зодчества Витославлицы.html',
+        73: 'ЛичныеСтраницы/Новгородский кремль.html',
+        74: 'ЛичныеСтраницы/Центр музыкальных древностей В.И. Поветкина.html',
+        75: 'ЛичныеСтраницы/Киномузей Валерия Рубцова.html',
+        76: 'ЛичныеСтраницы/Новгородский государственный объединенный музей-заповедник.html',
+        77: 'ЛичныеСтраницы/Музей изобразительных искусств.html',
+        78: 'ЛичныеСтраницы/Музейный цех фарфора.html',
+        79: 'ЛичныеСтраницы/Государственный музей художественной культуры Новгородской земли.html',
+        80: 'ЛичныеСтраницы/Владычная палата.html',
+        81: 'ЛичныеСтраницы/Мастерская-музей реалистической живописи Александра Варенцова.html',
+        82: 'ЛичныеСтраницы/Музей письменности.html',
+        83: 'ЛичныеСтраницы/Детский музейный центр.html',
+        84: 'ЛичныеСтраницы/Алексеевская Белая башня.html',
+        85: 'ЛичныеСтраницы/Зал воинской славы.html',
+        86: 'ЛичныеСтраницы/Музей Утюга.html',
+        87: 'ЛичныеСтраницы/Новгородский музей-заповедник.html',
+        88: 'ЛичныеСтраницы/Центр противопожарной пропаганды и общественных связей.html',
+        89: 'ЛичныеСтраницы/Стены и башни Новгородского кремля.html',
+        90: 'ЛичныеСтраницы/Лекторий.html',
+        91: 'ЛичныеСтраницы/Дирекция Новгородского государственного объединённого музея-заповедника.html',
+        92: 'ЛичныеСтраницы/Усадебный дом А.А. Орловой-Чесменской.html',
+        93: 'ЛичныеСтраницы/Музей истории органов внутренних дел Новгородской области культурного центра УМВД России по Новгородской области.html',
+        94: 'ЛичныеСтраницы/Новгородский областной академический театр драмы имени Достоевского.html',
+        95: 'ЛичныеСтраницы/Театр для детей и молодежи Малый.html',
+        96: 'ЛичныеСтраницы/Молодежная библиотека.html',
+        97: 'ЛичныеСтраницы/Библиотечный центр Читай-город.html',
+        98: 'ЛичныеСтраницы/Веряжский парк.html',
+        99: 'ЛичныеСтраницы/Сквер Кочетова.html',
+        100: 'ЛичныеСтраницы/Сквер Минутка.html',
+        101: 'ЛичныеСтраницы/Сквер Защитников Отечества.html',
+        102: 'ЛичныеСтраницы/Мираж Синема.html',
+        103: 'ЛичныеСтраницы/Новгород.html',
+        104: 'ЛичныеСтраницы/Мультимедийный центр Россия.html',
+        105: 'ЛичныеСтраницы/Планетарий Орион.html',
+        106: 'ЛичныеСтраницы/Спортплощадка.html',
+        107: 'ЛичныеСтраницы/Карелинн.html',
+        108: 'ЛичныеСтраницы/Церковь Спаса Преображения на Ильине улице.html',
+        109: 'ЛичныеСтраницы/Церковь Успения Пресвятой Богородицы на Волотовом поле.html',
+        110: 'ЛичныеСтраницы/Вишневый Рояль.html',
     }
     template = template_map.get(id, 'default_restaurant.html')
     return render_template(template, place=place)
@@ -2329,24 +2427,340 @@ def favorites():
     return render_template("favorites.html", title="Избранное")
 
 #Личные страницы
+@app.route('/Restaurant/Brewmen')
+def Brewmen():
+    place = Place.query.get_or_404(1)
+    return render_template('ЛичныеСтраницы/Brewmen.html', place=place)
 
-@app.route('/Restaurant/lambs')
+@app.route('/Restaurant/Барашки')
 def lambs():
     place = Place.query.get_or_404(2)  # ID Барашек
     return render_template('ЛичныеСтраницы/lambs.html', place=place)
 
-@app.route('/Restaurant/test')
-def test():
-    return render_template('ЛичныеСтраницы/test.html')
+@app.route('/Restaurant/Гурметто')
+def Gurmetto():
+    place = Place.query.get_or_404(3)
+    return render_template('ЛичныеСтраницы/Gurmetto.html')
 
+@app.route('/Restaurant/ПиццаФабрика')
+def PizzaFactory():
+    place = Place.query.get_or_404(4)
+    return render_template('ЛичныеСтраницы/PizzaFactory.html')
+
+@app.route('/Restaurant/Ile_de_France')
+def IleDeFrance():
+    place = Place.query.get_or_404(5)
+    return render_template('ЛичныеСтраницы/IleDeFrance.html')
+
+@app.route('/Restaurant/SpiceCake')
+def SpiceCake():
+    place = Place.query.get_or_404(6)
+    return render_template('ЛичныеСтраницы/SpiceCake.html')
+
+@app.route('/Restaurant/Marusya')
+def Marusya():
+    place = Place.query.get_or_404(7)
+    return render_template('ЛичныеСтраницы/Marusya.html')
+
+@app.route('/Restaurant/Proun')
+def Proun():
+    place = Place.query.get_or_404(8)
+    return render_template('ЛичныеСтраницы/Proun.html')
+
+@app.route('/Restaurant/PhaliHinkali')
+def PhaliHinkali():
+    place = Place.query.get_or_404(9)
+    return render_template('ЛичныеСтраницы/PhaliHinkali.html')
+@app.route('/Restaurant/Mammoth')
+def Mammoth():
+    place = Place.query.get_or_404(10)
+    return render_template('ЛичныеСтраницы/Mammoth.html')
+
+@app.route('/Restaurant/Geography')
+def Geography():
+    place = Place.query.get_or_404(11)
+    return render_template('ЛичныеСтраницы/Geography.html')
+
+@app.route('/Restaurant/Tokyo_City')
+def TokyoCity():
+    place = Place.query.get_or_404(12)
+    return render_template('ЛичныеСтраницы/TokyoCity.html')
+
+@app.route('/Restaurant/Чародейка')
+def Enchantress():
+    place = Place.query.get_or_404(13)
+    return render_template('ЛичныеСтраницы/Enchantress.html')
+
+@app.route('/Restaurant/Napoli')
+def Napoli():
+    place = Place.query.get_or_404(14)
+    return render_template('ЛичныеСтраницы/Napoli.html')
+
+@app.route('/Restaurant/Legenda')
+def Legenda():
+    place = Place.query.get_or_404(15)
+    return render_template('ЛичныеСтраницы/Legenda.html')
+
+@app.route('/Restaurant/Well_fed_goose')
+def WellFedGoose():
+    place = Place.query.get_or_404(16)
+    return render_template('ЛичныеСтраницы/WellFedGoose.html')
+
+@app.route('/Restaurant/Bergs_House')
+def BergsHouse():
+    place = Place.query.get_or_404(17)
+    return render_template('ЛичныеСтраницы/BergsHouse.html')
+
+@app.route('/Restaurant/Restobar_circular_Courtyard')
+def RestobarCircularCourtyard():
+    place = Place.query.get_or_404(18)
+    return render_template('ЛичныеСтраницы/RestobarCircularCourtyard.html')
+
+@app.route('/Restaurant/Bistro_Palazzo_5')
+def BistroPalazzo5():
+    place = Place.query.get_or_404(19)
+    return render_template('ЛичныеСтраницы/BistroPalazzo5.html')
+
+@app.route('/Restaurant/Flagship_Frigate')
+def FlagshipFrigate():
+    place = Place.query.get_or_404(20)
+    return render_template('ЛичныеСтраницы/FlagshipFrigate.html')
+
+@app.route('/Restaurant/Teplo_trategory')
+def TeploTrategory():
+    place = Place.query.get_or_404(21)
+    return render_template('ЛичныеСтраницы/TeploTrategory.html')
+
+@app.route('/Restaurant/FairyTale')
+def FairyTale():
+    place = Place.query.get_or_404(22)
+    return render_template('ЛичныеСтраницы/FairyTale.html')
+
+@app.route('/Restaurant/FairyTale_Teahouse')
+def FairyTaleTeahouse():
+    place = Place.query.get_or_404(23)
+    return render_template('ЛичныеСтраницы/FairyTaleTeahouse.html')
+
+@app.route('/Restaurant/Naffiga_koze_bayan')
+def NaffigaKozeBayan():
+    place = Place.query.get_or_404(24)
+    return render_template('ЛичныеСтраницы/NaffigaKozeBayan.html')
+
+@app.route('/Restaurant/Persimmon')
+def Persimmon():
+    place = Place.query.get_or_404(25)
+    return render_template('ЛичныеСтраницы/Persimmon.html')
+
+@app.route('/Restaurant/My Kitchen')
+def MyKitchen():
+    place = Place.query.get_or_404(26)
+    return render_template('ЛичныеСтраницы/MyKitchen.html')
+
+@app.route('/Restaurant/Hacienda')
+def Hacienda():
+    place = Place.query.get_or_404(27)
+    return render_template('ЛичныеСтраницы/Hacienda.html')
+
+@app.route('/Restaurant/Mbur')
+def Mbur():
+    place = Place.query.get_or_404(28)
+    return render_template('ЛичныеСтраницы/Mbur.html')
+
+@app.route('/Restaurant/On_sunce')
+def OnSunce():
+    place = Place.query.get_or_404(29)
+    return render_template('ЛичныеСтраницы/OnSunce.html')
+
+@app.route('/Restaurant/Shauрpoint')
+def Shauрpoint():
+    place = Place.query.get_or_404(30)
+    return render_template('ЛичныеСтраницы/Shauрpoint.html')
+
+@app.route('/Restaurant/Dorado')
+def Dorado():
+    place = Place.query.get_or_404(31)
+    return render_template('ЛичныеСтраницы/Dorado.html')
+
+@app.route('/Restaurant/limo')
+def limo():
+    place = Place.query.get_or_404(32)
+    return render_template('ЛичныеСтраницы/limo.html')
+
+@app.route('/Restaurant/Person')
+def Person():
+    place = Place.query.get_or_404(33)
+    return render_template('ЛичныеСтраницы/Person.html')
+
+@app.route('/Restaurant/Brooklyn')
+def Brooklyn():
+    place = Place.query.get_or_404(34)
+    return render_template('ЛичныеСтраницы/Brooklyn.html')
+
+@app.route('/Restaurant/Raisin')
+def Raisin():
+    place = Place.query.get_or_404(35)
+    return render_template('ЛичныеСтраницы/Raisin.html')
+
+@app.route('/Restaurant/Mycroft')
+def Mycroft():
+    place = Place.query.get_or_404(36)
+    return render_template('ЛичныеСтраницы/Mycroft.html')
+@app.route('/Restaurant/Baker')
+def Baker():
+    place = Place.query.get_or_404(37)
+    return render_template('ЛичныеСтраницы/Baker.html')
+
+@app.route('/Restaurant/TIME_H')
+def TIME_H():
+    place = Place.query.get_or_404(38)
+    return render_template('ЛичныеСтраницы/TIME_H.html')
+
+@app.route('/Restaurant/MamaSushiPitsa')
+def MamaSushiPitsa():
+    place = Place.query.get_or_404(39)
+    return render_template('ЛичныеСтраницы/MamaSushiPitsa.html')
+
+@app.route('/Restaurant/Romitto')
+def Romitto():
+    place = Place.query.get_or_404(40)
+    return render_template('ЛичныеСтраницы/Romitto.html')
+
+@app.route('/Restaurant/Kolobok')
+def Kolobok():
+    place = Place.query.get_or_404(41)
+    return render_template('ЛичныеСтраницы/Kolobok.html')
+
+@app.route('/Restaurant/old_Man_hinkalych')
+def oldManHinkalych():
+    place = Place.query.get_or_404(42)
+    return render_template('ЛичныеСтраницы/oldManHinkalych.html')
+
+@app.route('/Restaurant/Sadko')
+def Sadko():
+    place = Place.query.get_or_404(43)
+    return render_template('ЛичныеСтраницы/Sadko.html')
+
+@app.route('/Restaurant/Yuryevskoe_Courtyard')
+def YuryevskoeCourtyard():
+    place = Place.query.get_or_404(44)
+    return render_template('ЛичныеСтраницы/YuryevskoeCourtyard.html')
+
+@app.route('/Restaurant/Skipper')
+def Skipper():
+    place = Place.query.get_or_404(45)
+    return render_template('ЛичныеСтраницы/Skipper.html')
+
+@app.route('/Restaurant/Sharp')
+def Sharp():
+    place = Place.query.get_or_404(46)
+    return render_template('ЛичныеСтраницы/Sharp.html')
+
+@app.route('/Restaurant/Cafe Le Chocolat')
+def CafeLeChocolat():
+    place = Place.query.get_or_404(47)
+    return render_template('ЛичныеСтраницы/CafeLeChocolat.html')
+
+@app.route('/Restaurant/Hyper_lent')
+def HyperLent():
+    place = Place.query.get_or_404(48)
+    return render_template('ЛичныеСтраницы/HyperLent.html')
+
+@app.route('/Restaurant/VkusVille')
+def VkusVille():
+    place = Place.query.get_or_404(49)
+    return render_template('ЛичныеСтраницы/VkusVille.html')
+
+@app.route('/Restaurant/Dixie')
+def Dixie():
+    place = Place.query.get_or_404(50)
+    return render_template('ЛичныеСтраницы/Dixie.html')
+
+@app.route('/Restaurant/Dixie')
+def Dixie1():
+    place = Place.query.get_or_404(51)
+    return render_template('ЛичныеСтраницы/Dixie1.html')
+
+@app.route('/Restaurant/Dixie')
+def Dixie2():
+    place = Place.query.get_or_404(52)
+    return render_template('ЛичныеСтраницы/Dixie2.html')
+
+@app.route('/Restaurant/Crossroad')
+def Crossroad():
+    place = Place.query.get_or_404(53)
+    return render_template('ЛичныеСтраницы/Crossroad.html')
+
+@app.route('/Restaurant/Magnet')
+def Magnet():
+    place = Place.query.get_or_404(54)
+    return render_template('ЛичныеСтраницы/Magnet.html')
+
+@app.route('/Restaurant/Magnet')
+def Magnet1():
+    place = Place.query.get_or_404(55)
+    return render_template('ЛичныеСтраницы/Magnet1.html')
+
+@app.route('/Restaurant/Magnet')
+def Magnet2():
+    place = Place.query.get_or_404(56)
+    return render_template('ЛичныеСтраницы/Magnet2.html')
+
+@app.route('/Restaurant/Pyaterochka')
+def Pyaterochka():
+    place = Place.query.get_or_404(57)
+    return render_template('ЛичныеСтраницы/Pyaterochka.html')
+
+# Добавьте эти обработчики ошибок
+@app.errorhandler(400)
+@app.errorhandler(401)
+@app.errorhandler(403)
 @app.errorhandler(404)
-def not_found_error(error):
-    return jsonify({'message': 'Resource not found'}), 404
-
+@app.errorhandler(405)
+@app.errorhandler(408)
+@app.errorhandler(409)
+@app.errorhandler(410)
+@app.errorhandler(429)
 @app.errorhandler(500)
-def internal_error(error):
-    db.session.rollback()
-    return jsonify({'message': 'Internal server error'}), 500
+@app.errorhandler(502)
+@app.errorhandler(503)
+@app.errorhandler(504)
+def handle_error(error):
+    """Универсальный обработчик ошибок"""
+    error_code = getattr(error, 'code', 500)
+    error_name = get_error_name(error_code)
+
+    # Если это AJAX запрос, возвращаем JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'error': True,
+            'code': error_code,
+            'name': error_name,
+        }), error_code
+
+    # Иначе рендерим HTML страницу
+    return render_template('error.html',
+                           error_code=error_code,
+                           error_name=error_name), error_code
+
+
+def get_error_name(code):
+    """Возвращает название ошибки по коду"""
+    error_names = {
+        400: "Плохой запрос",
+        401: "Не авторизован",
+        403: "Запрещено",
+        404: "Страница не найдена",
+        405: "Метод не разрешен",
+        408: "Bed signal",
+        409: "Конфликт",
+        410: "Удалено",
+        429: "Слишком много запросов",
+        500: "Внутренняя ошибка сервера",
+        502: "Плохой шлюз",
+        503: "Сервис недоступен",
+        504: "Время ответа шлюза истекло"
+    }
+    return error_names.get(code, "Неизвестная ошибка")
 
 if __name__ == '__main__':
     with app.app_context():
