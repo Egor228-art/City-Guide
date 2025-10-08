@@ -110,21 +110,30 @@ class Place(db.Model):
         """Красивое отображение времени работы"""
         try:
             if self.working_hours:
-                hours_data = json.loads(self.working_hours)
-                if isinstance(hours_data, dict):
+                # Если это уже словарь - используем как есть
+                if isinstance(self.working_hours, dict):
+                    hours_data = self.working_hours
+                else:
+                    # Иначе пытаемся распарсить JSON
+                    hours_data = json.loads(self.working_hours)
+
+                if hours_data and isinstance(hours_data, dict):
                     # Форматируем красиво с переносами строк
                     result = []
                     for days, hours in hours_data.items():
                         result.append(f"{days}: {hours}")
                     return "<br>".join(result)
             return "Время работы не указано"
-        except:
+        except Exception as e:
+            print(f"Ошибка при форматировании времени работы: {e}")
             return "Время работы не указано"
 
     def get_working_hours_safe(self):
         """Безопасное получение времени работы"""
         try:
             if self.working_hours:
+                if isinstance(self.working_hours, dict):
+                    return self.working_hours
                 return json.loads(self.working_hours)
             return {}
         except:
@@ -151,7 +160,6 @@ class Review(db.Model):
     dislikes = db.Column(db.Integer, default=0)
     user_token = db.Column(db.String(255))  # Для анонимных пользователей
     device_fingerprint = db.Column(db.String(255))  # Добавляем это поле
-    ip_address = db.Column(db.String(45))  # Для ограничения по IP
     user_ratings = db.Column(db.JSON, default=dict)
 
 # def register_user(username, password, secret_key):
@@ -191,22 +199,6 @@ def update_restaurant_stats(restaurant_id):
     restaurant.total_rating = average_rating
     restaurant.review_count = review_count
     db.session.commit()
-
-# Псевдокод для серверной проверки
-def check_review_limit(user_token, ip_address, restaurant_id):
-    # Проверяем количество отзывов с этим токеном за последние 24 часа
-    reviews_count = Review.query.filter(
-        Review.user_token == user_token,
-        Review.created_at > datetime.now() - timedelta(hours=24)
-    ).count()
-
-    # Проверяем по IP (дополнительная защита)
-    ip_reviews_count = Review.query.filter(
-        Review.ip_address == ip_address,
-        Review.created_at > datetime.now() - timedelta(hours=24)
-    ).count()
-
-    return reviews_count < 3 and ip_reviews_count < 5  # Лимиты
 
 # В модель Review добавим метод проверки времени
 def can_edit(self):
@@ -879,7 +871,6 @@ def create_review():
                 comment=data.get('comment', ''),
                 user_token=user_token,
                 device_fingerprint=device_fingerprint,
-                ip_address=request.remote_addr,
                 likes=0,
                 dislikes=0,
                 user_ratings={}
@@ -988,14 +979,13 @@ def migrate_legacy_reviews():
         if not user_token or not device_fingerprint:
             return jsonify({'error': 'User token and device fingerprint required'}), 400
 
-        # Находим legacy отзывы для текущего пользователя (по IP или другим признакам)
-        # Например, можно мигрировать отзывы с определенного IP
+        # Находим legacy отзывы для текущего пользователя
         user_ip = request.remote_addr
 
-        # Ищем legacy отзывы с текущего IP
+        # Ищем legacy отзывы
         legacy_reviews = Review.query.filter(
-            (Review.user_token.startswith('legacy_token_')) &
-            (Review.ip_address == user_ip)
+            (Review.user_token.startswith('legacy_token_'))
+
         ).all()
 
         migrated_count = 0
@@ -2718,6 +2708,43 @@ def fix_slugs_route():
     """Временный маршрут для исправления slug"""
     fix_slug_duplicates()
     return "Slug исправлены!"
+
+@app.route('/debug/working-hours/<int:place_id>')
+def debug_working_hours(place_id):
+    """Проверка времени работы для отладки"""
+    place = Place.query.get_or_404(place_id)
+    return jsonify({
+        'id': place.id,
+        'title': place.title,
+        'working_hours_raw': place.working_hours,
+        'working_hours_type': type(place.working_hours).__name__,
+        'working_hours_display': place.get_working_hours_display(),
+        'working_hours_safe': place.get_working_hours_safe()
+    })
+
+
+@app.route('/debug/reviews/<restaurant_id>')
+def debug_reviews(restaurant_id):
+    """Проверка отзывов в БД"""
+    reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
+
+    result = []
+    for review in reviews:
+        result.append({
+            'id': review.id,
+            'restaurant_id': review.restaurant_id,
+            'username': review.username,
+            'rating': review.rating,
+            'comment': review.comment,
+            'user_token': review.user_token,
+            'created_at': review.created_at.isoformat()
+        })
+
+    return jsonify({
+        'restaurant_id': restaurant_id,
+        'total_reviews': len(reviews),
+        'reviews': result
+    })
 
 if __name__ == '__main__':
     with app.app_context():

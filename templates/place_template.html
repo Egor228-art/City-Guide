@@ -305,6 +305,14 @@
 
             <!-- Кнопка "Оставить отзыв" -->
             <button class="review-container-button" onclick="openReviewModal()">Оставить отзыв</button>
+
+            <script>
+            function resetAllLimits() {
+                localStorage.removeItem('reviewLimits');
+                console.log('✅ Все лимиты сброшены');
+                showNotification('Все лимиты сброшены - можно тестировать', 'success');
+            }
+            </script>
         </div>
 
         <!-- В модальном окне меню -->
@@ -676,7 +684,7 @@ contactsLink.addEventListener('click', function(e) {
 
 //Кнопки Футера - Конец
 
-
+let isReviewsLoading = false;
 
 // Массив для хранения отзывов
     let reviews = [];
@@ -979,10 +987,13 @@ function trackPageReload() {
     }
 }
 
-// Функция для красивого форматирования времени
-function formatTimeUntilNextReview() {
-    const timeUntilNext = getTimeUntilNextReview();
-    if (!timeUntilNext) return null;
+// 🔥 ИСПРАВЛЕННАЯ функция форматирования времени
+function formatTimeUntilNextReview(restaurantId) {
+    const timeUntilNext = getTimeUntilNextReview(restaurantId);
+
+    if (!timeUntilNext) {
+        return 'следующий отзыв можно оставить сейчас';
+    }
 
     const { hours, minutes } = timeUntilNext;
 
@@ -998,72 +1009,123 @@ function formatTimeUntilNextReview() {
 }
 
 // Функция обновления лимита после отправки отзыва
-function updateUserReviewLimit() {
+function updateUserReviewLimit(restaurantId, action = 'add') {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
-        reviewLimits[userToken] = {
-            lastReviewDate: new Date().toISOString()
-        };
+
+        console.log('🔄 Обновление лимита:', {
+            action: action,
+            restaurantId: restaurantId,
+            currentUserToken: userToken,
+            currentLimits: reviewLimits[userToken]
+        });
+
+        if (action === 'add') {
+            // Добавляем лимит при создании отзыва
+            reviewLimits[userToken] = {
+                lastReviewDate: new Date().toISOString(),
+                restaurantId: restaurantId
+            };
+            console.log('✅ Лимит УСТАНОВЛЕН для ресторана:', restaurantId);
+        } else if (action === 'remove') {
+            // Удаляем лимит при удалении отзыва
+            if (reviewLimits[userToken]) {
+                console.log('🔍 Найден лимит для удаления:', reviewLimits[userToken]);
+                if (reviewLimits[userToken].restaurantId === restaurantId) {
+                    delete reviewLimits[userToken];
+                    console.log('✅ Лимит СНЯТ для ресторана:', restaurantId);
+                } else {
+                    console.log('⚠️ Лимит для другого ресторана:', reviewLimits[userToken].restaurantId);
+                }
+            } else {
+                console.log('⚠️ Лимит не найден для пользователя');
+            }
+        }
+
         localStorage.setItem('reviewLimits', JSON.stringify(reviewLimits));
-        console.log('✅ Лимит обновлен для пользователя:', userToken);
+        console.log('📊 Текущие лимиты после обновления:', reviewLimits);
+
     } catch (error) {
-        console.error('Error updating review limit:', error);
+        console.error('❌ Error updating review limit:', error);
     }
 }
 
 // Функция проверки лимита отзывов (1 в день)
-function canUserPostReview() {
+function canUserPostReview(restaurantId) {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         const userLimit = reviewLimits[userToken];
 
         if (!userLimit) {
-            return true; // Пользователь еще не оставлял отзывов
+            console.log('✅ Нет лимитов - можно оставлять отзыв');
+            return true;
         }
 
-        const lastReviewDate = new Date(userLimit.lastReviewDate);
-        const today = new Date();
+        // 🔥 Ключевое исправление: проверяем ТОЛЬКО если это тот же ресторан
+        if (userLimit.restaurantId === restaurantId) {
+            const lastReviewDate = new Date(userLimit.lastReviewDate);
+            const now = new Date();
 
-        // Проверяем, был ли отзыв сегодня
-        const canPost = lastReviewDate.toDateString() !== today.toDateString();
-        console.log('🔍 Проверка лимита:', {
-            userToken: userToken,
-            lastReviewDate: lastReviewDate.toDateString(),
-            today: today.toDateString(),
-            canPost: canPost
-        });
+            // Проверяем, прошло ли 24 часа?
+            const timeDiff = now - lastReviewDate;
+            const hoursDiff = timeDiff / (1000 * 60 * 60);
 
-        return canPost;
+            const canPost = hoursDiff >= 24;
+
+            console.log('🔍 Проверка лимита для ресторана:', {
+                restaurantId: restaurantId,
+                lastReviewRestaurant: userLimit.restaurantId,
+                hoursDiff: hoursDiff.toFixed(2),
+                canPost: canPost
+            });
+
+            return canPost;
+        }
+
+        // 🔥 Если ресторан ДРУГОЙ - разрешаем всегда!
+        console.log('✅ Другой ресторан - можно оставлять отзыв');
+        return true;
 
     } catch (error) {
         console.error('Error checking review limit:', error);
-        return true; // В случае ошибки разрешаем отправку
+        return true;
     }
 }
 
 // Функция получения времени до следующего отзыва
-function getTimeUntilNextReview() {
+function getTimeUntilNextReview(restaurantId) {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         const userLimit = reviewLimits[userToken];
 
-        if (!userLimit) {
+        if (!userLimit || userLimit.restaurantId !== restaurantId) {
             return null;
         }
 
         const lastReviewDate = new Date(userLimit.lastReviewDate);
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(0, 0, 0, 0);
+        const now = new Date();
 
-        const timeDiff = tomorrow - today;
+        // 🔥 Время следующего отзыва = lastReviewDate + 24 часа
+        const nextReviewTime = new Date(lastReviewDate.getTime() + 24 * 60 * 60 * 1000);
+        const timeDiff = nextReviewTime - now;
+
+        if (timeDiff <= 0) {
+            return null; // Время вышло
+        }
+
         const hours = Math.floor(timeDiff / (1000 * 60 * 60));
         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
 
-        console.log('⏰ Время до следующего отзыва:', { hours, minutes });
+        console.log('⏰ Время до следующего отзыва:', {
+            lastReview: lastReviewDate.toLocaleString(),
+            nextReview: nextReviewTime.toLocaleString(),
+            now: now.toLocaleString(),
+            hours: hours,
+            minutes: minutes
+        });
 
         return { hours, minutes };
+
     } catch (error) {
         console.error('Error getting time until next review:', error);
         return null;
@@ -1114,8 +1176,12 @@ function showNotification(message, type = 'info') {
 async function submitReview(e) {
     if (e) e.preventDefault();
 
+    console.log('=== НАЧАЛО ОТПРАВКИ ОТЗЫВА ===');
+    console.log('currentRestaurantId:', currentRestaurantId);
+    console.log('userToken:', userToken);
+
     const payload = {
-        restaurant_id: currentRestaurantId, // ✅ Динамический ID
+        restaurant_id: currentRestaurantId,
         username: document.getElementById('name').value.trim(),
         rating: selectedRating,
         comment: document.getElementById('comment').value.trim(),
@@ -1123,18 +1189,15 @@ async function submitReview(e) {
         device_fingerprint: getDeviceFingerprint()
     };
 
-    // 🔥 Обновляем лимит для КОНКРЕТНОГО ресторана
-    updateUserReviewLimit(currentRestaurantId);
+    console.log('Отправляемые данные:', payload);
 
-    console.log('=== ОТПРАВКА ОТЗЫВА С ПРОВЕРКОЙ ЛИМИТА ===');
-
-    // 🔥 Проверяем лимит для КОНКРЕТНОГО ресторана
+    // 🔥 ВРЕМЕННО ОТКЛЮЧИМ ПРОВЕРКУ ЛИМИТА
     if (!canUserPostReview(currentRestaurantId)) {
         const timeUntilNext = getTimeUntilNextReview(currentRestaurantId);
         let message = 'Вы уже оставляли отзыв для этого заведения сегодня. ';
 
         if (timeUntilNext) {
-            const formattedTime = formatTimeUntilNextReview();
+            const formattedTime = formatTimeUntilNextReview(currentRestaurantId);
             message += `Следующий отзыв можно будет оставить через ${formattedTime}`;
         }
 
@@ -1190,6 +1253,10 @@ async function submitReview(e) {
         const data = await response.json();
 
         if (response.ok) {
+        // 🔥 ОБНОВЛЯЕМ ЛИМИТ ДЛЯ КОНКРЕТНОГО РЕСТОРАНА
+        updateUserReviewLimit(currentRestaurantId, 'add'); // 🔥 ДОБАВЛЕН ПАРАМЕТР 'add'
+
+        console.log('✅ Лимит обновлен, отзыв добавлен для ресторана:', currentRestaurantId);
             // ✅ Успех - сохраняем в localStorage
             if (data.review) {
                 // 🔥 ОБНОВЛЯЕМ ЛИМИТ ДЛЯ КОНКРЕТНОГО РЕСТОРАНА
@@ -1612,12 +1679,19 @@ async function deleteReview(reviewId) {
 
         const review = reviews.find(r => r.id == reviewId);
         if (!review) {
+            console.log('❌ Отзыв не найден в массиве');
             return;
         }
 
+        console.log('📋 Данные отзыва:', {
+            id: review.id,
+            restaurant_id: review.restaurant_id,
+            user_token: review.user_token
+        });
+
         // ДВОЙНАЯ ПРОВЕРКА: Убеждаемся что пользователь автор
         if (!checkIsAuthor(review)) {
-            console.log('Permission denied: user is not author');
+            console.log('❌ Permission denied: user is not author');
             return;
         }
 
@@ -1633,9 +1707,24 @@ async function deleteReview(reviewId) {
         });
 
         const data = await response.json();
-        console.log('Ответ сервера:', data);
+        console.log('📨 Ответ сервера:', data);
 
         if (response.ok) {
+            // 🔥 ВАЖНО: СНИМАЕМ ЛИМИТ ПЕРЕД перезагрузкой отзывов
+            console.log('🔄 Снимаем лимит для ресторана:', review.restaurant_id);
+            updateUserReviewLimit(review.restaurant_id, 'remove'); // 🔥 Убедитесь что 'remove'
+
+            // 🔥 ПРОВЕРЯЕМ СРАЗУ ПОСЛЕ УДАЛЕНИЯ
+            setTimeout(() => {
+                console.log('🔍 Проверяем лимит сразу после удаления...');
+                const canPostNow = canUserPostReview(currentRestaurantId);
+                console.log('✅ Можно ли оставить отзыв после удаления?', canPostNow);
+
+                if (!canPostNow) {
+                    console.log('⚠️ Лимит не снялся! Принудительно снимаем...');
+                    forceRemoveLimit(currentRestaurantId);
+                }
+            }, 100);
 
             // Закрываем модальные окна
             closeFullReviewModal();
@@ -1644,16 +1733,22 @@ async function deleteReview(reviewId) {
                 document.body.removeChild(confirmModal);
             }
 
-            // Перезагружаем отзывы и статистику
+            // Перезагружаем отзывы
             setTimeout(() => {
+                console.log('🔄 Перезагружаем отзывы после удаления...');
                 loadReviews();
                 initStats();
             }, 500);
+
+            // Показываем уведомление
+            showNotification('Отзыв удален. Вы можете оставить новый отзыв.', 'success');
+
         } else {
             throw new Error(data.error || 'Ошибка при удалении');
         }
     } catch (error) {
-        console.error('Error deleting review:', error);
+        console.error('❌ Error deleting review:', error);
+        showNotification('Ошибка при удалении отзыва', 'error');
     }
 }
 
@@ -2550,31 +2645,38 @@ function resetUserRating(reviewId) {
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 // Вызовите эту функцию после загрузки отзывов
 async function loadReviews() {
+    if (isReviewsLoading) {
+        console.log('⏳ Загрузка отзывов уже выполняется...');
+        return;
+    }
+
+    isReviewsLoading = true;
+
     try {
+        console.log('🔄 Начинаем загрузку отзывов...');
         const response = await fetch(`/api/reviews?restaurant_id=${currentRestaurantId}&_=${Date.now()}`);
-        if (response.ok) {
-            const reviewsData = await response.json();
-            reviews = reviewsData;
-            displayReviews(reviews);
-            initStats();
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        if (response.ok) {
-            const reviewsData = await response.json();
+        const reviewsData = await response.json();
+        console.log('✅ Отзывы успешно загружены:', reviewsData.length);
 
-            // Сохраняем данные с сервера
-            reviews = reviewsData;
+        // Сохраняем данные с сервера
+        reviews = reviewsData;
 
-            // Отображаем отзывы
-            displayReviews(reviews);
+        // Отображаем отзывы
+        displayReviews(reviews);
 
-            // Обновляем статистику
-            initStats();
-        } else {
-            console.error('Ошибка загрузки отзывов');
-        }
+        // Обновляем статистику
+        initStats();
+
     } catch (error) {
-        console.error('Error loading reviews:', error);
+        console.error('❌ Ошибка загрузки отзывов:', error);
+        showNotification('Ошибка загрузки отзывов', 'error');
+    } finally {
+        isReviewsLoading = false;
     }
 }
 
@@ -2967,9 +3069,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Функция для сброса лимитов (для отладки)
 function resetReviewLimits() {
-    localStorage.removeItem('reviewLimits');
-    console.log('Лимиты отзывов сброшены');
-    showNotification('Лимиты отзывов сброшены', 'info');
+    const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+
+    if (reviewLimits[userToken]) {
+        delete reviewLimits[userToken];
+        localStorage.setItem('reviewLimits', JSON.stringify(reviewLimits));
+    }
+
+    console.log('✅ Лимиты отзывов сброшены для пользователя:', userToken);
+    showNotification('Лимиты отзывов сброшены', 'success');
 }
 
 // 🔥 Улучшенная защита от очистки кэша
@@ -3631,23 +3739,30 @@ function hideHeaderButton() {
         document.getElementById('menu-modal').style.display = 'none';
     }
 
-// Обновленная функция открытия модального окна отзыва
+// 🔥 ИСПРАВЛЕННАЯ функция открытия модального окна отзыва
 function openReviewModal() {
-    // 🔥 Проверяем лимит для КОНКРЕТНОГО ресторана
+    console.log('=== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА ===');
+
+    // 🔥 РАСКОММЕНТИРУЙТЕ ЭТОТ БЛОК ОБРАТНО:
     if (!canUserPostReview(currentRestaurantId)) {
         const timeUntilNext = getTimeUntilNextReview(currentRestaurantId);
-        let message = 'Вы уже оставляли отзыв для этого заведения сегодня. ';
+        let message = 'Вы уже оставляли отзыв для этого заведения. ';
 
         if (timeUntilNext) {
-            const formattedTime = formatTimeUntilNextReview();
+            const formattedTime = formatTimeUntilNextReview(currentRestaurantId);
             message += `Следующий отзыв можно будет оставить через ${formattedTime}`;
+        } else {
+            message += 'Попробуйте позже.';
         }
 
+        console.log('❌ Отзыв запрещен:', message);
         showNotification(message, 'error');
         return;
     }
 
-    // Генерируем/проверяем токен ДО открытия окна
+    console.log('✅ Можно оставлять отзыв - открываем форму');
+
+    // Генерируем/проверяем токен
     if (!localStorage.getItem('userToken')) {
         userToken = generateUserToken();
     }
@@ -4100,30 +4215,76 @@ function canUserPostReview(restaurantId) {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         const userLimit = reviewLimits[userToken];
 
-        if (!userLimit) return true;
-
-        // 🔥 Проверяем по конкретному ресторану
-        if (userLimit.restaurantId === restaurantId) {
-            const lastReviewDate = new Date(userLimit.lastReviewDate);
-            const today = new Date();
-            return lastReviewDate.toDateString() !== today.toDateString();
+        if (!userLimit) {
+            console.log('✅ Нет лимитов - можно оставлять отзыв');
+            return true;
         }
 
-        return true; // Для других ресторанов ограничений нет
+        // 🔥 Проверяем по КОНКРЕТНОМУ ресторану
+        if (userLimit.restaurantId === restaurantId) {
+            const lastReviewDate = new Date(userLimit.lastReviewDate);
+            const now = new Date();
+
+            // 🔥 Правильная проверка: прошло ли 24 часа?
+            const timeDiff = now - lastReviewDate;
+            const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+            const canPost = hoursDiff >= 24;
+
+            console.log('🔍 Проверка лимита для ресторана:', {
+                restaurantId: restaurantId,
+                lastReviewRestaurant: userLimit.restaurantId,
+                lastReviewDate: lastReviewDate.toLocaleString(),
+                currentTime: now.toLocaleString(),
+                hoursDiff: hoursDiff.toFixed(2),
+                canPost: canPost
+            });
+
+            return canPost;
+        }
+
+        // 🔥 Для других ресторанов ограничений нет
+        console.log('✅ Другой ресторан - можно оставлять отзыв');
+        return true;
+
     } catch (error) {
+        console.error('Error checking review limit:', error);
         return true;
     }
 }
 
 // Функция обновления лимита после отправки отзыва
-function updateUserReviewLimit(restaurantId) {
+function updateUserReviewLimit(restaurantId, action = 'add') {
+    console.log('🔄 ВЫЗВАНА ФУНКЦИЯ updateUserReviewLimit:', {
+        restaurantId,
+        action,
+        functionVersion: 'NEW_VERSION_WITH_ACTION_PARAM'
+    });
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
-        reviewLimits[userToken] = {
-            lastReviewDate: new Date().toISOString(),
-            restaurantId: restaurantId  // ✅ Сохраняем ID ресторана
-        };
+
+        console.log('🔄 Обновление лимита:', { action, restaurantId, currentLimits: reviewLimits[userToken] });
+
+        if (action === 'add') {
+            // Добавляем лимит при создании отзыва
+            reviewLimits[userToken] = {
+                lastReviewDate: new Date().toISOString(),
+                restaurantId: restaurantId
+            };
+            console.log('✅ Лимит УСТАНОВЛЕН для ресторана:', restaurantId);
+        } else if (action === 'remove') {
+            // Удаляем лимит при удалении отзыва
+            if (reviewLimits[userToken] && reviewLimits[userToken].restaurantId === restaurantId) {
+                delete reviewLimits[userToken];
+                console.log('✅ Лимит СНЯТ для ресторана:', restaurantId);
+            } else {
+                console.log('⚠️ Лимит не найден для удаления:', restaurantId);
+            }
+        }
+
         localStorage.setItem('reviewLimits', JSON.stringify(reviewLimits));
+        console.log('📊 Текущие лимиты после обновления:', reviewLimits);
+
     } catch (error) {
         console.error('Error updating review limit:', error);
     }
@@ -5227,6 +5388,107 @@ function debugRatingSystem(reviewId) {
     console.log('Текущий userToken:', userToken);
     console.log('Все отзывы в массиве:', reviews.map(r => ({id: r.id, rating: r.rating})));
     console.log('============================');
+}
+
+        // Функция для отладки текущих лимитов
+function debugReviewLimits() {
+    const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+    console.log('=== ТЕКУЩИЕ ЛИМИТЫ ОТЗЫВОВ ===');
+    console.log('User token:', userToken);
+    console.log('Current restaurant ID:', currentRestaurantId);
+    console.log('All limits:', reviewLimits);
+
+    if (reviewLimits[userToken]) {
+        const userLimit = reviewLimits[userToken];
+        console.log('User limit:', {
+            lastReviewDate: new Date(userLimit.lastReviewDate).toLocaleString(),
+            restaurantId: userLimit.restaurantId,
+            isSameRestaurant: userLimit.restaurantId === currentRestaurantId
+        });
+    }
+    console.log('Can post review:', canUserPostReview(currentRestaurantId));
+    console.log('==============================');
+}
+
+        function debugLocalStorage() {
+    console.log('=== DEBUG LOCALSTORAGE ===');
+    console.log('userToken:', localStorage.getItem('userToken'));
+
+    const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+    console.log('reviewLimits:', reviewLimits);
+
+    const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+    console.log('favorites count:', favorites.length);
+
+    console.log('currentRestaurantId:', currentRestaurantId);
+    console.log('==========================');
+}
+
+        function testReviewLimits() {
+    console.log('=== ТЕСТ СИСТЕМЫ ЛИМИТОВ ===');
+
+    const testRestaurants = ['Lambs', 'Gurmetto', 'Brewmen'];
+
+    testRestaurants.forEach(restaurantId => {
+        const canPost = canUserPostReview(restaurantId);
+        const timeLeft = getTimeUntilNextReview(restaurantId);
+
+        console.log(`Ресторан "${restaurantId}":`, {
+            canPost: canPost,
+            timeLeft: timeLeft,
+            formattedTime: formatTimeUntilNextReview(restaurantId)
+        });
+    });
+
+    console.log('============================');
+}
+
+        // 🔥 Функция для детальной проверки лимитов
+function debugLimitsDetailed() {
+    const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+    const userLimit = reviewLimits[userToken];
+
+    console.log('=== ДЕТАЛЬНАЯ ПРОВЕРКА ЛИМИТОВ ===');
+    console.log('User token:', userToken);
+    console.log('Current restaurant:', currentRestaurantId);
+    console.log('All limits:', reviewLimits);
+
+    if (userLimit) {
+        const lastReviewDate = new Date(userLimit.lastReviewDate);
+        const now = new Date();
+        const hoursDiff = (now - lastReviewDate) / (1000 * 60 * 60);
+
+        console.log('User limit details:', {
+            restaurant: userLimit.restaurantId,
+            lastReview: lastReviewDate.toLocaleString(),
+            hoursPassed: hoursDiff.toFixed(2),
+            canPost: hoursDiff >= 24,
+            isCurrentRestaurant: userLimit.restaurantId === currentRestaurantId
+        });
+    } else {
+        console.log('✅ No active limits for user');
+    }
+    console.log('================================');
+}
+
+        // 🔥 Функция для принудительной проверки и исправления лимитов
+function fixLimitsAfterDelete(restaurantId) {
+    console.log('🔧 Принудительное исправление лимитов после удаления...');
+
+    const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
+    const userLimit = reviewLimits[userToken];
+
+    console.log('📊 До исправления:', userLimit);
+
+    // Если лимит существует и для этого ресторана - удаляем его
+    if (userLimit && userLimit.restaurantId === restaurantId) {
+        delete reviewLimits[userToken];
+        localStorage.setItem('reviewLimits', JSON.stringify(reviewLimits));
+        console.log('✅ Лимит принудительно удален');
+        console.log('📊 После исправления:', reviewLimits[userToken]);
+    } else {
+        console.log('✅ Лимит уже снят или не существует');
+    }
 }
 </script>
 </body>
