@@ -726,7 +726,7 @@ body.no-scroll {
 /* Блок отзывов */
 .reviews {
     width: calc(100% - 200px); /* Ширина равна ширине блока с картинками и описанием, минус отступы */
-    margin: 40px 0 0; /* Отступ сверху и центрирование по горизонтали */
+    margin: 10px 0 0; /* Отступ сверху и центрирование по горизонтали */
     padding: 20px 0; /* Отступы сверху и снизу */
     border-top: 2px solid #000; /* Горизонтальная чёрная линия */
     max-width: 1100px; /* Максимальная ширина, чтобы не растягивался слишком широко */
@@ -1028,7 +1028,7 @@ body.no-scroll {
     border-color: #888 !important;
 }
 
-.review-container-button, .review-form-button {
+.review-container-button, .review-menu-container-button, .review-form-button {
     /* Основные стили */
     display: inline-flex;
     align-items: center;
@@ -1047,20 +1047,20 @@ body.no-scroll {
     overflow: hidden;
 }
 /* Эффект при наведении */
-.review-container-button:hover,
+.review-container-button:hover, .review-menu-container-button:hover,
 .review-form-button:hover {
     background: linear-gradient(135deg, #505050, #2b2b2b);
     box-shadow: 0 6px 20px rgba(48, 48, 48, 0.3);
 }
 
 /* Эффект при нажатии */
-.review-container-button:active,
+.review-container-button:active, .review-menu-container-button:active,
 .review-form-button:active {
     box-shadow: 0 2px 10px rgba(48, 48, 48, 0.3);
 }
 
 /* Анимация "волны" при клике */
-.review-container-button::after,
+.review-container-button::after, .review-menu-container-button::after,
 .review-form-button::after {
     content: "";
     position: absolute;
@@ -1074,7 +1074,7 @@ body.no-scroll {
     transform: scale(1, 1) translate(-50%, -50%);
     transform-origin: 50% 50%;
 }
-.review-container-button:focus:not(:active)::after,
+.review-container-button:focus:not(:active)::after, .review-menu-container-button:focus:not(:active)::after,
 .review-form-button:focus:not(:active)::after {
     animation: ripple 0.6s ease-out;
 }
@@ -2330,7 +2330,8 @@ body.no-scroll {
 
 /* Стили для тегов заведения */
 .tags-section {
-    margin-top: 50px;
+    width: 81%;
+    margin-top: 10px;
     padding: 15px 0;
     border-top: 1px solid #eee;
     border-bottom: 1px solid #eee;

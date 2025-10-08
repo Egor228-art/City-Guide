@@ -1,4 +1,5 @@
 import hashlib
+import json
 import re
 import os
 import pytz
@@ -12,7 +13,6 @@ from flask_admin import Admin
 from flask import Flask, jsonify, render_template, request, url_for, session
 from datetime import datetime, timezone, timedelta
 from flask_migrate import Migrate
-from sqlalchemy import text
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -60,10 +60,75 @@ class Place(db.Model):
     telephone = db.Column(db.String(20), nullable=True)
     address = db.Column(db.String(200), nullable=True)
     image_path = db.Column(db.String(200), nullable=True)
-    category = db.Column(db.String(50), nullable=False)
+    category = db.Column(db.String(50), nullable=False, default='Restaurant')
+    category_en = db.Column(db.String(50), nullable=False, default='Restaurant')
+    slug = db.Column(db.String(100), unique=True, nullable=True)  # Для английских URL
+    latitude = db.Column(db.Float)  # широта для карт
+    longitude = db.Column(db.Float)  # долгота для карт
+    working_hours = db.Column(db.JSON)  # {"пн-пт": "10:00-22:00", "сб-вс": "11:00-23:00"}
+    menu = db.Column(db.Text, default='{}')  # {"category": [{"name": "", "price": ""}]}
+
+    # Словарь для преобразования категорий
+    CATEGORY_MAPPING = {
+        'Ресторан': 'Restaurant',
+        'Кафе': 'Cafe',
+        'Магазин': 'Shop',
+        'Музей': 'Museum',
+        'Театр': 'Theatre',
+        'Библиотека': 'Library',
+        'Парк': 'Park',
+        'Кинотеатр': 'Cinema',
+        'Спортплощадка': 'Sports',
+        'Церковь': 'Church',
+        'Гостиница': 'Hotel',
+        'Иконка': 'Icon'
+    }
 
     def __repr__(self):
         return f'<Place {self.title}>'
+
+    def get_menu_dict(self):
+        """Безопасное получение меню"""
+        try:
+            if self.menu:
+                return json.loads(self.menu)
+            return {}
+        except:
+            return {}
+
+    def get_menu_data(self):
+        """Алиас для get_menu_dict"""
+        return self.get_menu_dict()
+
+    def get_tags_list(self):
+        """Получение тегов в виде списка"""
+        if self.tags:
+            return [tag.strip() for tag in self.tags.split(',')]
+        return []
+
+    def get_working_hours_display(self):
+        """Красивое отображение времени работы"""
+        try:
+            if self.working_hours:
+                hours_data = json.loads(self.working_hours)
+                if isinstance(hours_data, dict):
+                    # Форматируем красиво с переносами строк
+                    result = []
+                    for days, hours in hours_data.items():
+                        result.append(f"{days}: {hours}")
+                    return "<br>".join(result)
+            return "Время работы не указано"
+        except:
+            return "Время работы не указано"
+
+    def get_working_hours_safe(self):
+        """Безопасное получение времени работы"""
+        try:
+            if self.working_hours:
+                return json.loads(self.working_hours)
+            return {}
+        except:
+            return {}
 
 # Модели базы данных
 class Restaurant(db.Model):
@@ -472,7 +537,6 @@ def register_user(username, password, secret_key):
 def check_review_limit_per_restaurant(user_token, restaurant_id):
     """Проверяет лимит отзывов (1 отзыв в день на ресторан)"""
     try:
-        # Проверяем отзывы за последние 24 часа для этого пользователя и ресторана
         time_limit = datetime.now() - timedelta(hours=24)
 
         recent_reviews_count = Review.query.filter(
@@ -550,6 +614,8 @@ def get_restaurant(restaurant_id):
 @app.route('/api/reviews')
 def get_reviews():
     restaurant_id = request.args.get('restaurant_id')
+    print(f"🔍 Запрошены отзывы для restaurant_id: {restaurant_id}")
+
     if not restaurant_id:
         return jsonify({'error': 'restaurant_id is required'}), 400
 
@@ -558,30 +624,23 @@ def get_reviews():
             .order_by(Review.created_at.desc()) \
             .all()
 
+        print(f"📊 Найдено {len(reviews)} отзывов для {restaurant_id}")
+
         reviews_data = []
         for review in reviews:
-            review_data = {
+            reviews_data.append({
                 'id': review.id,
+                'restaurant_id': review.restaurant_id,  # Добавляем для отладки
                 'username': review.username,
                 'rating': review.rating,
                 'comment': review.comment,
                 'created_at': review.created_at.isoformat(),
                 'likes': review.likes or 0,
                 'dislikes': review.dislikes or 0,
-                'user_token': review.user_token,  # ✅ Возвращаем как есть
-                'device_fingerprint': review.device_fingerprint,  # ✅ Возвращаем как есть
+                'user_token': review.user_token,
+                'device_fingerprint': review.device_fingerprint,
                 'user_ratings': review.user_ratings or {}
-            }
-            reviews_data.append(review_data)
-
-        # print(f"✅ Возвращаем {len(reviews_data)} отзывов")
-        # for i, rd in enumerate(reviews_data[:3]):
-        #     print(f"  📤 Отзыв {i+1}: id={rd['id']}, user_token='{rd['user_token']}'")
-
-        # Логируем токены для отладки
-        for i, rd in enumerate(reviews_data[:5]):
-            print(
-                f"  📤 Отзыв {i + 1}: id={rd['id']}, user_token='{rd['user_token']}', device_fingerprint='{rd['device_fingerprint']}'")
+            })
 
         return jsonify(reviews_data)
 
@@ -756,7 +815,8 @@ def update_review(review_id):
         print(f"Error updating review: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/api/reviews', methods=['POST'])
+
+@app.route('/api/reviews', methods=['GET', 'POST'])
 def create_review():
     if request.method == 'GET':
         restaurant_id = request.args.get('restaurant_id')
@@ -772,8 +832,8 @@ def create_review():
             'created_at': review.created_at.isoformat(),
             'likes': review.likes or 0,
             'dislikes': review.dislikes or 0,
-            'user_token': review.user_token,  # ✅ Добавляем
-            'device_fingerprint': review.device_fingerprint,  # ✅ Добавляем
+            'user_token': review.user_token,
+            'device_fingerprint': review.device_fingerprint,
             'user_ratings': review.user_ratings or {}
         } for review in reviews]
 
@@ -805,7 +865,7 @@ def create_review():
             device_fingerprint = data.get('device_fingerprint')
             restaurant_id = data['restaurant_id']
 
-            # 🔥 ВАЖНОЕ ИЗМЕНЕНИЕ: Проверяем лимит отзывов для КОНКРЕТНОГО ресторана
+            # 🔥 Проверяем лимит для КОНКРЕТНОГО ресторана
             if not check_review_limit_per_restaurant(user_token, restaurant_id):
                 return jsonify({
                     'error': f'Вы уже оставляли отзыв для этого заведения сегодня. Следующий отзыв можно будет оставить через 24 часа.'
@@ -838,6 +898,7 @@ def create_review():
 
             # Обновляем статистику ресторана
             update_restaurant_stats(restaurant_id)
+
             # ВАЖНО: Возвращаем ВСЕ поля
             response_data = {
                 'success': True,
@@ -1131,9 +1192,24 @@ def add_place():
             telephone = request.form.get('telephone', '').strip()
             address = request.form.get('address', '').strip()
             category = request.form.get('category', '').strip()
+            working_hours = request.form.get('working_hours', '').strip()
+            menu = request.form.get('menu', '').strip()
+            tags = request.form.get('tags', '').strip()
+            latitude = request.form.get('latitude', '').strip()
+            longitude = request.form.get('longitude', '').strip()
 
             if not category:
                 return 'Категория обязательна для заполнения', 400
+
+            # Валидация меню (JSON)
+            if menu:
+                try:
+                    # Проверяем что меню - валидный JSON
+                    menu_data = json.loads(menu)
+                    # Сохраняем как отформатированный JSON
+                    menu = json.dumps(menu_data, ensure_ascii=False, indent=2)
+                except json.JSONDecodeError:
+                    return 'Неверный формат меню. Должен быть валидный JSON', 400
 
             # Обработка файла
             image_path = None
@@ -1155,14 +1231,43 @@ def add_place():
                         app.logger.error(f'Ошибка сохранения файла: {str(e)}')
                         return 'Ошибка при сохранении файла', 500
 
-            # Создаем новую запись
+            # Генерируем slug из названия
+            slug = generate_slug(title)
+
+            category = request.form.get('category', '').strip()
+
+            # ДОБАВЬТЕ: определяем английскую категорию
+            category_mapping = {
+                'Ресторан': 'Restaurant',
+                'Кафе': 'Cafe',
+                'Магазин': 'Shop',
+                'Музей': 'Museum',
+                'Театр': 'Theatre',
+                'Библиотека': 'Library',
+                'Парк': 'Park',
+                'Кинотеатр': 'Cinema',
+                'Спортплощадка': 'Sports',
+                'Церковь': 'Church',
+                'Гостиница': 'Hotel',
+                'Иконка': 'Icon'
+            }
+            category_en = category_mapping.get(category, 'Restaurant')
+
+            # Создаем новую запись с ОБОИМИ категориями
             new_place = Place(
                 title=title or None,
                 description=description or None,
                 telephone=telephone or None,
                 address=address or None,
                 image_path=image_path,
-                category=category
+                category=category,
+                category_en=category_en,  # ДОБАВЬТЕ ЭТО
+                latitude=float(latitude) if latitude else None,
+                longitude=float(longitude) if longitude else None,
+                working_hours=working_hours or '{}',
+                menu=menu or '{}',
+                tags=tags or None,
+                slug=slug
             )
 
             db.session.add(new_place)
@@ -1183,75 +1288,27 @@ def places():
     places = Place.query.all()
     return render_template('places.html', places=places)
 
-def migrate_review_table():
-    """Миграция таблицы review - добавление новых столбцов без потери данных"""
-    try:
-        # Подключаемся к базе данных
-        conn = sqlite3.connect('instance/database.db')
-        cursor = conn.cursor()
+def generate_slug(title):
+    """Генерация slug из русского названия"""
+    # Транслитерация кириллицы в латиницу
+    translit_dict = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
+        'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    }
 
-        # Проверяем существование таблицы
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='review'")
-        table_exists = cursor.fetchone()
+    # Приводим к нижнему регистру и транслитерируем
+    slug = ''.join(translit_dict.get(c, c) for c in title if c.isalnum() or c.isspace())
 
-        if not table_exists:
-            print("Таблица review не существует. Создаем новую...")
-            cursor.execute("""
-                CREATE TABLE review (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    restaurant_id VARCHAR(50) NOT NULL,
-                    username VARCHAR(100) NOT NULL,
-                    rating INTEGER NOT NULL,
-                    comment TEXT,
-                    created_at DATETIME,
-                    updated_at DATETIME,
-                    likes INTEGER DEFAULT 0,
-                    dislikes INTEGER DEFAULT 0,
-                    user_token VARCHAR(255),
-                    device_fingerprint VARCHAR(255),
-                    ip_address VARCHAR(45),
-                    user_ratings TEXT DEFAULT '{}'
-                )
-            """)
-            print("Таблица review создана успешно!")
-            conn.commit()
-            conn.close()
-            return
-
-        print("Таблица review существует. Начинаем миграцию...")
-
-        # Проверяем существующие столбцы
-        cursor.execute("PRAGMA table_info(review)")
-        columns = [column[1] for column in cursor.fetchall()]
-
-        # Добавляем отсутствующие колонки
-        new_columns = [
-            ('updated_at', 'DATETIME'),
-            ('user_token', 'VARCHAR(255)'),
-            ('device_fingerprint', 'VARCHAR(255)'),
-            ('ip_address', 'VARCHAR(45)'),
-            ('user_ratings', 'TEXT DEFAULT "{}"')
-        ]
-
-        for column_name, column_type in new_columns:
-            if column_name not in columns:
-                print(f"Добавляем колонку {column_name}...")
-                cursor.execute(f"ALTER TABLE review ADD COLUMN {column_name} {column_type}")
-
-        # Обновляем значения для новых колонок
-        cursor.execute("UPDATE review SET user_ratings = '{}' WHERE user_ratings IS NULL")
-        cursor.execute("UPDATE review SET likes = 0 WHERE likes IS NULL")
-        cursor.execute("UPDATE review SET dislikes = 0 WHERE dislikes IS NULL")
-
-        conn.commit()
-        print("Миграция таблицы review завершена успешно!")
-
-    except Exception as e:
-        print(f"Ошибка при миграции: {e}")
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
+    # Заменяем пробелы на дефисы и удаляем лишние символы
+    slug = re.sub(r'[^\w\s-]', '', slug)
+    slug = re.sub(r'[-\s]+', '-', slug).strip('-')
+    slug = ''.join(translit_dict.get(c, c) for c in title)
+    slug = re.sub(r'[^a-z0-9-]', '-', slug)  # Заменяем не-буквы на дефисы
+    slug = re.sub(r'-+', '-', slug).strip('-')  # Убираем лишние дефисы
+    return slug
 
 @app.route('/api/reviews/<int:review_id>/migrate', methods=['POST'])
 def migrate_review(review_id):
@@ -2151,152 +2208,113 @@ def test():
 def search():
     query = request.form.get("query")
     results = []
-    if query:
-        # Разбиваем запрос на отдельные слова
-        query_words = query.lower().split()
-        # Ищем рестораны, которые содержат хотя бы одно из слов или букв в названии или описании
-        results = [
-            restaurant for restaurant in restaurants
-            if any(
-                word in restaurant["name"].lower() or
-                word in restaurant["description"].lower() or
-                word in re.sub(r'\d+', '', restaurant["contact2"]).lower() or  # Только адрес
-                word in restaurant["tegs"].lower()
-                for word in query_words
-            )
-        ]
 
-        print(f"Search query: {query}")  # Для отладки
-        print(f"Results found: {len(results)} results")  # Лучше выводить количество
+    if query:
+        # Разбиваем запрос на слова
+        query_words = query.lower().split()
+
+        # Ищем в базе данных
+        places = Place.query.all()
+
+        for place in places:
+            search_text = f"{place.title or ''} {place.description or ''} {place.tags or ''} {place.address or ''}".lower()
+
+            if any(word in search_text for word in query_words):
+                results.append({
+                    'id': place.id,
+                    'title': place.title,
+                    'description': place.description,
+                    'telephone': place.telephone,
+                    'address': place.address,
+                    'image_path': place.image_path,
+                    'category': place.category,
+                    'slug': place.slug
+                })
 
     return render_template("results.html", query=query, results=results, title="Результаты поиска")
 
+
 @app.route("/Restaurant", methods=["GET"])
 def restaurant():
-    print(url_for("restaurant"))
-    restaurants = Place.query.filter_by(category='Ресторан').all()
-    return render_template("Restaurant.html",
-                           title="Рестораны",
-                           restaurants=restaurants)
+    try:
+        # Получаем ВСЕ рестораны из базы данных
+        restaurants = Place.query.filter_by(category='Ресторан').all()
+
+        print(f"Найдено ресторанов: {len(restaurants)}")
+
+        # Отладочная информация
+        for r in restaurants:
+            print(f"Ресторан: {r.title}, ID: {r.id}, Slug: {r.slug}")
+
+        return render_template("Restaurant.html",
+                               title="Рестораны",
+                               restaurants=restaurants)
+
+    except Exception as e:
+        print(f"Ошибка в restaurant: {e}")
+        return render_template("Restaurant.html",
+                               title="Рестораны",
+                               restaurants=[])
 
 @app.route('/Restaurant/<int:id>')
 def restaurant_page(id):
-    place = Place.query.get_or_404(id)
-    template_map = {
-        1: 'ЛичныеСтраницы/Brewmen.html',
-        2: 'ЛичныеСтраницы/lambs.html',
-        3: 'ЛичныеСтраницы/Gurmetto.html',
-        4: 'ЛичныеСтраницы/PizzaFactory.html',
-        5: 'ЛичныеСтраницы/Иль-де-Франс.html',
-        6: 'ЛичныеСтраницы/Пряник.html',
-        7: 'ЛичныеСтраницы/Marusya.html',
-        8: 'ЛичныеСтраницы/Проун.html',
-        9: 'ЛичныеСтраницы/ПхалиХинкали.html',
-        10: 'ЛичныеСтраницы/Мамонт.html',
-        11: 'ЛичныеСтраницы/География.html',
-        12: 'ЛичныеСтраницы/Токио-City.html',
-        13: 'ЛичныеСтраницы/Чародейка.html',
-        14: 'ЛичныеСтраницы/Napoli.html',
-        15: 'ЛичныеСтраницы/Legenda.html',
-        16: 'ЛичныеСтраницы/Сытый гусь.html',
-        17: 'ЛичныеСтраницы/Дом Берга.html',
-        18: 'ЛичныеСтраницы/Рестобар Кружечный Двор.html',
-        19: 'ЛичныеСтраницы/Bistro Palazzo 5.html',
-        20: 'ЛичныеСтраницы/Фрегат Флагман.html',
-        21: 'ЛичныеСтраницы/Тепло траттория.html',
-        22: 'ЛичныеСтраницы/Сказка.html',
-        23: 'ЛичныеСтраницы/Чайхана Сказка.html',
-        24: 'ЛичныеСтраницы/Наffига козе баян?!.html',
-        25: 'ЛичныеСтраницы/Хурма.html',
-        26: 'ЛичныеСтраницы/My Kitchen.html',
-        27: 'ЛичныеСтраницы/Фазенда.html',
-        28: 'ЛичныеСтраницы/Mbur.html',
-        29: 'ЛичныеСтраницы/На Солнце.html',
-        30: 'ЛичныеСтраницы/Шаурpoint.html',
-        31: 'ЛичныеСтраницы/Дорадо.html',
-        32: 'ЛичныеСтраницы/Лимузин.html',
-        33: 'ЛичныеСтраницы/Персона.html',
-        34: 'ЛичныеСтраницы/Бруклин.html',
-        35: 'ЛичныеСтраницы/Изюм.html',
-        36: 'ЛичныеСтраницы/Mycroft.html',
-        37: 'ЛичныеСтраницы/Хлебник.html',
-        38: 'ЛичныеСтраницы/Время Ч.html',
-        39: 'ЛичныеСтраницы/МамаСушиПицца.html',
-        40: 'ЛичныеСтраницы/Ромитто.html',
-        41: 'ЛичныеСтраницы/Колобок.html',
-        42: 'ЛичныеСтраницы/Старик Хинкалыч.html',
-        43: 'ЛичныеСтраницы/Садко.html',
-        44: 'ЛичныеСтраницы/Юрьевское Подворье.html',
-        45: 'ЛичныеСтраницы/Шкипер.html',
-        46: 'ЛичныеСтраницы/Диез.html',
-        47: 'ЛичныеСтраницы/Cafe Le Chocolat.html',
-        48: 'ЛичныеСтраницы/Гипер Лента.html',
-        49: 'ЛичныеСтраницы/ВкусВилл.html',
-        50: 'ЛичныеСтраницы/Дикси.html',
-        51: 'ЛичныеСтраницы/Дикси1.html',
-        52: 'ЛичныеСтраницы/Дикси2.html',
-        53: 'ЛичныеСтраницы/Перекрёсток.html',
-        54: 'ЛичныеСтраницы/Магнит.html',
-        55: 'ЛичныеСтраницы/Магнит1.html',
-        56: 'ЛичныеСтраницы/Магнит2.html',
-        57: 'ЛичныеСтраницы/Пятёрочка.html',
-        58: 'ЛичныеСтраницы/Пятёрочка1.html',
-        59: 'ЛичныеСтраницы/Осень.html',
-        60: 'ЛичныеСтраницы/Осень1.html',
-        61: 'ЛичныеСтраницы/Осень2.html',
-        62: 'ЛичныеСтраницы/Осень3.html',
-        63: 'ЛичныеСтраницы/Осень4.html',
-        64: 'ЛичныеСтраницы/Осень5.html',
-        65: 'ЛичныеСтраницы/Верный.html',
-        66: 'ЛичныеСтраницы/Верный1.html',
-        67: 'ЛичныеСтраницы/Десяточка.html',
-        68: 'ЛичныеСтраницы/Градусы.html',
-        69: 'ЛичныеСтраницы/Магазинъ.html',
-        70: 'ЛичныеСтраницы/Светофор.html',
-        71: 'ЛичныеСтраницы/Продукты 24.html',
-        72: 'ЛичныеСтраницы/Музей народного деревянного зодчества Витославлицы.html',
-        73: 'ЛичныеСтраницы/Новгородский кремль.html',
-        74: 'ЛичныеСтраницы/Центр музыкальных древностей В.И. Поветкина.html',
-        75: 'ЛичныеСтраницы/Киномузей Валерия Рубцова.html',
-        76: 'ЛичныеСтраницы/Новгородский государственный объединенный музей-заповедник.html',
-        77: 'ЛичныеСтраницы/Музей изобразительных искусств.html',
-        78: 'ЛичныеСтраницы/Музейный цех фарфора.html',
-        79: 'ЛичныеСтраницы/Государственный музей художественной культуры Новгородской земли.html',
-        80: 'ЛичныеСтраницы/Владычная палата.html',
-        81: 'ЛичныеСтраницы/Мастерская-музей реалистической живописи Александра Варенцова.html',
-        82: 'ЛичныеСтраницы/Музей письменности.html',
-        83: 'ЛичныеСтраницы/Детский музейный центр.html',
-        84: 'ЛичныеСтраницы/Алексеевская Белая башня.html',
-        85: 'ЛичныеСтраницы/Зал воинской славы.html',
-        86: 'ЛичныеСтраницы/Музей Утюга.html',
-        87: 'ЛичныеСтраницы/Новгородский музей-заповедник.html',
-        88: 'ЛичныеСтраницы/Центр противопожарной пропаганды и общественных связей.html',
-        89: 'ЛичныеСтраницы/Стены и башни Новгородского кремля.html',
-        90: 'ЛичныеСтраницы/Лекторий.html',
-        91: 'ЛичныеСтраницы/Дирекция Новгородского государственного объединённого музея-заповедника.html',
-        92: 'ЛичныеСтраницы/Усадебный дом А.А. Орловой-Чесменской.html',
-        93: 'ЛичныеСтраницы/Музей истории органов внутренних дел Новгородской области культурного центра УМВД России по Новгородской области.html',
-        94: 'ЛичныеСтраницы/Новгородский областной академический театр драмы имени Достоевского.html',
-        95: 'ЛичныеСтраницы/Театр для детей и молодежи Малый.html',
-        96: 'ЛичныеСтраницы/Молодежная библиотека.html',
-        97: 'ЛичныеСтраницы/Библиотечный центр Читай-город.html',
-        98: 'ЛичныеСтраницы/Веряжский парк.html',
-        99: 'ЛичныеСтраницы/Сквер Кочетова.html',
-        100: 'ЛичныеСтраницы/Сквер Минутка.html',
-        101: 'ЛичныеСтраницы/Сквер Защитников Отечества.html',
-        102: 'ЛичныеСтраницы/Мираж Синема.html',
-        103: 'ЛичныеСтраницы/Новгород.html',
-        104: 'ЛичныеСтраницы/Мультимедийный центр Россия.html',
-        105: 'ЛичныеСтраницы/Планетарий Орион.html',
-        106: 'ЛичныеСтраницы/Спортплощадка.html',
-        107: 'ЛичныеСтраницы/Карелинн.html',
-        108: 'ЛичныеСтраницы/Церковь Спаса Преображения на Ильине улице.html',
-        109: 'ЛичныеСтраницы/Церковь Успения Пресвятой Богородицы на Волотовом поле.html',
-        110: 'ЛичныеСтраницы/Вишневый Рояль.html',
-    }
-    template = template_map.get(id, 'default_restaurant.html')
-    return render_template(template, place=place)
+    """Универсальный маршрут для всех ресторанов по ID"""
+    try:
+        place = Place.query.get_or_404(id)
+        print(f"Загружаем место: {place.title}, ID: {id}")
 
+        # Пробуем найти индивидуальный шаблон, если нет - используем общий
+        template_name = f'ЛичныеСтраницы/{place.title}.html'
+
+        # Проверяем существует ли индивидуальный шаблон
+        import os
+        template_path = os.path.join(app.root_path, 'templates', template_name)
+
+        if os.path.exists(template_path):
+            return render_template(template_name, place=place)
+        else:
+            # Используем общий шаблон
+            return render_template('place_template.html', place=place)
+
+    except Exception as e:
+        print(f"Ошибка загрузки страницы {id}: {e}")
+        return "Ошибка загрузки страницы", 500
+
+
+@app.route('/<category_en>/<slug>')
+def place_page_by_slug(category_en, slug):
+    """Универсальный маршрут для всех мест по slug"""
+    try:
+        print(f"Поиск места: category_en={category_en}, slug={slug}")
+
+        place = Place.query.filter_by(category_en=category_en, slug=slug).first_or_404()
+
+        print(f"Найдено место: {place.title}")
+
+        # Пробуем найти индивидуальный шаблон
+        template_name = f'ЛичныеСтраницы/{place.title}.html'
+
+        import os
+        template_path = os.path.join(app.root_path, 'templates', template_name)
+
+        if os.path.exists(template_path):
+            return render_template(template_name, place=place)
+        else:
+            return render_template('place_template.html', place=place)
+
+    except Exception as e:
+        print(f"Ошибка загрузки страницы {category_en}/{slug}: {e}")
+        return "Страница не найдена", 404
+
+@app.route('/place/<slug>')
+def place_page(slug):
+    """Альтернативный маршрут для обратной совместимости"""
+    try:
+        place = Place.query.filter_by(slug=slug).first_or_404()
+        return render_template('place_template.html', place=place)
+    except Exception as e:
+        print(f"Ошибка загрузки страницы {slug}: {e}")
+        return "Страница не найдена", 404
 
 @app.route('/restaurants')
 def restaurants_page():
@@ -2427,288 +2445,34 @@ def favorites():
     return render_template("favorites.html", title="Избранное")
 
 #Личные страницы
-@app.route('/Restaurant/Brewmen')
-def Brewmen():
-    place = Place.query.get_or_404(1)
-    return render_template('ЛичныеСтраницы/Brewmen.html', place=place)
-
 @app.route('/Restaurant/Барашки')
 def lambs():
-    place = Place.query.get_or_404(2)  # ID Барашек
-    return render_template('ЛичныеСтраницы/lambs.html', place=place)
+    try:
+        # Временное решение - берем только безопасные поля
+        place = db.session.query(
+            Place.id,
+            Place.title,
+            Place.description,
+            Place.telephone,
+            Place.address,
+            Place.image_path,
+            Place.category,
+            Place.slug,
+            Place.tags,
+            Place.working_hours,
+            Place.latitude,
+            Place.longitude
+        ).filter_by(id=2).first_or_404()
+
+        return render_template('ЛичныеСтраницы/lambs.html', place=place)
+    except Exception as e:
+        print(f"Ошибка в lambs: {e}")
+        return "Ошибка загрузки страницы", 500
 
 @app.route('/Restaurant/Гурметто')
 def Gurmetto():
     place = Place.query.get_or_404(3)
     return render_template('ЛичныеСтраницы/Gurmetto.html')
-
-@app.route('/Restaurant/ПиццаФабрика')
-def PizzaFactory():
-    place = Place.query.get_or_404(4)
-    return render_template('ЛичныеСтраницы/PizzaFactory.html')
-
-@app.route('/Restaurant/Ile_de_France')
-def IleDeFrance():
-    place = Place.query.get_or_404(5)
-    return render_template('ЛичныеСтраницы/IleDeFrance.html')
-
-@app.route('/Restaurant/SpiceCake')
-def SpiceCake():
-    place = Place.query.get_or_404(6)
-    return render_template('ЛичныеСтраницы/SpiceCake.html')
-
-@app.route('/Restaurant/Marusya')
-def Marusya():
-    place = Place.query.get_or_404(7)
-    return render_template('ЛичныеСтраницы/Marusya.html')
-
-@app.route('/Restaurant/Proun')
-def Proun():
-    place = Place.query.get_or_404(8)
-    return render_template('ЛичныеСтраницы/Proun.html')
-
-@app.route('/Restaurant/PhaliHinkali')
-def PhaliHinkali():
-    place = Place.query.get_or_404(9)
-    return render_template('ЛичныеСтраницы/PhaliHinkali.html')
-@app.route('/Restaurant/Mammoth')
-def Mammoth():
-    place = Place.query.get_or_404(10)
-    return render_template('ЛичныеСтраницы/Mammoth.html')
-
-@app.route('/Restaurant/Geography')
-def Geography():
-    place = Place.query.get_or_404(11)
-    return render_template('ЛичныеСтраницы/Geography.html')
-
-@app.route('/Restaurant/Tokyo_City')
-def TokyoCity():
-    place = Place.query.get_or_404(12)
-    return render_template('ЛичныеСтраницы/TokyoCity.html')
-
-@app.route('/Restaurant/Чародейка')
-def Enchantress():
-    place = Place.query.get_or_404(13)
-    return render_template('ЛичныеСтраницы/Enchantress.html')
-
-@app.route('/Restaurant/Napoli')
-def Napoli():
-    place = Place.query.get_or_404(14)
-    return render_template('ЛичныеСтраницы/Napoli.html')
-
-@app.route('/Restaurant/Legenda')
-def Legenda():
-    place = Place.query.get_or_404(15)
-    return render_template('ЛичныеСтраницы/Legenda.html')
-
-@app.route('/Restaurant/Well_fed_goose')
-def WellFedGoose():
-    place = Place.query.get_or_404(16)
-    return render_template('ЛичныеСтраницы/WellFedGoose.html')
-
-@app.route('/Restaurant/Bergs_House')
-def BergsHouse():
-    place = Place.query.get_or_404(17)
-    return render_template('ЛичныеСтраницы/BergsHouse.html')
-
-@app.route('/Restaurant/Restobar_circular_Courtyard')
-def RestobarCircularCourtyard():
-    place = Place.query.get_or_404(18)
-    return render_template('ЛичныеСтраницы/RestobarCircularCourtyard.html')
-
-@app.route('/Restaurant/Bistro_Palazzo_5')
-def BistroPalazzo5():
-    place = Place.query.get_or_404(19)
-    return render_template('ЛичныеСтраницы/BistroPalazzo5.html')
-
-@app.route('/Restaurant/Flagship_Frigate')
-def FlagshipFrigate():
-    place = Place.query.get_or_404(20)
-    return render_template('ЛичныеСтраницы/FlagshipFrigate.html')
-
-@app.route('/Restaurant/Teplo_trategory')
-def TeploTrategory():
-    place = Place.query.get_or_404(21)
-    return render_template('ЛичныеСтраницы/TeploTrategory.html')
-
-@app.route('/Restaurant/FairyTale')
-def FairyTale():
-    place = Place.query.get_or_404(22)
-    return render_template('ЛичныеСтраницы/FairyTale.html')
-
-@app.route('/Restaurant/FairyTale_Teahouse')
-def FairyTaleTeahouse():
-    place = Place.query.get_or_404(23)
-    return render_template('ЛичныеСтраницы/FairyTaleTeahouse.html')
-
-@app.route('/Restaurant/Naffiga_koze_bayan')
-def NaffigaKozeBayan():
-    place = Place.query.get_or_404(24)
-    return render_template('ЛичныеСтраницы/NaffigaKozeBayan.html')
-
-@app.route('/Restaurant/Persimmon')
-def Persimmon():
-    place = Place.query.get_or_404(25)
-    return render_template('ЛичныеСтраницы/Persimmon.html')
-
-@app.route('/Restaurant/My Kitchen')
-def MyKitchen():
-    place = Place.query.get_or_404(26)
-    return render_template('ЛичныеСтраницы/MyKitchen.html')
-
-@app.route('/Restaurant/Hacienda')
-def Hacienda():
-    place = Place.query.get_or_404(27)
-    return render_template('ЛичныеСтраницы/Hacienda.html')
-
-@app.route('/Restaurant/Mbur')
-def Mbur():
-    place = Place.query.get_or_404(28)
-    return render_template('ЛичныеСтраницы/Mbur.html')
-
-@app.route('/Restaurant/On_sunce')
-def OnSunce():
-    place = Place.query.get_or_404(29)
-    return render_template('ЛичныеСтраницы/OnSunce.html')
-
-@app.route('/Restaurant/Shauрpoint')
-def Shauрpoint():
-    place = Place.query.get_or_404(30)
-    return render_template('ЛичныеСтраницы/Shauрpoint.html')
-
-@app.route('/Restaurant/Dorado')
-def Dorado():
-    place = Place.query.get_or_404(31)
-    return render_template('ЛичныеСтраницы/Dorado.html')
-
-@app.route('/Restaurant/limo')
-def limo():
-    place = Place.query.get_or_404(32)
-    return render_template('ЛичныеСтраницы/limo.html')
-
-@app.route('/Restaurant/Person')
-def Person():
-    place = Place.query.get_or_404(33)
-    return render_template('ЛичныеСтраницы/Person.html')
-
-@app.route('/Restaurant/Brooklyn')
-def Brooklyn():
-    place = Place.query.get_or_404(34)
-    return render_template('ЛичныеСтраницы/Brooklyn.html')
-
-@app.route('/Restaurant/Raisin')
-def Raisin():
-    place = Place.query.get_or_404(35)
-    return render_template('ЛичныеСтраницы/Raisin.html')
-
-@app.route('/Restaurant/Mycroft')
-def Mycroft():
-    place = Place.query.get_or_404(36)
-    return render_template('ЛичныеСтраницы/Mycroft.html')
-@app.route('/Restaurant/Baker')
-def Baker():
-    place = Place.query.get_or_404(37)
-    return render_template('ЛичныеСтраницы/Baker.html')
-
-@app.route('/Restaurant/TIME_H')
-def TIME_H():
-    place = Place.query.get_or_404(38)
-    return render_template('ЛичныеСтраницы/TIME_H.html')
-
-@app.route('/Restaurant/MamaSushiPitsa')
-def MamaSushiPitsa():
-    place = Place.query.get_or_404(39)
-    return render_template('ЛичныеСтраницы/MamaSushiPitsa.html')
-
-@app.route('/Restaurant/Romitto')
-def Romitto():
-    place = Place.query.get_or_404(40)
-    return render_template('ЛичныеСтраницы/Romitto.html')
-
-@app.route('/Restaurant/Kolobok')
-def Kolobok():
-    place = Place.query.get_or_404(41)
-    return render_template('ЛичныеСтраницы/Kolobok.html')
-
-@app.route('/Restaurant/old_Man_hinkalych')
-def oldManHinkalych():
-    place = Place.query.get_or_404(42)
-    return render_template('ЛичныеСтраницы/oldManHinkalych.html')
-
-@app.route('/Restaurant/Sadko')
-def Sadko():
-    place = Place.query.get_or_404(43)
-    return render_template('ЛичныеСтраницы/Sadko.html')
-
-@app.route('/Restaurant/Yuryevskoe_Courtyard')
-def YuryevskoeCourtyard():
-    place = Place.query.get_or_404(44)
-    return render_template('ЛичныеСтраницы/YuryevskoeCourtyard.html')
-
-@app.route('/Restaurant/Skipper')
-def Skipper():
-    place = Place.query.get_or_404(45)
-    return render_template('ЛичныеСтраницы/Skipper.html')
-
-@app.route('/Restaurant/Sharp')
-def Sharp():
-    place = Place.query.get_or_404(46)
-    return render_template('ЛичныеСтраницы/Sharp.html')
-
-@app.route('/Restaurant/Cafe Le Chocolat')
-def CafeLeChocolat():
-    place = Place.query.get_or_404(47)
-    return render_template('ЛичныеСтраницы/CafeLeChocolat.html')
-
-@app.route('/Restaurant/Hyper_lent')
-def HyperLent():
-    place = Place.query.get_or_404(48)
-    return render_template('ЛичныеСтраницы/HyperLent.html')
-
-@app.route('/Restaurant/VkusVille')
-def VkusVille():
-    place = Place.query.get_or_404(49)
-    return render_template('ЛичныеСтраницы/VkusVille.html')
-
-@app.route('/Restaurant/Dixie')
-def Dixie():
-    place = Place.query.get_or_404(50)
-    return render_template('ЛичныеСтраницы/Dixie.html')
-
-@app.route('/Restaurant/Dixie')
-def Dixie1():
-    place = Place.query.get_or_404(51)
-    return render_template('ЛичныеСтраницы/Dixie1.html')
-
-@app.route('/Restaurant/Dixie')
-def Dixie2():
-    place = Place.query.get_or_404(52)
-    return render_template('ЛичныеСтраницы/Dixie2.html')
-
-@app.route('/Restaurant/Crossroad')
-def Crossroad():
-    place = Place.query.get_or_404(53)
-    return render_template('ЛичныеСтраницы/Crossroad.html')
-
-@app.route('/Restaurant/Magnet')
-def Magnet():
-    place = Place.query.get_or_404(54)
-    return render_template('ЛичныеСтраницы/Magnet.html')
-
-@app.route('/Restaurant/Magnet')
-def Magnet1():
-    place = Place.query.get_or_404(55)
-    return render_template('ЛичныеСтраницы/Magnet1.html')
-
-@app.route('/Restaurant/Magnet')
-def Magnet2():
-    place = Place.query.get_or_404(56)
-    return render_template('ЛичныеСтраницы/Magnet2.html')
-
-@app.route('/Restaurant/Pyaterochka')
-def Pyaterochka():
-    place = Place.query.get_or_404(57)
-    return render_template('ЛичныеСтраницы/Pyaterochka.html')
 
 # Добавьте эти обработчики ошибок
 @app.errorhandler(400)
@@ -2762,9 +2526,203 @@ def get_error_name(code):
     }
     return error_names.get(code, "Неизвестная ошибка")
 
+
+def migrate_categories_to_english():
+    """Мигрирует категории на английские (после обновления структуры БД)"""
+    CATEGORY_MAPPING = {
+        'Ресторан': 'Restaurant',
+        'Кафе': 'Cafe',
+        'Магазин': 'Shop',
+        'Музей': 'Museum',
+        'Театр': 'Theatre',
+        'Библиотека': 'Library',
+        'Парк': 'Park',
+        'Кинотеатр': 'Cinema',
+        'Спортплощадка': 'Sports',
+        'Церковь': 'Church',
+        'Гостиница': 'Hotel',
+        'Иконка': 'Icon'
+    }
+
+    try:
+        places = Place.query.all()
+        for place in places:
+            if place.category in CATEGORY_MAPPING:
+                place.category_en = CATEGORY_MAPPING[place.category]
+                # Также генерируем slug если его нет
+                if not place.slug and place.title:
+                    place.slug = generate_slug(place.title)
+                print(f"✅ {place.title}: {place.category} -> {place.category_en}")
+
+        db.session.commit()
+        print("✅ Категории мигрированы на английский!")
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Ошибка миграции: {e}")
+
+
+def init_database():
+    """Инициализация и обновление базы данных"""
+    with app.app_context():
+        try:
+            # Создаем таблицы если их нет
+            db.create_all()
+            print("✅ База данных создана/проверена")
+
+            # Проверяем есть ли рестораны
+            restaurant_count = Place.query.filter_by(category='Ресторан').count()
+            print(f"✅ Найдено ресторанов в базе: {restaurant_count}")
+
+            # Мигрируем категории
+            migrate_categories_to_english()
+
+        except Exception as e:
+            print(f"❌ Ошибка инициализации БД: {e}")
+
+
+@app.route('/debug/db-structure')
+def debug_db_structure():
+    """Проверка структуры базы данных"""
+    try:
+        conn = sqlite3.connect('instance/database.db')
+        cursor = conn.cursor()
+
+        # Проверяем таблицу place
+        cursor.execute("PRAGMA table_info(place)")
+        place_columns = cursor.fetchall()
+
+        # Проверяем данные
+        cursor.execute("SELECT COUNT(*) FROM place")
+        place_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT id, title, category, category_en FROM place LIMIT 5")
+        sample_places = cursor.fetchall()
+
+        conn.close()
+
+        return jsonify({
+            'place_columns': place_columns,
+            'place_count': place_count,
+            'sample_places': sample_places
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+
+@app.route('/debug/add-test-place')
+def debug_add_test_place():
+    """Добавление тестового ресторана для проверки"""
+    try:
+        # Добавляем тестовый ресторан
+        test_place = Place(
+            title='Тестовый Ресторан',
+            description='Это тестовый ресторан для проверки',
+            category='Ресторан',
+            category_en='Restaurant',
+            slug='test-restaurant',
+            telephone='+7 (999) 999-99-99',
+            address='Тестовая улица, 1',
+            image_path='Фотки зданий/Барашки.png'
+        )
+
+        db.session.add(test_place)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Тестовый ресторан добавлен',
+            'place_id': test_place.id
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/debug/places')
+def debug_places():
+    """Отладочная страница для проверки данных"""
+    places = Place.query.all()
+    result = []
+    for place in places:
+        result.append({
+            'id': place.id,
+            'title': place.title,
+            'category': place.category,
+            'category_en': place.category_en,
+            'slug': place.slug
+        })
+    return jsonify(result)
+
+@app.route('/test-db')
+def test_db():
+    """Простая проверка работы БД"""
+    try:
+        count = Place.query.count()
+        return f"Всего мест в базе: {count}"
+    except Exception as e:
+        return f"Ошибка БД: {e}"
+
+
+@app.route('/debug/restaurant-links')
+def debug_restaurant_links():
+    """Проверка правильности генерации ссылок"""
+    restaurants = Place.query.filter_by(category='Ресторан').limit(5).all()
+
+    links = []
+    for restaurant in restaurants:
+        links.append({
+            'id': restaurant.id,
+            'title': restaurant.title,
+            'url': url_for('restaurant_page', id=restaurant.id),
+            'slug': restaurant.slug
+        })
+
+    return jsonify(links)
+
+
+def fix_slug_duplicates():
+    """Исправление дублирующихся slug"""
+    with app.app_context():
+        try:
+            places = Place.query.all()
+            used_slugs = set()
+
+            for place in places:
+                if not place.slug:
+                    base_slug = generate_slug(place.title)
+                    slug = base_slug
+                    counter = 1
+
+                    # Генерируем уникальный slug
+                    while slug in used_slugs:
+                        slug = f"{base_slug}-{counter}"
+                        counter += 1
+
+                    place.slug = slug
+                    used_slugs.add(slug)
+                    print(f"✅ {place.title}: slug={place.slug}")
+                else:
+                    used_slugs.add(place.slug)
+
+            db.session.commit()
+            print("✅ Все slug исправлены!")
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Ошибка исправления slug: {e}")
+
+
+@app.route('/fix-slugs')
+def fix_slugs_route():
+    """Временный маршрут для исправления slug"""
+    fix_slug_duplicates()
+    return "Slug исправлены!"
+
 if __name__ == '__main__':
     with app.app_context():
+        init_database()
+        migrate_categories_to_english()
         check_review_table_structure()
-        migrate_review_table()
         db.create_all()
     app.run(debug=True)

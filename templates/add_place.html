@@ -1,14 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Добавить место</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <style>
         form { max-width: 600px; margin: 20px auto; }
         div { margin-bottom: 15px; }
         label { display: inline-block; width: 150px; }
         input[type="text"], textarea, select { width: 100%; padding: 8px; }
+        input[type="text2"] { width: 285px; padding: 8px; }
+        input[type="tel"] { width: 100%; padding: 8px; }
+        input[type="file"] { width: 100%; padding: 8px; }
         textarea { height: 100px; }
         button { padding: 10px 20px; background: #4CAF50; color: white; border: none; }
+        .inline {display: flex;}
+        .flex-item {margin-right: 10px;}
+        #map { height: 300px; }
     </style>
 </head>
 <body>
@@ -24,14 +34,65 @@
             <textarea name="description"></textarea>
         </div>
 
+        <!-- Шаг №1: Объединение широты и долготы -->
+        <!-- Блок карты -->
+        <div>
+            <label>Координаты:</label>
+            <div class="map-instructions">
+                ⚡ Нажмите на карту, чтобы выбрать местоположение. Метка появится автоматически.
+            </div>
+            <div id="map"></div>
+
+            <!-- Сообщение об успехе -->
+            <div id="successMessage" class="success-message">
+                ✅ Метка успешно поставлена! Координаты сохранены.
+            </div>
+
+            <!-- Отображение координат -->
+            <div id="coordinatesDisplay" class="coordinates-display" style="display: none;">
+                <strong>Текущие координаты:</strong>
+                <span id="currentCoords"></span>
+            </div>
+
+            <input type="hidden" name="latitude" id="latInput">
+            <input type="hidden" name="longitude" id="lonInput">
+        </div>
+
         <div>
             <label>Телефон:</label>
             <input type="tel" name="telephone">
         </div>
 
+        <!-- Шаг №2: Ограничение описания времени работы до трёх строк -->
+        <div>
+            <label>Время работы:</label>
+            <textarea name="working_hours" placeholder="Пн-Чт: 12:00-23:00<br>Пт-Вс: 12:00-00:00" rows="3"></textarea>
+        </div>
+
         <div>
             <label>Адрес:</label>
-            <textarea name="address"></textarea>
+            <input type="text" name="address">
+        </div>
+
+        <!-- Шаг №3: Объединение загрузки изображения и полей тегов -->
+        <div class="inline">
+            <div class="flex-item">
+                <span class="help-icon" title="Вводите теги через запятую без пробелов. Например: Ресторан,Доставка,Европейская кухня">❓</span>
+                <label>Теги:</label><br />
+                <input type="text2" name="tags" class="tags-input">
+            </div>
+            <div class="flex-item">
+                <label>Изображение:</label><br />
+                <input type="file" name="image" accept="image/*">
+            </div>
+        </div>
+
+        <div>
+            <label>Меню (JSON формат):</label>
+            <textarea name="menu" placeholder='{"Основные блюда": [{"name": "Борщ", "price": "350 руб"}, {"name": "Пельмени", "price": "280 руб"}]}' rows="5"></textarea>
+            <small style="color: #666;">
+                ⚠️ Формат: {"Категория": [{"name": "Название", "price": "Цена"}, ...]}
+            </small>
         </div>
 
         <div>
@@ -39,17 +100,66 @@
             <select name="category" required>
                 <option value="">-- Выберите категорию --</option>
                 {% for cat in categories %}
-                <option value="{{ cat }}">{{ cat }}</option>
+                    <option value="{{ cat }}">{{ cat }}</option>
                 {% endfor %}
             </select>
         </div>
 
-        <div>
-            <label>Изображение:</label>
-            <input type="file" name="image" accept="image/*">
-        </div>
-
         <button type="submit">Добавить</button>
     </form>
+<!-- Добавляем подключение скрипта Яндекс Карт -->
+<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+<script>
+ymaps.ready(init);
+
+function init(){
+    var myMap = new ymaps.Map("map", {
+        center: [58.5211, 31.2758],
+        zoom: 12,
+        controls: ['zoomControl', 'fullscreenControl']
+    });
+
+    var myPlacemark;
+
+    myMap.events.add('click', function (event) {
+        var coords = event.get('coords');
+        var lat = coords[0].toFixed(6);
+        var lon = coords[1].toFixed(6);
+
+        // Заполняем скрытые поля
+        document.getElementById('latInput').value = lat;
+        document.getElementById('lonInput').value = lon;
+
+        // Удаляем старую метку
+        if (myPlacemark) {
+            myMap.geoObjects.remove(myPlacemark);
+        }
+
+        // Создаем метку в стиле конструктора
+        myPlacemark = new ymaps.Placemark(coords, {
+            hintContent: 'Выбранное местоположение',
+            balloonContent: `
+                <strong>Координаты:</strong><br>
+                Широта: ${lat}<br>
+                Долгота: ${lon}
+            `
+        }, {
+            // Красный маркер как в конструкторе
+            preset: 'islands#redIcon',
+            // Или с тенью:
+            // preset: 'islands#redStretchyIcon',
+            balloonCloseButton: true,
+            hideIconOnBalloonOpen: false
+        });
+
+        myMap.geoObjects.add(myPlacemark);
+
+        // Автоматически открываем подсказку
+        myPlacemark.balloon.open();
+
+        myMap.panTo(coords, { duration: 300 });
+    });
+}
+</script>
 </body>
 </html>

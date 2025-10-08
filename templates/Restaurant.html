@@ -120,9 +120,10 @@
     </div>
 
     <div class="restaurants-container">
-    {% for place in restaurants %}
+    {% if restaurants %}
+        {% for place in restaurants %}
     <div class="restaurant-card"
-         onclick="window.location.href='{{ url_for('lambs') if place.id == 2 else url_for('restaurant_page', id=place.id) }}'"
+         onclick="window.location.href='{{ url_for('place_page_by_slug', category_en=place.category_en, slug=place.slug) if place.slug else url_for('restaurant_page', id=place.id) }}'"
         {% if loop.last %}style="margin-bottom: 0px"{% endif %}>
         <div class="image-wrapper">
             {% if place.image_path %}
@@ -160,6 +161,8 @@
         </div>
     </div>
     {% endfor %}
+    {% else %}
+    {% endif %}
 </div>
 
 <!-- Модальное окно "О проекте" -->

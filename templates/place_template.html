@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Городской гид - {{title}}</title>
+    <title>Городской гид - {{ place.title if place else title }}</title>
     <!-- Подключение CSS файла -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/PersonalPage.css') }}">
@@ -111,52 +111,76 @@
     <div class="image-container">
         <img src="{{ url_for('static', filename='Фотки зданий/РесторанФон.jpg') }}" class="img-top-center" alt="РесторанФон.jpg">
     </div>
+
     <div class="box">
         <div class="container">
             <!-- Левая часть: картинка -->
             <div class="image-section">
                 <div class="image-flip-container">
                     <!-- Передняя сторона (картинка) -->
-                    <div class="image-front" >
-                        <img src="{{ url_for('static', filename='Фотки зданий/ПиццаФабрика.png') }}" alt="Ресторан ПиццаФабрика">
+                    <div class="image-front">
+                        {% if place.image_path %}
+                            <img src="{{ url_for('static', filename=place.image_path) }}" alt="{{ place.title }}">
+                        {% else %}
+                            <img src="{{ url_for('static', filename='Фотки зданий/placeholder.png') }}" alt="Нет изображения">
+                        {% endif %}
+
                         <!-- Кнопка на карточке заведения -->
                         <button class="favorite-btn js-favorite-btn"
-                                data-item-id="PizzaFactory"
-                                data-item='{"id":"PizzaFactory",
-                                            "name":"ПиццаФабрика",
-                                            "description":"Ресторан «ПиццаФабрика» — это идеальное место для семейного отдыха.",
-                                            "image":"{{ url_for('static', filename='Фотки зданий/ПиццаФабрика.png') }}",
-                                            "address":"Большая Санкт-Петербургская ул., 39, корп. 22",
-                                            "telephone":"8 (800) 550-06-00",
-                                            "category":"Ресторан",
-                                            "page_url":"/Restaurant/PizzaFactory"}'>
+                                data-item-id="{{ place.slug }}"
+                                data-item='{"id":"{{ place.slug }}",
+                                            "name":"{{ place.title }}",
+                                            "description":"{{ place.description }}",
+                                            "image":"{{ url_for('static', filename=place.image_path) if place.image_path else url_for('static', filename='Фотки зданий/placeholder.png') }}",
+                                            "address":"{{ place.address }}",
+                                            "telephone":"{{ place.telephone }}",
+                                            "category":"{{ place.category }}",
+                                            "page_url":"/place/{{ place.slug }}"}'>
                           ❤
                         </button>
+
                         <!-- Кнопка развернуть в правом нижнем углу -->
                         <button class="expand-btn" onclick="expandImage(this)">↗</button>
+
                         <!-- Кнопка показать карту по центру снизу -->
                         <button class="map-btn" onclick="flipCard()">Показать карту</button>
+
                         <!-- График работы в левом верхнем углу -->
                         <div class="schedule-dropdown">
                             <button class="schedule-btn">График работы ▼</button>
                             <div class="schedule-content" id="schedule-content">
-                                Пн-Пт: 10:00 - 22:00<br>
-                                Сб-Вс: 11:00 - 23:00
+                                {{ place.get_working_hours_display()|safe }}
                             </div>
                         </div>
+
                         <!-- Кнопка меню по центру снизу -->
                         <button class="menu-btn" onclick="openMenuModal()">Меню</button>
                     </div>
 
                     <!-- Задняя сторона (карта) -->
                     <div class="image-back">
-                        <div class="map-container" id="map-container">
-                            <h3>Большая Санкт-Петербургская ул., 64</h3>
-                            <div id="yandex-map" style="width: 500px; height: 400px;">
-                                <script type="text/javascript" charset="utf-8" async
-                                        src="https://api-maps.yandex.ru/services/constructor/1.0/js/?um=constructor%3Aeed8729a1147ebb066dc61f090c8e737d4852775e1e5f1535e77dc8d488e2b02&amp;width=574&amp;height=497&amp;lang=ru_RU&amp;scroll=true">
-                                </script>
-                            </div>
+                        <div class="map-container">
+                            {% if place.latitude and place.longitude %}
+                            <div id="yandex-map" style="width: 100%; height: 400px;"></div>
+                            <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+                            <script>
+                                ymaps.ready(function() {
+                                    var map = new ymaps.Map('yandex-map', {
+                                        center: [{{ place.latitude }}, {{ place.longitude }}],
+                                        zoom: 16
+                                    });
+
+                                    var placemark = new ymaps.Placemark([{{ place.latitude }}, {{ place.longitude }}], {
+                                        hintContent: '{{ place.title }}',
+                                        balloonContent: '{{ place.address }}'
+                                    });
+
+                                    map.geoObjects.add(placemark);
+                                });
+                            </script>
+                            {% else %}
+                            <p>Карта недоступна</p>
+                            {% endif %}
                         </div>
 
                         <!-- Кнопка вернуться к изображению по центру снизу -->
@@ -167,14 +191,42 @@
 
             <!-- Правая часть: описание -->
             <div class="details-section">
-                <h1 style="margin-right: 900px;">ПиццаФабрика</h1>
-                <p>Ресторан «ПиццаФабрика» — это идеальное место для семейного отдыха.</p>
+                <h1>{{ place.title }}</h1>
+                <p>{{ place.description }}</p>
+
                 <div class="contact-info" style="display: flex; align-items: center; gap: 8px;">
                     <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
                     </svg>
-                    <p style="margin: 0;">+7 (162) 92-00-00</p>
+                    <p style="margin: 0;">{{ place.telephone if place.telephone else 'Телефон не указан' }}</p>
                 </div>
+
+                <div class="address-info" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                    <svg style="width: 18px; height: 18px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    <p style="margin: 0;">{{ place.address if place.address else 'Адрес не указан' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Теги заведения -->
+        <div class="tags-section">
+            <h3>Особенности</h3>
+            <div class="tags-container">
+                <div class="tags-scroller">
+                    {% if place.tags %}
+                        {% set tags_list = place.tags.split(',') %}
+                        {% for tag in tags_list %}
+                            <span class="tag">{{ tag }}</span>
+                        {% endfor %}
+                    {% else %}
+                        <span class="tag">Нет особенностей</span>
+                    {% endif %}
+                </div>
+                <button class="tags-scroll-btn left" onclick="scrollTags('left')">‹</button>
+                <button class="tags-scroll-btn right" onclick="scrollTags('right')">›</button>
             </div>
         </div>
 
@@ -255,12 +307,36 @@
             <button class="review-container-button" onclick="openReviewModal()">Оставить отзыв</button>
         </div>
 
-        <!-- Модальное окно для меню -->
+        <!-- В модальном окне меню -->
         <div class="modal" id="menu-modal">
             <div class="modal-content">
-                <h2>Меню</h2>
-                <p>Здесь будет содержимое меню.</p>
-                <button onclick="closeMenuModal()">Закрыть</button>
+                <span class="close" onclick="closeMenuModal()">&times;</span>
+                <h2>Меню - {{ place.title }}</h2>
+                <div id="menu-content">
+                    {% set menu_data = place.get_menu_data() %}
+                    {% if menu_data %}
+                        {% for category, items in menu_data.items() %}
+                            <h3 style="color: #333; border-bottom: 2px solid #4CAF50; padding-bottom: 5px;">
+                                {{ category }}
+                            </h3>
+                            <ul style="list-style: none; padding: 0;">
+                                {% for item in items %}
+                                    <li style="padding: 8px 0; border-bottom: 1px solid #eee;">
+                                        <div style="display: flex; justify-content: space-between;">
+                                            <span style="font-weight: bold;">{{ item.name }}</span>
+                                            <span style="color: #000000;">{{ item.price }}</span>
+                                        </div>
+                                            <span style="display: block;">{{ item.description }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                            <br>
+                        {% endfor %}
+                    {% else %}
+                        <p>Меню не доступно</p>
+                    {% endif %}
+                </div>
+                <button class="review-menu-container-button" onclick="closeMenuModal()">Закрыть</button>
             </div>
         </div>
 
@@ -600,13 +676,16 @@ contactsLink.addEventListener('click', function(e) {
 
 //Кнопки Футера - Конец
 
+
+
 // Массив для хранения отзывов
     let reviews = [];
     // Переменная для хранения текущего рейтинга при редактировании
 let editRating = 0;
 
 // Глобальные переменные
-const currentRestaurantId = 'PizzaFactory';
+const currentRestaurantId = '{{ place.slug }}';
+        console.log('Current restaurant ID:', currentRestaurantId);
 let selectedRating = 0;
 let lastReviewTime = localStorage.getItem('lastReviewTime') || 0;
 // Глобальные переменные для управления лайками/дизлайками
@@ -630,7 +709,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initStats(); // Загрузка статистики и отзывов Вместо updateOverallRating()
     initFilters(); // Инициализация фильтров - ДОБАВЬТЕ ЭТУ СТРОЧКУ!
     loadReviews(); // Загрузка отзывов
-    updateFavoritesCount();
     markExistingFavorites();
     initFavorites();
     setInterval(saveRatingsToStorage, 30000); // Периодическое сохранение (каждые 30 секунд)
@@ -649,6 +727,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const reviewList = document.getElementById('review-list');
     if (reviewList) {
         reviewList.addEventListener('scroll', updateScrollButtons);
+    }
+
+    const tagsScroller = document.querySelector('.tags-scroller');
+    if (tagsScroller) {
+        tagsScroller.addEventListener('scroll', updateTagsScrollButtons);
+        setTimeout(updateTagsScrollButtons, 100);
     }
 
     // Генерируем токен
@@ -762,6 +846,34 @@ window.addEventListener('load', function() {
     console.log('Window loaded, finalizing favorites initialization...');
     setTimeout(initFavorites, 100);
 });
+
+// Функции для скроллера тегов
+function scrollTags(direction) {
+    const scroller = document.querySelector('.tags-scroller');
+    const scrollAmount = 200;
+
+    if (direction === 'left') {
+        scroller.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    } else {
+        scroller.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+
+    setTimeout(updateTagsScrollButtons, 150);
+}
+
+function updateTagsScrollButtons() {
+    const scroller = document.querySelector('.tags-scroller');
+    const leftBtn = document.querySelector('.tags-scroll-btn.left');
+    const rightBtn = document.querySelector('.tags-scroll-btn.right');
+
+    if (!scroller || !leftBtn || !rightBtn) return;
+
+    const canScrollLeft = scroller.scrollLeft > 0;
+    const canScrollRight = scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1;
+
+    leftBtn.classList.toggle('hidden', !canScrollLeft);
+    rightBtn.classList.toggle('hidden', !canScrollRight);
+}
 
 // Новая функция для инициализации кнопок скролла
 function initScrollButtons() {
@@ -899,8 +1011,8 @@ function updateUserReviewLimit() {
     }
 }
 
-// Улучшенная функция проверки лимита отзывов
-function canUserPostReview(restaurantId = null) {
+// Функция проверки лимита отзывов (1 в день)
+function canUserPostReview() {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         const userLimit = reviewLimits[userToken];
@@ -912,24 +1024,20 @@ function canUserPostReview(restaurantId = null) {
         const lastReviewDate = new Date(userLimit.lastReviewDate);
         const today = new Date();
 
-        // 🔥 ВАЖНОЕ ИЗМЕНЕНИЕ: Проверяем по конкретному ресторану
-        if (restaurantId && userLimit.restaurantId === restaurantId) {
-            const canPost = lastReviewDate.toDateString() !== today.toDateString();
-            console.log('🔍 Проверка лимита для ресторана:', {
-                restaurantId: restaurantId,
-                lastReviewDate: lastReviewDate.toDateString(),
-                today: today.toDateString(),
-                canPost: canPost
-            });
-            return canPost;
-        }
+        // Проверяем, был ли отзыв сегодня
+        const canPost = lastReviewDate.toDateString() !== today.toDateString();
+        console.log('🔍 Проверка лимита:', {
+            userToken: userToken,
+            lastReviewDate: lastReviewDate.toDateString(),
+            today: today.toDateString(),
+            canPost: canPost
+        });
 
-        // Если restaurantId не указан или не совпадает, разрешаем
-        return true;
+        return canPost;
 
     } catch (error) {
         console.error('Error checking review limit:', error);
-        return true;
+        return true; // В случае ошибки разрешаем отправку
     }
 }
 
@@ -1005,6 +1113,18 @@ function showNotification(message, type = 'info') {
 // Обновленная функция отправки отзыва
 async function submitReview(e) {
     if (e) e.preventDefault();
+
+    const payload = {
+        restaurant_id: currentRestaurantId, // ✅ Динамический ID
+        username: document.getElementById('name').value.trim(),
+        rating: selectedRating,
+        comment: document.getElementById('comment').value.trim(),
+        user_token: userToken,
+        device_fingerprint: getDeviceFingerprint()
+    };
+
+    // 🔥 Обновляем лимит для КОНКРЕТНОГО ресторана
+    updateUserReviewLimit(currentRestaurantId);
 
     console.log('=== ОТПРАВКА ОТЗЫВА С ПРОВЕРКОЙ ЛИМИТА ===');
 
@@ -1586,7 +1706,41 @@ function generateEnhancedUserToken() {
 
 
 
+// В функции flipCard() для карты заведения
+function initRestaurantMap() {
+    if (typeof ymaps !== 'undefined') {
+        ymaps.ready(function() {
+            var map = new ymaps.Map('yandex-map', {
+                center: [{{ place.latitude }}, {{ place.longitude }}],
+                zoom: 16,
+                controls: ['zoomControl', 'fullscreenControl']
+            });
 
+            // Создаем кастомную иконку ресторана
+            var restaurantPlacemark = new ymaps.Placemark(
+                [{{ place.latitude }}, {{ place.longitude }}],
+                {
+                    hintContent: '{{ place.title }}',
+                    balloonContent: `
+                        <div style="max-width: 250px;">
+                            <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">{{ place.title }}</h3>
+                            <p style="margin: 5px 0; font-size: 14px;">📍 {{ place.address }}</p>
+                            <p style="margin: 5px 0; font-size: 14px;">📞 {{ place.telephone }}</p>
+                        </div>
+                    `
+                },
+                {
+                    // Иконка еды (ложка и вилка)
+                    preset: 'islands#blueFoodIcon',
+                    iconColor: '#ff6b6b', // Красный цвет
+                    balloonCloseButton: true
+                }
+            );
+
+            map.geoObjects.add(restaurantPlacemark);
+        });
+    }
+}
 
 // Инициализация фильтров
 function initFilters() {
@@ -2031,38 +2185,17 @@ async function rateReview(isLike, reviewId) {
         console.log(`reviewId=${reviewId}, isLike=${isLike}`);
 
         const review = reviews.find(r => r.id == reviewId);
-        if (!review) {
-            return;
-        }
+        if (!review) return;
 
-        // Получаем текущую оценку пользователя
         const currentUserRating = getUserRating(reviewId);
-        console.log(`Текущая оценка пользователя: ${currentUserRating}`);
+        let action = isLike ? 'like' : 'dislike';
 
-        // Определяем действие для сервера - УПРОЩЕННАЯ ЛОГИКА
-        let action;
+        console.log(`Определено действие: ${action}`);
 
-        if (isLike) {
-            // Если уже стоит лайк - снимаем (отправляем like повторно для снятия)
-            // Сервер сам разберется с логикой снятия
-            action = 'like';
-        } else {
-            // Если уже стоит дизлайк - снимаем (отправляем dislike повторно для снятия)
-            action = 'dislike';
-        }
-
-        console.log(`Определено действие: ${action} (isLike=${isLike}, currentRating=${currentUserRating})`);
-
-        // Отправляем запрос на сервер
         const response = await fetch(`/api/reviews/${reviewId}/rate`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: action,
-                user_token: userToken
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: action, user_token: userToken })
         });
 
         if (!response.ok) {
@@ -2076,15 +2209,10 @@ async function rateReview(isLike, reviewId) {
         // Обновляем данные отзыва
         updateReviewData(reviewId, data);
 
-        // Обновляем UI
-        updateReviewUI(reviewId, data.likes, data.dislikes, data.user_rating);
-
-        // Показываем уведомление
-        if (data.user_rating === null) {
-        } else {
-        }
-
-        console.log(`=== ОЦЕНКА ЗАВЕРШЕНА ===`);
+        // Обновляем UI после завершения анимации
+        setTimeout(() => {
+            updateReviewUI(reviewId, data.likes, data.dislikes, data.user_rating);
+        }, 600);
 
     } catch (error) {
         console.error('Ошибка при оценке отзыва:', error);
@@ -2166,7 +2294,7 @@ function showRatingNotification(newRating, previousRating) {
 async function testServerResponse() {
     try {
         const testData = {
-            restaurant_id: 'PizzaFactory',
+            restaurant_id: 'lambs',
             username: 'test',
             rating: 5,
             comment: 'test',
@@ -2424,6 +2552,12 @@ function resetUserRating(reviewId) {
 async function loadReviews() {
     try {
         const response = await fetch(`/api/reviews?restaurant_id=${currentRestaurantId}&_=${Date.now()}`);
+        if (response.ok) {
+            const reviewsData = await response.json();
+            reviews = reviewsData;
+            displayReviews(reviews);
+            initStats();
+        }
 
         if (response.ok) {
             const reviewsData = await response.json();
@@ -2674,11 +2808,10 @@ function resetReviewForm() {
 async function initStats() {
     try {
         const response = await fetch(`/api/restaurants/${currentRestaurantId}/stats`);
-        if (!response.ok) {
-            throw new Error('Ошибка при загрузке статистики');
+        if (response.ok) {
+            const stats = await response.json();
+            updateRatingStats(stats);
         }
-        const stats = await response.json();
-        updateRatingStats(stats);
     } catch (error) {
         // Устанавливаем значения по умолчанию
         document.getElementById('overall-rating').textContent = '0.0';
@@ -3650,16 +3783,47 @@ function openReviewModal() {
     let likeCount = 0;
     let dislikeCount = 0;
 
+function animateReaction(isLike) {
+    const likeBtn = document.querySelector('#full-review-modal .like-btn');
+    const dislikeBtn = document.querySelector('#full-review-modal .dislike-btn');
+    const currentUserRating = getUserRating(currentReviewId);
+
+    // Определяем какая анимация нужна
+    if (isLike) {
+        if (currentUserRating === 'like') {
+            // Снимаем лайк - анимация отмены
+            likeBtn.classList.add('cancel-animate');
+            setTimeout(() => likeBtn.classList.remove('cancel-animate'), 500);
+        } else {
+            // Ставим лайк - анимация установки
+            likeBtn.classList.add('animate');
+            setTimeout(() => likeBtn.classList.remove('animate'), 600);
+        }
+    } else {
+        if (currentUserRating === 'dislike') {
+            // Снимаем дизлайк - анимация отмены
+            dislikeBtn.classList.add('cancel-animate');
+            setTimeout(() => dislikeBtn.classList.remove('cancel-animate'), 500);
+        } else {
+            // Ставим дизлайк - анимация установки
+            dislikeBtn.classList.add('animate');
+            setTimeout(() => dislikeBtn.classList.remove('animate'), 600);
+        }
+    }
+}
+
 // ===== ОБНОВЛЕННЫЕ ОБРАБОТЧИКИ КНОПОК =====
 
-// Функции для лайка и дизлайка
+// Обновленные функции для анимации лайков/дизлайков
 function likeReview() {
     if (!currentReviewId) return;
+    animateReaction(true);
     rateReview(true, currentReviewId);
 }
 
 function dislikeReview() {
     if (!currentReviewId) return;
+    animateReaction(false);
     rateReview(false, currentReviewId);
 }
 
@@ -3931,43 +4095,41 @@ function addEditDeleteButtonsToModal(modal, reviewData) {
     }
 
     // Функция проверки лимита отзывов (1 в день)
-function canUserPostReview() {
+function canUserPostReview(restaurantId) {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         const userLimit = reviewLimits[userToken];
 
-        if (!userLimit) {
-            return true; // Пользователь еще не оставлял отзывов
+        if (!userLimit) return true;
+
+        // 🔥 Проверяем по конкретному ресторану
+        if (userLimit.restaurantId === restaurantId) {
+            const lastReviewDate = new Date(userLimit.lastReviewDate);
+            const today = new Date();
+            return lastReviewDate.toDateString() !== today.toDateString();
         }
 
-        const lastReviewDate = new Date(userLimit.lastReviewDate);
-        const today = new Date();
-
-        // Проверяем, был ли отзыв сегодня
-        return lastReviewDate.toDateString() !== today.toDateString();
-
+        return true; // Для других ресторанов ограничений нет
     } catch (error) {
-        console.error('Error checking review limit:', error);
-        return true; // В случае ошибки разрешаем отправку
+        return true;
     }
 }
 
-// Обновленная функция обновления лимита
+// Функция обновления лимита после отправки отзыва
 function updateUserReviewLimit(restaurantId) {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
         reviewLimits[userToken] = {
             lastReviewDate: new Date().toISOString(),
-            restaurantId: restaurantId // 🔥 Сохраняем ID ресторана
+            restaurantId: restaurantId  // ✅ Сохраняем ID ресторана
         };
         localStorage.setItem('reviewLimits', JSON.stringify(reviewLimits));
-        console.log('✅ Лимит обновлен для пользователя:', userToken, 'и ресторана:', restaurantId);
     } catch (error) {
         console.error('Error updating review limit:', error);
     }
 }
 
-// Улучшенная функция получения времени до следующего отзыва
+// Функция получения времени до следующего отзыва
 function getTimeUntilNextReview(restaurantId = null) {
     try {
         const reviewLimits = JSON.parse(localStorage.getItem('reviewLimits')) || {};
@@ -4453,8 +4615,8 @@ function expandReview(reviewId) {
 // Глобальные переменные
 let currentUser = null; // Должно устанавливаться при авторизации
 let currentRestaurant = {
-    id: 'PizzaFactory',
-    name: 'PizzaFactory'
+    id: 'lambs',
+    name: 'Барашки'
 };
 
 // Функция для проверки можно ли редактировать отзыв
