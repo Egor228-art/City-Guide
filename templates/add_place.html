@@ -130,12 +130,17 @@ function init(){
         document.getElementById('latInput').value = lat;
         document.getElementById('lonInput').value = lon;
 
+        // Показываем координаты
+        document.getElementById('currentCoords').textContent = lat + ', ' + lon;
+        document.getElementById('coordinatesDisplay').style.display = 'block';
+        document.getElementById('successMessage').style.display = 'block';
+
         // Удаляем старую метку
         if (myPlacemark) {
             myMap.geoObjects.remove(myPlacemark);
         }
 
-        // Создаем метку в стиле конструктора
+        // Создаем кастомную серую метку с белым кружочком
         myPlacemark = new ymaps.Placemark(coords, {
             hintContent: 'Выбранное местоположение',
             balloonContent: `
@@ -144,10 +149,11 @@ function init(){
                 Долгота: ${lon}
             `
         }, {
-            // Красный маркер как в конструкторе
-            preset: 'islands#redIcon',
-            // Или с тенью:
-            // preset: 'islands#redStretchyIcon',
+            // Кастомная иконка - серая с белым кружочком
+            iconLayout: 'default#image',
+            iconImageHref: createCustomMarker(), // Создаем SVG метку
+            iconImageSize: [30, 30], // Размер метки
+            iconImageOffset: [-15, -15], // Смещение чтобы метка была по центру
             balloonCloseButton: true,
             hideIconOnBalloonOpen: false
         });
@@ -159,6 +165,24 @@ function init(){
 
         myMap.panTo(coords, { duration: 300 });
     });
+
+    // Функция для создания кастомной SVG метки
+    function createCustomMarker() {
+        // Создаем SVG изображение серой круглой метки с белым кружочком
+        var svg = [
+            '<svg width="30" height="30" xmlns="http://www.w3.org/2000/svg">',
+            '  <!-- Внешний серый круг -->',
+            '  <circle cx="15" cy="15" r="14" fill="#808080" stroke="#ffffff" stroke-width="2"/>',
+            '  <!-- Внутренний белый круг -->',
+            '  <circle cx="15" cy="15" r="6" fill="#ffffff"/>',
+            '  <!-- Тень для объема -->',
+            '  <circle cx="14" cy="14" r="14" fill="none" stroke="#000000" stroke-width="1" stroke-opacity="0.2"/>',
+            '</svg>'
+        ].join('');
+
+        // Конвертируем SVG в data URL
+        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+    }
 }
 </script>
 </body>

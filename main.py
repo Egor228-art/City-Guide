@@ -2274,37 +2274,28 @@ def restaurant_page(id):
 @app.route('/<category_en>/<slug>')
 def place_page_by_slug(category_en, slug):
     """Универсальный маршрут для всех мест по slug"""
-    try:
-        print(f"Поиск места: category_en={category_en}, slug={slug}")
+    print(f"Поиск места: category_en={category_en}, slug={slug}")
 
-        place = Place.query.filter_by(category_en=category_en, slug=slug).first_or_404()
+    place = Place.query.filter_by(category_en=category_en, slug=slug).first_or_404()
 
-        print(f"Найдено место: {place.title}")
+    print(f"Найдено место: {place.title}")
 
-        # Пробуем найти индивидуальный шаблон
-        template_name = f'ЛичныеСтраницы/{place.title}.html'
+    # Пробуем найти индивидуальный шаблон
+    template_name = f'ЛичныеСтраницы/{place.title}.html'
 
-        import os
-        template_path = os.path.join(app.root_path, 'templates', template_name)
+    import os
+    template_path = os.path.join(app.root_path, 'templates', template_name)
 
-        if os.path.exists(template_path):
-            return render_template(template_name, place=place)
-        else:
-            return render_template('place_template.html', place=place)
-
-    except Exception as e:
-        print(f"Ошибка загрузки страницы {category_en}/{slug}: {e}")
-        return "Страница не найдена", 404
+    if os.path.exists(template_path):
+        return render_template(template_name, place=place)
+    else:
+        return render_template('place_template.html', place=place)
 
 @app.route('/place/<slug>')
 def place_page(slug):
     """Альтернативный маршрут для обратной совместимости"""
-    try:
-        place = Place.query.filter_by(slug=slug).first_or_404()
-        return render_template('place_template.html', place=place)
-    except Exception as e:
-        print(f"Ошибка загрузки страницы {slug}: {e}")
-        return "Страница не найдена", 404
+    place = Place.query.filter_by(slug=slug).first_or_404()
+    return render_template('place_template.html', place=place)
 
 @app.route('/restaurants')
 def restaurants_page():

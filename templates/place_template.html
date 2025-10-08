@@ -164,27 +164,80 @@
                             <div id="yandex-map" style="width: 100%; height: 400px;"></div>
                             <script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
                             <script>
+                                function getCategoryIcon(category) {
+                                    // Определяем эмодзи в зависимости от категории
+                                    const icons = {
+                                        'Ресторан': '🍽️',
+                                        'Кафе': '☕',
+                                        'Магазин': '🛒',
+                                        'Музей': '🏛️',
+                                        'Театр': '🎭',
+                                        'Библиотека': '📚',
+                                        'Парк': '🌳',
+                                        'Кинотеатр': '🎬',
+                                        'Спортплощадка': '⚽',
+                                        'Церковь': '⛪',
+                                        'Гостиница': '🏨',
+                                        'Иконка': '📍'
+                                    };
+                                    return icons[category] || '📍';
+                                }
+
+                                function createCustomMarkerSVG(category, title) {
+                                    const emoji = getCategoryIcon(category);
+
+                                    return [
+                                        '<svg width="50" height="60" xmlns="http://www.w3.org/2000/svg">',
+                                        '  <!-- Внешний серый круг -->',
+                                        '  <circle cx="25" cy="25" r="22" fill="#666666" stroke="#ffffff" stroke-width="2"/>',
+                                        '  <!-- Эмодзи в центре -->',
+                                        '  <text x="25" y="32" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="16" font-weight="bold">',
+                                        '    ' + emoji,
+                                        '  </text>',
+                                        '  <!-- Фон названия -->',
+                                        '  <rect x="5" y="42" width="40" height="16" rx="8" fill="#666666" stroke="#ffffff" stroke-width="1"/>',
+                                        '  <!-- Название заведения -->',
+                                        '  <text x="25" y="54" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="9" font-weight="bold">',
+                                        '    ' + (title.length > 12 ? title.substring(0, 12) + '...' : title),
+                                        '  </text>',
+                                        '</svg>'
+                                    ].join('');
+                                }
+
                                 ymaps.ready(function() {
                                     var map = new ymaps.Map('yandex-map', {
                                         center: [{{ place.latitude }}, {{ place.longitude }}],
-                                        zoom: 16
+                                        zoom: 16,
+                                        controls: ['zoomControl', 'fullscreenControl']
                                     });
 
-                                    var placemark = new ymaps.Placemark([{{ place.latitude }}, {{ place.longitude }}], {
-                                        hintContent: '{{ place.title }}',
-                                        balloonContent: '{{ place.address }}'
-                                    });
+                                    var category = '{{ place.category }}';
+                                    var title = '{{ place.title }}';
 
-                                    map.geoObjects.add(placemark);
+                                    // Создаем кастомную метку
+                                    var customPlacemark = new ymaps.Placemark(
+                                        [{{ place.latitude }}, {{ place.longitude }}],
+                                        {
+                                            hintContent: '{{ place.title }}',
+                                        },
+                                        {
+                                            // Кастомная иконка
+                                            iconLayout: 'default#image',
+                                            iconImageHref: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(createCustomMarkerSVG(category, title)))),
+                                            iconImageSize: [70, 60],
+                                            iconImageOffset: [-25, -60],
+                                            balloonCloseButton: true,
+                                            hideIconOnBalloonOpen: false
+                                        }
+                                    );
+
+                                    map.geoObjects.add(customPlacemark);
                                 });
                             </script>
                             {% else %}
                             <p>Карта недоступна</p>
                             {% endif %}
                         </div>
-
-                        <!-- Кнопка вернуться к изображению по центру снизу -->
-                        <button class="back-btn" onclick="flipCard()">Показать изображение</button>
                     </div>
                 </div>
             </div>
