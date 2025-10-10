@@ -695,7 +695,7 @@ body.no-scroll {
 }
 
 .details-section h1 {
-    margin-top: 0;
+        padding-right: 500px;
 }
 .schedule {
     position: absolute;

@@ -29,6 +29,21 @@
                 </button>
             </form>
 
+            <!-- Кнопка избранного из старого HTML -->
+            <div class="favorites-wrapper">
+                <div class="favorite-wrapper" id="header-favorites-btn" style="display: none;" onclick="window.location.href='/favorites'">
+                  <span class="particle particle-1">✦</span>
+                  <span class="particle particle-2">✦</span>
+                  <span class="particle particle-3">✦</span>
+                  <span class="particle particle-4">✦</span>
+                  <span class="particle particle-5">✦</span>
+                  <span class="particle particle-6">✦</span>
+                  <span class="particle particle-7">✦</span>
+                  <span class="heart-icon">❤</span>
+                  <span class="favorites-counter" id="favorites-count">0</span>
+                </div>
+            </div>
+
             <!-- Кнопки входа/регистрации из HTML 1 -->
             <div class="auth-buttons">
                 <button id="loginButton" class="btn-login">Вход</button>
@@ -106,13 +121,13 @@
                 <h2>Выберите категорию</h2>
                 <div class="category-grid">
                     <!-- Ряд 1 -->
-                    <div class="category-card" onclick="window.location.href='/Restaurant'">
+                    <div class="category-card" onclick="window.location.href='/restaurant'">
                         <div class="icon-wrapper">
                             <img src="{{ url_for('static', filename='Фотки зданий/ИконкаРесторана.png') }}" alt="Рестораны">
                         </div>
                     </div>
 
-                    <div class="category-card" onclick="window.location.href='/Coffee'">
+                    <div class="category-card" onclick="window.location.href='/coffee'">
                         <div class="icon-wrapper">
                             <img src="{{ url_for('static', filename='Фотки зданий/ИконкаКофе.png') }}" alt="Кафе">
                         </div>
@@ -237,6 +252,167 @@
         </div>
     </footer>
     <script>
+    //Код кнопки избранного
+function initFavorites() {
+    console.log('Initializing favorites...');
+    updateFavoritesCount();
+    markExistingFavorites();
+
+    // Обработчик для кнопки избранного в шапке
+    const headerFavoritesBtn = document.getElementById('header-favorites-btn');
+    if (headerFavoritesBtn) {
+        headerFavoritesBtn.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Переключаем активное состояние для анимации
+            headerFavoritesBtn.classList.toggle('active');
+            console.log('Header favorites button clicked, active:', this.classList.contains('active'));
+
+            // Переход на страницу избранного
+            window.location.href = '/favorites';
+        });
+    }
+
+    // Обработчики для кнопок избранного в карточках
+    document.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', function(event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const itemId = this.dataset.itemId;
+            const itemData = this.dataset.item ? JSON.parse(this.dataset.item) : null;
+            toggleFavorite(itemId, itemData, this);
+        });
+    });
+}
+
+function toggleFavorite(itemId, itemData, buttonElement) {
+    try {
+        const favorites = getFavorites();
+        const existingIndex = favorites.findIndex(fav => fav.id === itemId);
+
+        if (existingIndex === -1) {
+            // Добавляем в избранное
+            favorites.push(itemData);
+            if (buttonElement) {
+                buttonElement.classList.add('active');
+                console.log(`✅ "${itemData.name}" добавлен в избранное`);
+            }
+        } else {
+            // Удаляем из избранного
+            favorites.splice(existingIndex, 1);
+            if (buttonElement) {
+                buttonElement.classList.remove('active');
+                console.log(`❌ "${itemData.name}" удален из избранного`);
+            }
+        }
+
+        saveFavorites(favorites);
+        updateFavoritesCount();
+        markExistingFavorites();
+
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+    }
+}
+
+function getFavorites() {
+    try {
+        return JSON.parse(localStorage.getItem('favorites')) || [];
+    } catch (error) {
+        console.error('Error getting favorites:', error);
+        return [];
+    }
+}
+
+function saveFavorites(favorites) {
+    try {
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+        window.dispatchEvent(new Event('storage'));
+    } catch (error) {
+        console.error('Error saving favorites:', error);
+    }
+}
+
+function updateFavoritesCount() {
+    try {
+        const favorites = getFavorites();
+        const count = favorites.length;
+        const counter = document.getElementById('favorites-count');
+        const headerBtn = document.getElementById('header-favorites-btn');
+
+        console.log(`Updating favorites count: ${count}`);
+
+        if (counter) {
+            counter.textContent = count;
+        }
+
+        if (headerBtn) {
+            if (count > 0) {
+                headerBtn.style.display = 'inline-block';
+                headerBtn.classList.add('visible');
+                setTimeout(() => {
+                    headerBtn.style.opacity = '1';
+                    headerBtn.style.transform = 'translateY(0)';
+                }, 10);
+                console.log('Header button shown');
+            } else {
+                headerBtn.style.opacity = '0';
+                headerBtn.style.transform = 'translateY(-10px)';
+                setTimeout(() => {
+                    headerBtn.style.display = 'none';
+                    headerBtn.classList.remove('visible');
+                }, 300);
+                console.log('Header button hidden');
+            }
+        }
+    } catch (error) {
+        console.error('Error updating favorites count:', error);
+    }
+}
+
+function markExistingFavorites() {
+    try {
+        const favorites = getFavorites();
+        console.log('Marking existing favorites:', favorites);
+
+        // Для кнопок в карточках
+        document.querySelectorAll('.favorite-btn').forEach(btn => {
+            try {
+                const itemId = btn.dataset.itemId;
+                if (itemId) {
+                    const isFavorite = favorites.some(fav => fav.id === itemId);
+                    if (isFavorite) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                }
+            } catch (error) {
+                console.error('Error marking favorite button:', error);
+            }
+        });
+    } catch (error) {
+        console.error('Error in markExistingFavorites:', error);
+    }
+}
+
+// Синхронизация между вкладках
+window.addEventListener('storage', function(event) {
+    if (event.key === 'favorites') {
+        updateFavoritesCount();
+        markExistingFavorites();
+    }
+});
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing favorites...');
+    initFavorites();
+});
+//Конец кода кнопки избранного
+
     //Кнопки Футера - Начало
 
     const homeLink = document.getElementById('homeLink');

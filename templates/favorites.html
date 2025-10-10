@@ -3,242 +3,718 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/PersonalPage.css') }}">
     <title>Избранное</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f5;
-        }
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: var(--black);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+        /* Фон с сердечками */
+.hearts-background {
+    background-color: mistyrose;
+    position: fixed; /* или absolute */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Убираем opacity у контейнера */
+}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+.heart {
+    position: absolute;
+    color: #ff4757;
+    font-size: 40px;
+    animation: float 15s infinite linear;
+    opacity: 0.3; /* Увеличиваем непрозрачность */
+}
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+@keyframes float {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.3; /* Согласуем с основной opacity */
+    }
+    90% {
+        opacity: 0.3; /* Согласуем с основной opacity */
+    }
+    100% {
+        transform: translateY(-100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
 
-        .favorites-btn {
-            display: inline-block;
-            background-color: #ff4757;
-            color: white;
-            border: none;
-            border-radius: 30px;
-            padding: 12px 25px;
-            font-size: 18px;
-            cursor: pointer;
-            margin: 20px auto;
-            transition: all 0.3s;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+.container {
+    flex-direction: column;
+    justify-content: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
 
-        .favorites-btn:hover {
-            background-color: #ff6b81;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-        }
+.header {
+    margin-top: 30px;
+    text-align: center;
+    position: relative;
+}
 
-        /* Стили карточки как на главной */
-        .favorites-container {
-            max-width: 1200px;
-            margin: 50px auto;
-            padding: 20px;
-            background-color: rgba(255, 255, 255, 0.9);
-            border-radius: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
+.header h1 {
+    color: #333;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    position: relative;
+    display: inline-block;
+}
 
-        .favorite-item {
-            display: flex;
-            margin-bottom: 30px;
-            background-color: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            cursor: pointer;
-            position: relative;
-            animation: fadeIn 0.5s ease forwards;
-            opacity: 0;
-        }
+.header h1::after {
+    content: "❤";
+    color: #ff4757;
+    margin-left: 10px;
+    font-size: 2rem;
+    animation: pulse 2s infinite;
+}
 
-        .favorite-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-        }
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
 
-        .favorite-image-wrapper {
-            width: 300px;
-            height: 250px;
-            position: relative;
-            overflow: hidden;
-        }
+.favorites-btn {
+    display: inline-block;
+    background-color: #ff4757;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 12px 25px;
+    font-size: 18px;
+    cursor: pointer;
+    margin: 20px auto;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
 
-        .favorite-image {
-            width: 103%;
-            height: 100%;
-            object-fit: cover;
-            transition: all 0.5s ease;
-            border-radius: 15px;
-            margin-bottom: 10px;
-        }
+.favorites-btn:hover {
+    background-color: #ff6b81;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
 
-        .favorite-item:hover .favorite-image {
-            transform: scale(1.05);
-            filter: brightness(1.1);
-        }
+/* Стили карточки как на главной */
+.favorites-container {
+    visibility: visible;
+    max-width: 1200px;
+    padding: 30px;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 1;
+}
 
-        .favorite-info {
-            flex: 1;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-        }
+.favorite-item {
+    display: flex;
+    margin-bottom: 30px;
+    background-color: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    animation: fadeIn 0.5s ease forwards;
+    opacity: 0;
+}
 
-        .favorite-name {
-            font-size: 24px;
-            margin: 0 0 10px 0;
-            color: #333;
-        }
+.favorite-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
 
-        .favorite-description {
-            flex: 1;
-            margin: 0 0 15px 0;
-            color: #555;
-            font-size: 16px;
-            line-height: 1.5;
-        }
+.favorite-image-wrapper {
+    width: 300px;
+    height: 250px;
+    position: relative;
+    overflow: hidden;
+}
 
-        .favorite-contacts {
-            display: flex;
-            align-items: center;
-            color: #555;
-            font-size: 15px;
-        }
+.favorite-image {
+    width: 103%;
+    height: 100%;
+    object-fit: cover;
+    transition: all 0.5s ease;
+    border-radius: 15px;
+    margin-bottom: 10px;
+}
 
-        .favorite-contacts svg {
-            width: 16px;
-            height: 16px;
-            margin-right: 8px;
-        }
+.favorite-item:hover .favorite-image {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
 
-        .contact-item {
-            display: flex;
-            align-items: center;
-            margin-right: 25px;
-        }
+.favorite-info {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
 
-        .remove-btn {
-            background: #ff4757;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 15px;
-            transition: background 0.3s;
-            align-self: flex-start;
-        }
+.favorite-name {
+    font-size: 24px;
+    margin: 0 0 10px 0;
+    color: #333;
+    display: flex;
+    align-items: center;
+}
 
-        .remove-btn:hover {
-            background: #ff6b81;
-        }
+.favorite-name::before {
+    content: "❤";
+    color: #ff4757;
+    margin-right: 10px;
+    font-size: 20px;
+}
 
-        .empty-state {
-            text-align: center;
-            padding: 50px 0;
-            color: #666;
-        }
+.favorite-description {
+    flex: 1;
+    margin: 0 0 15px 0;
+    color: #555;
+    font-size: 16px;
+    line-height: 1.5;
+}
 
-        .empty-state .icon {
-            font-size: 50px;
-            margin-bottom: 20px;
-            color: #ff4757;
-        }
+.favorite-contacts {
+    display: flex;
+    align-items: center;
+    color: #555;
+    font-size: 15px;
+}
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+.favorite-contacts svg {
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    margin-right: 25px;
+}
+
+.remove-btn {
+    font-size: 15px;
+    background: #ff4757;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: background 0.3s;
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+}
+
+.remove-btn::before {
+    content: "×";
+    margin-right: 5px;
+    font-size: 18px;
+}
+
+.remove-btn:hover {
+    background: #ff6b81;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 50px 0;
+    color: #666;
+}
+
+.empty-state .icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    color: #ff4757;
+    animation: pulse 2s infinite;
+}
+
+.empty-state h2 {
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.empty-state p {
+    font-size: 16px;
+    max-width: 500px;
+    margin: 0 auto 20px;
+    line-height: 1.6;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
     </style>
 </head>
 <body>
+    <!-- Навигация с функционалом из HTML 1 и стилями из HTML 2 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo" onclick="window.location.href='/';">
+                <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Логотип">
+                <span>Городской Гид</span>
+            </div>
+
+            <!-- Поиск из HTML 1 -->
+            <form class="search-box" action="/search" method="POST">
+                <input type="text" name="query" placeholder="Поиск заведений..." class="search-input">
+                <button type="submit" class="search-button">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </form>
+
+            <!-- Кнопки входа/регистрации из HTML 1 -->
+            <div class="auth-buttons">
+                <button id="loginButton" class="btn-login">Вход</button>
+                <button id="registerButton" class="btn-register">Регистрация</button>
+                <div id="userInfo" style="display: none;">
+                    <div class="Коробка">
+                        <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar">
+                        <span id="welcomeUser"></span>
+                    </div>
+                    <button class="btn-logout">Выход</button>
+                </div>
+            </div>
+        </div>
+        <div class="clouds"></div>
+    </nav>
+
+    <!-- Окна входа/регистрации из HTML 1 -->
+    <div id="overlay" style="display: none;"></div>
+
+    <div id="content_window" class="popup-window">
+        <form id="loginForm" method="POST" action="/login">
+            <h1>Вход</h1>
+            <span class="btnX" onclick="hideWindow()">×</span>
+            <div class="form-group">
+                <label for="username">Логин</label>
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btnA">Войти</button>
+        </form>
+    </div>
+
+    <div id="content_window2" class="popup-window">
+        <form id="regForm" method="POST" action="/register">
+            <h1>Регистрация</h1>
+            <span class="btnX" onclick="hideWindow1()">×</span>
+            <div class="form-group">
+                <label for="username1">Логин</label>
+                <input type="text" id="username1" name="username" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password1">Пароль</label>
+                <input type="password" id="password1" name="password" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password2">Подтвердите пароль</label>
+                <input type="password" id="password2" name="confirm_password" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="secret_key">Секретный ключ</label>
+                <input type="password" id="secret_key" name="secret_key" class="form-control" required>
+            </div>
+            <button type="submit" class="btnB">Зарегистрироваться</button>
+        </form>
+    </div>
+
+    <!-- Фон с сердечками -->
+    <div class="hearts-background" id="heartsBackground"></div>
+
     <div class="container">
         <div class="header">
             <h1>Ваши избранные места</h1>
-            <button class="favorites-btn" onclick="window.history.back()">
-                ← Вернуться
-            </button>
+            <p>Здесь собраны все места, которые вы добавили в избранное</p>
         </div>
 
         <div id="favorites-container" class="favorites-container">
             <!-- Сюда будут загружаться элементы избранного -->
+            <div class="empty-state">
+                <div class="icon">❤</div>
+                <h2>В избранном пока ничего нет</h2>
+                <p>Добавляйте понравившиеся места в избранное, чтобы вернуться к ним позже</p>
+                <button class="favorites-btn">Перейти к местам</button>
+            </div>
         </div>
     </div>
 
      <!-- Модальное окно "О проекте" -->
-    <div class="modal" id="aboutModal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeModal">&times;</span>
-            <h2>О проекте "Городской Гид"</h2>
-            <p>"Городской Гид" - это цифровой путеводитель по Великому Новгороду, созданный для жителей и его гостей. Наш проект объединяет в себе информацию о самых интересных местах, достопримечательностях, кафе, ресторанах и музеях.</p>
-            <p>Мы стремимся сделать пребывание в Великом Новгороде максимально комфортным и интересным, предоставляя актуальную информацию о городе в удобном формате.</p>
-            <p>Наш гид регулярно обновляется и пополняется новыми локациями, чтобы вы всегда могли найти что-то интересное для себя.</p>
-            <h3>Наши цели:</h3>
+<div class="modal" id="aboutModal">
+    <div class="modal-content">
+        <span class="close-modal" id="closeModal">&times;</span>
+        <h2>О проекте "Городской Гид"</h2>
+        <p>"Городской Гид" - это цифровой путеводитель по Великому Новгороду, созданный для жителей и его гостей. Наш проект объединяет в себе информацию о самых интересных местах, достопримечательностях, кафе, ресторанах и музеях.</p>
+        <p>Мы стремимся сделать пребывание в Великом Новгороде максимально комфортным и интересным, предоставляя актуальную информацию о городе в удобном формате.</p>
+        <p>Наш гид регулярно обновляется и пополняется новыми локациями, чтобы вы всегда могли найти что-то интересное для себя.</p>
+        <h3>Наши цели:</h3>
+        <ul>
+            <li>Популяризация культурного наследия Великого Новгорода</li>
+            <li>Упрощение навигации по городу для туристов</li>
+            <li>Поддержка местного бизнеса</li>
+            <li>Создание сообщества любителей города</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Городской силуэт перед футером -->
+<div class="skyscrapers"></div>
+
+<!-- Футер -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-section about">
+            <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" style="width: 120px;" alt="Логотип">
+            <p>Городской гид - ваш путеводитель по лучшим местам Великого Новгорода</p>
+            <div class="socials">
+                <a href="https://web.telegram.org/"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
+                <a href="https://www.youtube.com/"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" style="margin-bottom: 0; margin-top: 8px" alt="YouTube"></a>
+                <a href="https://vk.ru/"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
+                <a href="https://ok.ru/"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+            </div>
+        </div>
+
+        <div class="footer-section links">
+            <h3>Навигация</h3>
             <ul>
-                <li>Популяризация культурного наследия Великого Новгорода</li>
-                <li>Упрощение навигации по городу для туристов</li>
-                <li>Поддержка местного бизнеса</li>
-                <li>Создание сообщества любителей города</li>
+                <li><a href="#" id="homeLink">Главная</a></li>
+                <li><a href="#" id="aboutLink">О проекте</a></li>
+                <li><a href="#" id="contactsLink">Контакты</a></li>
+                <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
             </ul>
+        </div>
+
+        <div class="footer-section contact">
+            <h3 id="contactsTitle">Контакты</h3>
+            <p><i class="phone-icon"></i> +7 (123) 456-78-90</p>
+            <p><i class="email-icon"></i> info@gorodskoygid.ru</p>
+            <p><i class="location-icon"></i> Великий Новгород</p>
         </div>
     </div>
 
-    <!-- Городской силуэт перед футером -->
-    <div class="skyscrapers"></div>
-
-    <!-- Футер -->
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-section about">
-                <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" style="width: 120px;" alt="Логотип">
-                <p>Городской гид - ваш путеводитель по лучшим местам Великого Новгорода</p>
-                <div class="socials">
-                    <a href="https://web.telegram.org/"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
-                    <a href="https://www.youtube.com/"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" style="margin-bottom: 0; margin-top: 8px" alt="YouTube"></a>
-                    <a href="https://vk.ru/"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
-                    <a href="https://ok.ru/"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
-                </div>
-            </div>
-
-            <div class="footer-section links">
-                <h3>Навигация</h3>
-                <ul>
-                    <li><a href="#" id="homeLink">Главная</a></li>
-                    <li><a href="#" id="aboutLink">О проекте</a></li>
-                    <li><a href="#" id="contactsLink">Контакты</a></li>
-                    <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
-                </ul>
-            </div>
-
-            <div class="footer-section contact">
-                <h3 id="contactsTitle">Контакты</h3>
-                <p><i class="phone-icon"></i> +7 (123) 456-78-90</p>
-                <p><i class="email-icon"></i> info@gorodskoygid.ru</p>
-                <p><i class="location-icon"></i> Великий Новгород</p>
-            </div>
-        </div>
-
-        <div class="footer-bottom">
-            &copy; 2025 Городской Гид | Все права защищены
-        </div>
-    </footer>
+    <div class="footer-bottom">
+        &copy; 2025 Городской Гид | Все права защищены
+    </div>
+</footer>
     <script>
+function showWindow() {
+        document.getElementById('overlay').style.display = 'block';
+        const windowElement = document.getElementById('content_window');
+        windowElement.classList.add('show');
+        windowElement.style.display = 'block';
+    }
+
+    function hideWindow() {
+        document.getElementById('overlay').style.display = 'none';
+        const windowElement = document.getElementById('content_window');
+        windowElement.classList.remove('show');
+        windowElement.style.display = 'none';
+        document.body.classList.remove('no-scroll');
+    }
+
+    function showWindow1() {
+        document.getElementById('overlay').style.display = 'block';
+        const windowElement = document.getElementById('content_window2');
+        windowElement.classList.add('show');
+        windowElement.style.display = 'block';
+    }
+
+    function hideWindow1() {
+        document.getElementById('overlay').style.display = 'none';
+        const windowElement = document.getElementById('content_window2');
+        windowElement.classList.remove('show');
+        windowElement.style.display = 'none';
+        document.body.classList.remove('no-scroll');
+    }
+
+    // Закрытие окна при клике вне его
+    document.getElementById('overlay').addEventListener('click', function() {
+        const window1 = document.getElementById('content_window');
+        const window2 = document.getElementById('content_window2');
+        if (window1.classList.contains('show')) {
+            hideWindow();
+        } else if (window2.classList.contains('show')) {
+            hideWindow1();
+        }
+    });
+
+    // Обработчики кнопок входа/регистрации
+    document.getElementById('loginButton').addEventListener('click', showWindow);
+    document.getElementById('registerButton').addEventListener('click', showWindow1);
+
+    // Обработчик для формы регистрации
+    document.getElementById('regForm').onsubmit = function(event) {
+        event.preventDefault();
+
+        const username = document.getElementById('username1').value;
+        const password = document.getElementById('password1').value;
+        const confirmPassword = document.getElementById('password2').value;
+        const secretKey = document.getElementById('secret_key').value;
+
+        if (password !== confirmPassword) {
+            alert('Пароли не совпадают');
+            return;
+        }
+
+        fetch('/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'username': username,
+                'password': password,
+                'secret_key': secretKey
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('welcomeUser').innerText = data.username;
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('overlay').style.display = 'none';
+                document.getElementById('content_window2').classList.remove('show');
+                document.getElementById('content_window2').style.display = 'none';
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('registerButton').style.display = 'none';
+                localStorage.setItem('username', data.username);
+            } else {
+                alert(data.message);
+            }
+        });
+    };
+
+    // Обработчик для формы входа
+    document.getElementById('loginForm').onsubmit = function(event) {
+        event.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'username': username,
+                'password': password
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('welcomeUser').innerText = data.username;
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('overlay').style.display = 'none';
+                document.getElementById('content_window').classList.remove('show');
+                document.getElementById('content_window').style.display = 'none';
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('registerButton').style.display = 'none';
+                localStorage.setItem('username', data.username);
+            } else {
+                alert(data.message);
+            }
+        });
+    };
+
+    // Обработчик кнопки выхода
+    document.querySelector('.btn-logout').addEventListener('click', function() {
+        fetch('/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('userInfo').style.display = 'none';
+                document.getElementById('loginButton').style.display = 'block';
+                document.getElementById('registerButton').style.display = 'block';
+                localStorage.removeItem('username');
+            } else {
+                alert(data.message);
+            }
+        });
+    });
+
+    // Проверка состояния пользователя при загрузке страницы
+    window.addEventListener('load', function() {
+        const username = localStorage.getItem('username');
+        if (username) {
+            document.getElementById('welcomeUser').innerText = username;
+            document.getElementById('userInfo').style.display = 'flex';
+            document.getElementById('loginButton').style.display = 'none';
+            document.getElementById('registerButton').style.display = 'none';
+        }
+    });
+
+    // Синхронизация состояния пользователя между вкладками
+    window.addEventListener('storage', function(event) {
+        if (event.key === 'username') {
+            if (event.newValue) {
+                document.getElementById('welcomeUser').innerText = event.newValue;
+                document.getElementById('userInfo').style.display = 'flex';
+                document.getElementById('loginButton').style.display = 'none';
+                document.getElementById('registerButton').style.display = 'none';
+            } else {
+                document.getElementById('userInfo').style.display = 'none';
+                document.getElementById('loginButton').style.display = 'block';
+                document.getElementById('registerButton').style.display = 'block';
+            }
+        }
+    });
+
+    // Создание сердечек на фоне
+        function createHearts() {
+    const heartsContainer = document.getElementById('heartsBackground');
+    const heartCount = 30;
+
+    // Очищаем старые сердечки перед созданием новых
+    heartsContainer.innerHTML = '';
+
+    for (let i = 0; i < heartCount; i++) {
+        const heart = document.createElement('div');
+        heart.className = 'heart';
+        heart.innerHTML = '❤';
+
+        // Позиционируем сердечки по всей высоте документа
+        const left = Math.random() * 100;
+        const bottom = Math.random() * 100; // Равномерно по всей высоте
+        const delay = Math.random() * 15;
+        const duration = 15 + Math.random() * 10;
+
+        heart.style.left = `${left}%`;
+        heart.style.bottom = `${bottom}%`;
+        heart.style.animationDelay = `${delay}s`;
+        heart.style.animationDuration = `${duration}s`;
+
+        heartsContainer.appendChild(heart);
+    }
+}
+
+// Функция для обновления высоты контейнера сердечек
+function updateHeartsContainer() {
+    const heartsContainer = document.getElementById('heartsBackground');
+    const documentHeight = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+    );
+
+    heartsContainer.style.height = `${documentHeight}px`;
+}
+
+// Инициализация сердечек
+function initHearts() {
+    updateHeartsContainer();
+    createHearts();
+}
+
+// Автоматическое обновление при изменении контента
+function setupHeartsObserver() {
+    // Обновляем при загрузке страницы
+    window.addEventListener('load', initHearts);
+
+    // Обновляем при изменении размера окна
+    window.addEventListener('resize', updateHeartsContainer);
+
+    // Обновляем при скролле (на случай lazy loading)
+    window.addEventListener('scroll', updateHeartsContainer);
+
+    // Наблюдаем за изменениями в DOM (для динамического контента)
+    const observer = new MutationObserver(function(mutations) {
+        let shouldUpdate = false;
+
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                shouldUpdate = true;
+            }
+        });
+
+        if (shouldUpdate) {
+            setTimeout(updateHeartsContainer, 100);
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+
+// Запускаем всё при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    setupHeartsObserver();
+    initHearts();
+});
+
+        // Удаление из избранного
+        document.querySelectorAll('.remove-btn').forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const item = this.closest('.favorite-item');
+                item.style.animation = 'fadeOut 0.5s ease forwards';
+                setTimeout(() => {
+                    item.remove();
+
+                    // Проверяем, остались ли элементы
+                    const container = document.getElementById('favorites-container');
+                    if (container.children.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <div class="icon">❤</div>
+                                <h2>В избранном пока ничего нет</h2>
+                                <p>Добавляйте понравившиеся места в избранное, чтобы вернуться к ним позже</p>
+                                <button class="favorites-btn">Перейти к местам</button>
+                            </div>
+                        `;
+                    }
+                }, 500);
+            });
+        });
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            createHearts();
+
+            // Добавляем CSS для анимации исчезновения
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeOut {
+                    from { opacity: 1; transform: translateY(0); }
+                    to { opacity: 0; transform: translateY(20px); }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+
     //Кнопки Футера - Начало
 
     const homeLink = document.getElementById('homeLink');
