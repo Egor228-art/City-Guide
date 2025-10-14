@@ -181,7 +181,11 @@ def create_user_hash(request):
     return hashlib.sha256(f"{ip}_{user_agent}".encode()).hexdigest()
 
 def update_restaurant_stats(restaurant_id):
+    """Обновление статистики ресторана на основе отзывов"""
+    print(f"Обновление статистики для ресторана {restaurant_id}")
+
     reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
+    print(f"Найдено отзывов: {len(reviews)}")
 
     if not reviews:
         # Если нет отзывов, устанавливаем значения по умолчанию
@@ -189,23 +193,40 @@ def update_restaurant_stats(restaurant_id):
         if restaurant:
             restaurant.total_rating = 0.0
             restaurant.review_count = 0
+            restaurant.last_updated = datetime.utcnow()
             db.session.commit()
+            print(f"Установлены значения по умолчанию для {restaurant_id}")
         return
 
     total_rating = sum(review.rating for review in reviews)
     review_count = len(reviews)
     average_rating = total_rating / review_count
 
-    # ИСПРАВЛЕНИЕ: Обновляем существующую запись или создаем новую
+    print(f"Расчет для {restaurant_id}: отзывов={review_count}, сумма={total_rating}, среднее={average_rating}")
+
+    # Ищем существующий ресторан или создаем новый
     restaurant = Restaurant.query.get(restaurant_id)
     if not restaurant:
-        restaurant = Restaurant(id=restaurant_id, name=f"Restaurant {restaurant_id}")
-        db.session.add(restaurant)
+        # Получаем название места для нового ресторана
+        place = Place.query.get(int(restaurant_id)) if restaurant_id.isdigit() else None
+        restaurant_name = place.title if place else f"Place {restaurant_id}"
 
-    restaurant.total_rating = average_rating
-    restaurant.review_count = review_count
+        restaurant = Restaurant(
+            id=restaurant_id,
+            name=restaurant_name,
+            total_rating=average_rating,
+            review_count=review_count
+        )
+        db.session.add(restaurant)
+        print(f"Создан новый ресторан: {restaurant_id} - {restaurant_name}")
+    else:
+        restaurant.total_rating = average_rating
+        restaurant.review_count = review_count
+        print(f"Обновлен существующий ресторан: {restaurant_id}")
+
     restaurant.last_updated = datetime.utcnow()
     db.session.commit()
+    print(f"Сохранено в БД: {restaurant_id} - рейтинг {average_rating}, отзывов {review_count}")
 
 # В модель Review добавим метод проверки времени
 def can_edit(self):
@@ -1509,8 +1530,6 @@ def universal_category_page(category_type):
     }
 
     category_ru = CATEGORY_MAPPING.get(category_type)
-    if not category_ru:
-        return "Категория не найдена", 404
 
     page = request.args.get('page', 1, type=int)
     per_page = 10
@@ -1521,13 +1540,45 @@ def universal_category_page(category_type):
 
     places = places_query.offset((page - 1) * per_page).limit(per_page).all()
 
-    # Добавляем рейтинги к каждому месту
+    # Получаем рейтинги ИЗ ТАБЛИЦЫ restaurants
     places_with_ratings = []
     for place in places:
-        avg_rating = get_average_rating(place.id)
+        # АВТОМАТИЧЕСКИЙ ПОИСК: используем slug для поиска в restaurants
+        restaurant = None
+
+        if place.slug:
+            # Ищем ресторан по slug (английское название)
+            restaurant = Restaurant.query.get(place.slug)
+            print(f"Поиск по slug: {place.slug} -> {restaurant.id if restaurant else 'Не найден'}")
+
+        # Если не нашли по slug, пробуем другие варианты
+        if not restaurant and place.category_en:
+            restaurant = Restaurant.query.get(place.category_en)
+            print(f"Поиск по category_en: {place.category_en} -> {restaurant.id if restaurant else 'Не найден'}")
+
+        # Специальные случаи для обратной совместимости
+        if not restaurant:
+            special_cases = {
+                'Brewmen': 'Brewmen',  # если slug отличается
+            }
+            if place.title in special_cases:
+                restaurant = Restaurant.query.get(special_cases[place.title])
+
+        print(
+            f"DEBUG: Место {place.id} - '{place.title}' (slug: {place.slug}) -> Ресторан: {restaurant.id if restaurant else 'Не найден'}")
+
+        if restaurant and restaurant.total_rating is not None:
+            avg_rating = round(restaurant.total_rating, 1)
+            review_count = restaurant.review_count or 0
+        else:
+            avg_rating = 0.0  # Явно указываем 0.0 вместо None
+            review_count = 0
+
         places_with_ratings.append({
             'place': place,
-            'avg_rating': avg_rating
+            'avg_rating': avg_rating,
+            'review_count': review_count,
+            'restaurant_found': bool(restaurant)
         })
 
     return render_template('category_template.html',
@@ -1538,6 +1589,26 @@ def universal_category_page(category_type):
                            total_pages=total_pages,
                            category_type=category_type)
 
+@app.route('/update-restaurant-ratings')
+def update_restaurant_ratings():
+    """Принудительное обновление рейтингов для всех ресторанов"""
+    try:
+        places = Place.query.all()
+        updated_count = 0
+
+        for place in places:
+            # Обновляем статистику для этого места
+            update_restaurant_stats(str(place.id))
+            updated_count += 1
+
+        return jsonify({
+            'success': True,
+            'message': f'Обновлены рейтинги для {updated_count} мест',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/filtered-places')
 def api_filtered_places():
@@ -1612,7 +1683,7 @@ def get_average_rating(place_id):
 # API endpoint для AJAX загрузки
 @app.route('/api/categories/<category_slug>')
 def api_category_places(category_slug):
-    """API для получения мест по категории (для бесконечного скролла)"""
+    """API для получения мест по категории"""
     CATEGORY_MAPPING = {
         'restaurant': 'Ресторан',
         'coffee': 'Кафе',
@@ -1642,7 +1713,28 @@ def api_category_places(category_slug):
 
     places_data = []
     for place in places:
-        avg_rating = get_average_rating(place.id)
+        # Тот же алгоритм поиска что и в основной функции
+        restaurant = None
+
+        if place.slug:
+            restaurant = Restaurant.query.get(place.slug)
+
+        if not restaurant and place.category_en:
+            restaurant = Restaurant.query.get(place.category_en)
+
+        # Специальные случаи
+        if not restaurant:
+            special_cases = {
+                'Brewmen': 'Brewmen',
+            }
+            if place.title in special_cases:
+                restaurant = Restaurant.query.get(special_cases[place.title])
+
+        if restaurant and restaurant.total_rating is not None:
+            avg_rating = round(restaurant.total_rating, 1)
+        else:
+            avg_rating = 0.0
+
         places_data.append({
             'id': place.id,
             'title': place.title,
@@ -1652,7 +1744,9 @@ def api_category_places(category_slug):
             'image_path': place.image_path,
             'category_en': place.category_en,
             'slug': place.slug,
-            'avg_rating': avg_rating
+            'avg_rating': avg_rating,
+            'latitude': place.latitude,  # Добавляем координаты
+            'longitude': place.longitude
         })
 
     return jsonify({
@@ -1968,29 +2062,23 @@ def debug_working_hours(place_id):
         'working_hours_safe': place.get_working_hours_safe()
     })
 
+@app.route('/debug-slugs')
+def debug_slugs():
+    """Проверка slug для отладки"""
+    places_with_restaurants = []
 
-@app.route('/debug/reviews/<restaurant_id>')
-def debug_reviews(restaurant_id):
-    """Проверка отзывов в БД"""
-    reviews = Review.query.filter_by(restaurant_id=restaurant_id).all()
+    for place in Place.query.all():
+        restaurant = None
+        if place.slug:
+            restaurant = Restaurant.query.get(place.slug)
 
-    result = []
-    for review in reviews:
-        result.append({
-            'id': review.id,
-            'restaurant_id': review.restaurant_id,
-            'username': review.username,
-            'rating': review.rating,
-            'comment': review.comment,
-            'user_token': review.user_token,
-            'created_at': review.created_at.isoformat()
+        places_with_restaurants.append({
+            'place_id': place.id,
+            'place_title': place.title,
+            'place_slug': place.slug,
+            'restaurant_id': restaurant.id if restaurant else None,
+            'restaurant_rating': restaurant.total_rating if restaurant else None
         })
-
-    return jsonify({
-        'restaurant_id': restaurant_id,
-        'total_reviews': len(reviews),
-        'reviews': result
-    })
 
 if __name__ == '__main__':
     with app.app_context():

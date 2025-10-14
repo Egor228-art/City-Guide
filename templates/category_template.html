@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
-
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ category_name }}</title>
@@ -9,7 +9,37 @@
     <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <style>
-    .rating-badge {
+    .no-results {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-results h3 {
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.no-results p {
+    font-size: 16px;
+}
+
+    .distance-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 5px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.distance-info svg {
+    width: 16px;
+    height: 16px;
+    color: #667eea;
+}
+
+.rating-badge {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 4px 8px;
@@ -21,15 +51,24 @@
 }
 
 .navbar {
-    transition: transform 0.3s ease;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1000;
+    transition: transform 0.3s ease;
+    background: white; /* или ваш цвет */
 }
-
+/* Исправление позиции пагинации */
 .smart-pagination {
+    position: fixed;
+    top: 95px;
+    left: 0;
+    right: 0;
+    z-index: 1002;
+    background: white;
+    padding: 15px 0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     transition: top 0.3s ease;
 }
 
@@ -133,12 +172,10 @@
 
 .rating-overlay {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 5px 10px;
+    top: 0;
+    right: 0;
+    padding: 5px 5px;
     border-radius: 15px;
-    backdrop-filter: blur(10px);
 }
 
 .rating-badge {
@@ -150,10 +187,15 @@
     gap: 4px;
 }
 
-.rating-badge::before {
+.rating-badge::after {
     content: '★';
     color: #ffd700;
     font-size: 16px;
+}
+
+/* Если рейтинг 0, делаем его менее заметным */
+.rating-badge[data-rating="0"] {
+    opacity: 0.6;
 }
 
 .image-wrapper {
@@ -278,6 +320,7 @@
         <div class="filter-options">
             <select id="sortFilter" class="filter-select" onchange="applyFilters()">
                 <option value="default">По умолчанию</option>
+                <option value="distance" id="distanceOption">Ближайший ко мне</option>
                 <option value="rating_high">Наивысший рейтинг</option>
                 <option value="rating_low">Низший рейтинг</option>
                 <option value="name_asc">По названию (А-Я)</option>
@@ -286,69 +329,69 @@
         </div>
     </div>
 
-     <div class="restaurants-container">
-    {% if places %}
-        {% for place in places %}
-        <div class="restaurant-card"
-            onclick="window.location.href='{% if place.slug %}{{ url_for('place_page_by_slug', category_en=place.category_en, slug=place.slug) }}{% else %}{{ url_for('restaurant_page', id=place.id) }}{% endif %}'">
+     <div class="restaurants-container" id="restaurantsContainer">
+        {% if places %}
+            {% for place_data in places_with_ratings %}
+            {% set place = place_data.place %}
+            {% set avg_rating = place_data.avg_rating %}
+            {% set review_count = place_data.review_count %}
+            {% set restaurant_found = place_data.restaurant_found %}
 
-            <div class="image-wrapper">
-                {% if place.image_path %}
-                    <img class="restaurant-image"
-                         src="{{ url_for('static', filename=place.image_path) }}"
-                         alt="{{ place.title }}">
-                {% else %}
-                    <img class="restaurant-image"
-                         src="{{ url_for('static', filename='Фотки зданий/default.png') }}"
-                         alt="Нет изображения">
-                {% endif %}
+            <div class="restaurant-card"
+                 data-id="{{ place.id }}"
+                 data-rating="{{ avg_rating }}"
+                 data-name="{{ place.title | lower if place.title else '' }}"
+                 onclick="window.location.href='{% if place.slug %}{{ url_for('place_page_by_slug', category_en=place.category_en, slug=place.slug) }}{% else %}{{ url_for('restaurant_page', id=place.id) }}{% endif %}'">
 
-                <!-- Рейтинг на изображении -->
-                {% set avg_rating = [] %}
-                {% for item in places_with_ratings %}
-                    {% if item.place.id == place.id %}
-                        {% set _ = avg_rating.append(item.avg_rating) %}
+                <div class="image-wrapper">
+                    {% if place.image_path %}
+                        <img class="restaurant-image"
+                             src="{{ url_for('static', filename=place.image_path) }}"
+                             alt="{{ place.title }}">
+                    {% else %}
+                        <img class="restaurant-image"
+                             src="{{ url_for('static', filename='Фотки зданий/default.png') }}"
+                             alt="Нет изображения">
                     {% endif %}
-                {% endfor %}
 
-                {% if avg_rating and avg_rating[0] > 0 %}
-                <div class="rating-overlay">
-                    <span class="rating-badge">{{ avg_rating[0] }}</span>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="restaurant-info">
-                <h3 class="restaurant-name">
-                    {{ place.title if place.title else 'Название не указано' }}
-                </h3>
-
-                <p class="restaurant-description">
-                    {{ place.description if place.description else 'Описание отсутствует' }}
-                </p>
-
-                <div class="restaurant-contacts">
-                    <div>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                        </svg>
-                        <span>{{ place.telephone if place.telephone else 'Телефон не указан' }}</span>
-                    </div>
-                    <div class="metka">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                            <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                        <span>{{ place.address if place.address else 'Адрес не указан' }}</span>
+                    <!-- Рейтинг на изображении - ВСЕГДА показываем -->
+                    <div class="rating-overlay">
+                        <span class="rating-badge">{{ avg_rating | default(0.0) }}</span>
                     </div>
                 </div>
+
+                <div class="restaurant-info">
+                    <h3 class="restaurant-name">{{ place.title if place.title else 'Название не указано' }}</h3>
+
+                    <p class="restaurant-description">
+                        {{ place.description if place.description else 'Описание отсутствует' }}
+                        {% if review_count > 0 %}
+                        <br><small>Отзывов: {{ review_count }}</small>
+                        {% endif %}
+                    </p>
+
+                    <div class="restaurant-contacts">
+                        <div>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            <span>{{ place.telephone if place.telephone else 'Телефон не указан' }}</span>
+                        </div>
+                        <div class="metka">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>{{ place.address if place.address else 'Адрес не указан' }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        {% endfor %}
-    {% else %}
-        <p>В этой категории пока нет заведений</p>
-    {% endif %}
-</div>
+            {% endfor %}
+        {% else %}
+            <p>В этой категории пока нет заведений</p>
+        {% endif %}
+    </div>
 
     <!-- Модальное окно "О проекте" -->
     <div class="modal" id="aboutModal">
@@ -408,351 +451,216 @@
         </div>
     </footer>
     <script>
+    // ==================== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ====================
+const currentCategory = '{{ category_type }}';
+let currentPage = {{ current_page }};
+let totalPages = {{ total_pages }};
+let isLoading = false;
+let currentSort = 'default';
+let allPlaces = [];
+let isInitialLoad = true;
+let userLocation = null;
 
-        // JavaScript знает какая категория активна
-        const currentCategory = '{{ category_type }}';
-        let currentPage = {{ current_page }};
-        let totalPages = {{ total_pages }};
-        let isLoading = false;
+// Элементы DOM
+const navbar = document.querySelector('.navbar');
+const smartPagination = document.querySelector('.smart-pagination');
 
-        // Функция обновления пагинации для бесконечного скролла
-function updatePagination() {
-    const pagination = document.getElementById('pagination');
-    if (!pagination) return;
-
-    // Просто обновляем текущую страницу
+// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Инициализация страницы...');
+    loadAllPlaces();
+    initFilters();
     initPagination(totalPages, currentPage);
+    initScrollSystem();
+    initHeaderScroll();
+    initFavorites(); // Инициализация избранного
+});
+
+// ==================== ЗАГРУЗКА ДАННЫХ ====================
+async function loadAllPlaces() {
+    showLoading();
+
+    try {
+        console.log('Загрузка всех данных...');
+        const allPlacesData = [];
+
+        // Сначала получаем информацию о количестве страниц
+        const firstPageResponse = await fetch(`/api/categories/${currentCategory}?page=1`);
+
+        if (!firstPageResponse.ok) {
+            throw new Error(`HTTP error! status: ${firstPageResponse.status}`);
+        }
+
+        const firstPageData = await firstPageResponse.json();
+
+        // Получаем реальное количество страниц из ответа
+        const actualTotalPages = firstPageData.total_pages || 1;
+        console.log(`Всего страниц в категории: ${actualTotalPages}`);
+
+        // Загружаем только существующие страницы
+        for (let page = 1; page <= actualTotalPages; page++) {
+            // Для первой страницы данные уже загружены
+            if (page === 1) {
+                if (firstPageData.places) {
+                    console.log(`Страница 1: загружено ${firstPageData.places.length} заведений`);
+                    firstPageData.places.forEach(place => {
+                        allPlacesData.push({
+                            id: place.id,
+                            title: place.title,
+                            description: place.description,
+                            telephone: place.telephone,
+                            address: place.address,
+                            image_path: place.image_path,
+                            slug: place.slug,
+                            avg_rating: place.avg_rating || 0,
+                            name: (place.title || '').toLowerCase(),
+                            latitude: place.latitude,
+                            longitude: place.longitude
+                        });
+                    });
+                }
+            } else {
+                // Для остальных страниц загружаем отдельно
+                const response = await fetch(`/api/categories/${currentCategory}?page=${page}`);
+
+                if (!response.ok) {
+                    console.warn(`Страница ${page} не найдена, пропускаем`);
+                    continue;
+                }
+
+                const data = await response.json();
+
+                if (data.places && data.places.length > 0) {
+                    console.log(`Страница ${page}: загружено ${data.places.length} заведений`);
+                    data.places.forEach(place => {
+                        allPlacesData.push({
+                            id: place.id,
+                            title: place.title,
+                            description: place.description,
+                            telephone: place.telephone,
+                            address: place.address,
+                            image_path: place.image_path,
+                            slug: place.slug,
+                            avg_rating: place.avg_rating || 0,
+                            name: (place.title || '').toLowerCase(),
+                            latitude: place.latitude,
+                            longitude: place.longitude
+                        });
+                    });
+                }
+            }
+        }
+
+        allPlaces = allPlacesData;
+        totalPages = actualTotalPages; // Обновляем totalPages на реальное значение
+
+        console.log(`✅ Всего загружено: ${allPlaces.length} заведений`);
+        console.log(`✅ Реальное количество страниц: ${totalPages}`);
+
+        renderCurrentPage();
+        initPagination(totalPages, currentPage);
+        hideLoading();
+
+    } catch (error) {
+        console.error('❌ Ошибка загрузки:', error);
+        hideLoading();
+
+        // Более информативное сообщение об ошибке
+        let errorMessage = 'Ошибка загрузки данных. ';
+
+        if (error.message.includes('404')) {
+            errorMessage += 'Категория не найдена.';
+        } else if (error.message.includes('500')) {
+            errorMessage += 'Ошибка сервера.';
+        } else {
+            errorMessage += 'Пожалуйста, обновите страницу.';
+        }
+
+        alert(errorMessage);
+    }
 }
 
-        // Исправляем функцию loadPage
-function loadPage(pageNumber, infiniteScroll = false) {
-    if (isLoading) return;
+// ==================== РЕНДЕРИНГ ====================
+function renderCurrentPage() {
+    console.log(`=== РЕНДЕРИНГ СТРАНИЦЫ ${currentPage} ===`);
 
-    isLoading = true;
-
-    if (!infiniteScroll) {
-        // Обычная пагинация - переходим на страницу
-        window.location.href = `/category/${currentCategory}?page=${pageNumber}`;
+    const container = document.getElementById('restaurantsContainer');
+    if (!container) {
+        console.error('Контейнер не найден!');
         return;
     }
 
-    // Бесконечная прокрутка - AJAX запрос
-    showLoading();
-
-    fetch(`/api/categories/${currentCategory}?page=${pageNumber}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.places && data.places.length > 0) {
-                appendRestaurants(data.places);
-                currentPage = pageNumber;
-                updatePagination();
-            }
-            hideLoading();
-            isLoading = false;
-        })
-        .catch(error => {
-            console.error('Error loading page:', error);
-            hideLoading();
-            isLoading = false;
-        });
-}
-
-        window.addEventListener('scroll', function() {
-            const currentScroll = window.pageYOffset;
-
-            if (currentScroll <= 10) {
-                // Вверху страницы
-                navbar.style.transform = 'translateY(0)';
-                smartPagination.style.top = '95px';
-            }
-            else if (currentScroll > lastScroll) {
-                // Скролл вниз
-                navbar.style.transform = 'translateY(-100%)';
-                smartPagination.style.top = '0';
-            }
-            else {
-                // Скролл вверх
-                navbar.style.transform = 'translateY(0)';
-                smartPagination.style.top = '95px';
-            }
-
-            lastScroll = currentScroll;
-        });
-
-        // Анимация загрузки карточек
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.restaurant-card');
-            cards.forEach((card, index) => {
-                card.style.animationDelay = (index * 0.1) + 's';
-            });
-
-            // Инициализация пагинации
-            initPagination(10, 1); // Всего 10 страниц, текущая 1
-        });
-
-        // Обработчики для карточек
-        document.querySelectorAll('.restaurant-card').forEach(card => {
-            card.addEventListener('click', function() {
-                window.location.href = this.getAttribute('onclick').match(/'(.*?)'/)[1];
-            });
-        });
-
-        // Управление скроллом
-let lastScroll = 0;
-const navbar = document.querySelector('.navbar');
-const smartPagination = document.querySelector('.smart-pagination');
-let scrollTimeout;
-let userLocation = null;
-
-// Функция применения фильтров
-function applyFilters() {
-    const sortBy = document.getElementById('sortFilter').value;
-    const minRating = document.querySelector('input[name="min_rating"]:checked')?.value || 0;
-
-    // Показываем индикатор загрузки
-    showLoading();
-
-    // В реальном приложении здесь будет AJAX запрос к серверу
-    // Сейчас сделаем клиентскую сортировку
-
-    setTimeout(() => {
-        sortAndFilterPlaces(sortBy, parseInt(minRating));
-        hideLoading();
-    }, 500);
-}
-
-// Функция сброса фильтров
-function clearFilters() {
-    document.getElementById('sortFilter').value = 'default';
-    document.querySelectorAll('input[name="min_rating"]').forEach(radio => {
-        radio.checked = false;
-    });
-    applyFilters();
-}
-
-// Функция сортировки и фильтрации
-function sortAndFilterPlaces(sortBy, minRating) {
-    const container = document.querySelector('.restaurants-container');
-    const cards = Array.from(container.querySelectorAll('.restaurant-card'));
-
-    // Фильтрация по рейтингу
-    const filteredCards = cards.filter(card => {
-        const ratingElement = card.querySelector('.rating-badge');
-        const rating = ratingElement ? parseFloat(ratingElement.textContent) : 0;
-        return rating >= minRating;
-    });
-
-    // Сортировка
-    filteredCards.sort((a, b) => {
-        const ratingA = getCardRating(a);
-        const ratingB = getCardRating(b);
-        const nameA = a.querySelector('.restaurant-name').textContent.toLowerCase();
-        const nameB = b.querySelector('.restaurant-name').textContent.toLowerCase();
-
-        switch(sortBy) {
-            case 'rating_high':
-                return ratingB - ratingA;
-            case 'rating_low':
-                return ratingA - ratingB;
-            case 'name_asc':
-                return nameA.localeCompare(nameB);
-            case 'name_desc':
-                return nameB.localeCompare(nameA);
-            case 'distance':
-                // Здесь будет логика сортировки по расстоянию
-                return 0;
-            default:
-                return 0;
-        }
-    });
-
-    // Очищаем контейнер и добавляем отсортированные карточки
     container.innerHTML = '';
-    filteredCards.forEach((card, index) => {
-        card.style.animationDelay = (index * 0.1) + 's';
+
+    // Проверяем есть ли данные
+    if (allPlaces.length === 0) {
+        container.innerHTML = `
+            <div class="no-results">
+                <h3>В этой категории пока нет заведений</h3>
+                <p>Попробуйте выбрать другую категорию</p>
+            </div>
+        `;
+        return;
+    }
+
+    const perPage = 10;
+    const startIndex = (currentPage - 1) * perPage;
+    const endIndex = startIndex + perPage;
+    const pagePlaces = allPlaces.slice(startIndex, endIndex);
+
+    console.log(`Рендерим страницу ${currentPage}: ${pagePlaces.length} элементов`);
+
+    pagePlaces.forEach((place, index) => {
+        const card = createRestaurantCard(place, index);
         container.appendChild(card);
     });
+
+    // Прокручиваем к верху при смене страницы
+    if (!isInitialLoad) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    isInitialLoad = false;
 }
 
-// Вспомогательная функция для получения рейтинга карточки
-function getCardRating(card) {
-    const ratingElement = card.querySelector('.rating-badge');
-    return ratingElement ? parseFloat(ratingElement.textContent) : 0;
-}
-
-// Функция для получения местоположения пользователя
-function getUserLocation() {
-    return new Promise((resolve, reject) => {
-        if (!navigator.geolocation) {
-            reject(new Error('Geolocation is not supported'));
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                userLocation = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
-                };
-                resolve(userLocation);
-            },
-            error => {
-                console.warn('Location access denied or failed:', error);
-                reject(error);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 60000
-            }
-        );
-    });
-}
-
-// Инициализация при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    // Пробуем получить местоположение
-    getUserLocation().then(location => {
-        console.log('User location:', location);
-        // Активируем опцию ближайших мест если получено местоположение
-        const distanceOption = document.querySelector('option[value="distance"]');
-        if (distanceOption) {
-            distanceOption.disabled = false;
-            distanceOption.textContent = 'Ближайший ко мне ✓';
-        }
-    }).catch(error => {
-        console.log('Location not available:', error.message);
-    });
-
-    // Инициализация пагинации
-    initPagination(totalPages, currentPage);
-});
-
-// Функция для управления видимостью шапки
-function handleScroll() {
-    const currentScroll = window.pageYOffset;
-    const scrollDelta = currentScroll - lastScroll;
-
-    // Определяем направление скролла
-    const scrollingDown = scrollDelta > 0;
-    const atTop = currentScroll <= 10;
-    const scrollSignificant = Math.abs(scrollDelta) > 5; // Минимальная дельта для реакции
-
-    if (atTop) {
-        // Вверху страницы - всегда показываем
-        navbar.style.transform = 'translateY(0)';
-        navbar.style.transition = 'transform 0.3s ease';
-        smartPagination.style.top = '95px';
-        smartPagination.style.transition = 'top 0.3s ease';
-    }
-    else if (scrollingDown && scrollSignificant && currentScroll > 100) {
-        // Скролл вниз и не в самом верху - скрываем
-        navbar.style.transform = 'translateY(-100%)';
-        smartPagination.style.top = '0';
-    }
-    else if (!scrollingDown && scrollSignificant) {
-        // Скролл вверх - показываем
-        navbar.style.transform = 'translateY(0)';
-        smartPagination.style.top = '95px';
-    }
-
-    lastScroll = currentScroll;
-
-    // Проверка для бесконечной прокрутки
-    checkInfiniteScroll();
-}
-
-// Оптимизация производительности скролла
-window.addEventListener('scroll', function() {
-    // Ограничиваем частоту вызова с помощью requestAnimationFrame
-    if (!scrollTimeout) {
-        scrollTimeout = requestAnimationFrame(function() {
-            handleScroll();
-            scrollTimeout = null;
-        });
-    }
-});
-
-window.addEventListener('scroll', function() {
-    const currentScroll = window.pageYOffset;
-
-    if (currentScroll <= 10) {
-        navbar.style.transform = 'translateY(0)';
-        smartPagination.style.top = '95px';
-    }
-    else if (currentScroll > lastScroll) {
-        navbar.style.transform = 'translateY(-100%)';
-        smartPagination.style.top = '0';
-    }
-    else {
-        navbar.style.transform = 'translateY(0)';
-        smartPagination.style.top = '95px';
-    }
-
-    lastScroll = currentScroll;
-
-    // Проверка для бесконечной прокрутки
-    checkInfiniteScroll();
-});
-
-// Функция для проверки необходимости подгрузки
-function checkInfiniteScroll() {
-    if (isLoading || currentPage >= totalPages) return;
-
-    const scrollHeight = document.documentElement.scrollHeight;
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    const clientHeight = window.innerHeight || document.documentElement.clientHeight;
-
-    // Подгружаем когда осталось 500px до конца страницы
-    if (scrollHeight - scrollTop - clientHeight < 500) {
-        loadPage(currentPage + 1, true);
-    }
-}
-
-// Функция замены ресторанов
-function replaceRestaurants(restaurants) {
-    const container = document.querySelector('.restaurants-container');
-    container.innerHTML = '';
-    appendRestaurants(restaurants);
-}
-
-// Функция добавления ресторанов
-function appendRestaurants(restaurants) {
-    const container = document.querySelector('.restaurants-container');
-
-    restaurants.forEach((place, index) => {
-        const card = createRestaurantCard(place, container.children.length + index);
-        container.appendChild(card);
-    });
-}
-
-// Функция создания карточки ресторана
 function createRestaurantCard(place, index) {
     const card = document.createElement('div');
     card.className = 'restaurant-card';
     card.style.animationDelay = (index * 0.1) + 's';
 
-    const url = place.id == 2 ? '/lambs' : `/restaurant/${place.id}`;
+    card.setAttribute('data-id', place.id);
+    card.setAttribute('data-rating', place.avg_rating);
+    card.setAttribute('data-name', place.name);
+
+    const url = place.slug ?
+        `/${currentCategory}/${place.slug}` :
+        `/restaurant/${place.id}`;
+
     card.onclick = () => window.location.href = url;
 
-    const imagePath = place.image_path ? `/static/${place.image_path}` : '/static/Фотки зданий/default.png';
+    const imagePath = place.image_path ?
+        `/static/${place.image_path}` :
+        '/static/Фотки зданий/default.png';
+
+    const distanceInfo = (place.distance && place.distance < 9999) ?
+    `<div class="distance-info">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2s4 4.5 4 10-4 10-4 10-4-4.5-4-10 4-10 4-10z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+        <span>${place.distance.toFixed(1)} км</span>
+    </div>` : '';
 
     card.innerHTML = `
         <div class="image-wrapper">
-            <img class="restaurant-image"
-                 src="${imagePath}"
-                 alt="${place.title || 'Название не указано'}">
+            <img class="restaurant-image" src="${imagePath}" alt="${place.title || 'Название не указано'}">
+            <div class="rating-overlay">
+                <span class="rating-badge">${place.avg_rating.toFixed(1)}</span>
+            </div>
         </div>
         <div class="restaurant-info">
             <h3 class="restaurant-name">${place.title || 'Название не указано'}</h3>
-            <p class="restaurant-description">
-                ${place.description || 'Описание отсутствует'}
-            </p>
+            <p class="restaurant-description">${place.description || 'Описание отсутствует'}</p>
+            ${distanceInfo}
             <div class="restaurant-contacts">
                 <div>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -774,7 +682,352 @@ function createRestaurantCard(place, index) {
     return card;
 }
 
-// Показать/скрыть индикатор загрузки
+// ==================== ФИЛЬТРЫ ====================
+function initFilters() {
+    const sortFilter = document.getElementById('sortFilter');
+    if (sortFilter) {
+        sortFilter.addEventListener('change', function() {
+            currentSort = this.value;
+
+            // Если выбран фильтр по расстоянию, запрашиваем геолокацию
+            if (currentSort === 'distance') {
+                getUserLocation().then(() => {
+                    applySortingToAll();
+                }).catch(error => {
+                    console.error('Ошибка геолокации:', error);
+                    alert('Не удалось получить ваше местоположение. Проверьте разрешения браузера.');
+                    sortFilter.value = 'default';
+                    currentSort = 'default';
+                });
+            } else {
+                applySortingToAll();
+            }
+        });
+    }
+
+    // Пробуем получить геолокацию при загрузке
+    getUserLocation().catch(error => {
+        console.log('Геолокация недоступна:', error.message);
+    });
+}
+
+// Функция получения местоположения
+function getUserLocation() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation is not supported'));
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                userLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                };
+                console.log('Местоположение получено:', userLocation);
+
+                // Активируем опцию в фильтре
+                const distanceOption = document.getElementById('distanceOption');
+                if (distanceOption) {
+                    distanceOption.textContent = 'Ближайший ко мне ✓';
+                }
+
+                resolve(userLocation);
+            },
+            error => {
+                console.warn('Доступ к местоположению запрещен или не удался:', error);
+
+                // Деактивируем опцию в фильтре
+                const distanceOption = document.getElementById('distanceOption');
+                if (distanceOption) {
+                    distanceOption.textContent = 'Ближайший ко мне (недоступно)';
+                    distanceOption.disabled = true;
+                }
+
+                reject(error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000
+            }
+        );
+    });
+}
+
+// Функция расчета расстояния (формула Гаверсинуса)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Радиус Земли в км
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function applySortingToAll() {
+    if (allPlaces.length === 0) {
+        console.log('Нет данных для сортировки');
+        return;
+    }
+
+    showLoading();
+
+    setTimeout(() => {
+        const sortedPlaces = [...allPlaces];
+
+        switch(currentSort) {
+            case 'rating_high':
+                sortedPlaces.sort((a, b) => b.avg_rating - a.avg_rating || a.name.localeCompare(b.name));
+                break;
+            case 'rating_low':
+                sortedPlaces.sort((a, b) => a.avg_rating - b.avg_rating || a.name.localeCompare(b.name));
+                break;
+            case 'name_asc':
+                sortedPlaces.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'name_desc':
+                sortedPlaces.sort((a, b) => b.name.localeCompare(a.name));
+                break;
+            case 'distance':
+                if (!userLocation) {
+                    alert('Не удалось получить ваше местоположение');
+                    document.getElementById('sortFilter').value = 'default';
+                    currentSort = 'default';
+                    hideLoading();
+                    return;
+                }
+
+                // Проверяем есть ли заведения с координатами
+                const placesWithCoords = sortedPlaces.filter(p => p.latitude && p.longitude);
+                if (placesWithCoords.length === 0) {
+                    alert('У заведений в этой категории нет координат для расчета расстояния');
+                    document.getElementById('sortFilter').value = 'default';
+                    currentSort = 'default';
+                    hideLoading();
+                    return;
+                }
+
+                // Рассчитываем реальное расстояние
+                sortedPlaces.forEach(place => {
+                    if (place.latitude && place.longitude) {
+                        place.distance = calculateDistance(
+                            userLocation.latitude,
+                            userLocation.longitude,
+                            place.latitude,
+                            place.longitude
+                        );
+                    } else {
+                        place.distance = 9999; // Большое число чтобы были в конце
+                    }
+                });
+
+                // Сортируем по расстоянию
+                sortedPlaces.sort((a, b) => a.distance - b.distance);
+                break;
+            case 'default':
+            default:
+                sortedPlaces.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+                break;
+        }
+
+        allPlaces = sortedPlaces;
+        renderCurrentPage();
+        hideLoading();
+
+        console.log(`Применена сортировка: ${currentSort}`);
+    }, 300);
+}
+
+// ==================== ПАГИНАЦИЯ ====================
+function initPagination(totalPages, currentPage) {
+    const pagination = document.getElementById('pagination');
+    if (!pagination) {
+        console.error('Элемент пагинации не найден!');
+        return;
+    }
+
+    pagination.innerHTML = '';
+
+    // Если всего 1 страница или нет данных, не показываем пагинацию
+    if (totalPages <= 1 || allPlaces.length === 0) {
+        pagination.style.display = 'none';
+        return;
+    } else {
+        pagination.style.display = 'block';
+    }
+
+    // Предыдущая страница
+    if (currentPage > 1) {
+        addPageItem(pagination, '«', currentPage - 1, 'arrow');
+    }
+
+    // Страницы
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            addPageItem(pagination, i, i, i === currentPage ? 'active' : '');
+        } else if (i === currentPage - 3 || i === currentPage + 3) {
+            addEllipsis(pagination);
+        }
+    }
+
+    // Следующая страница
+    if (currentPage < totalPages) {
+        addPageItem(pagination, '»', currentPage + 1, 'arrow');
+    }
+}
+
+function addPageItem(container, text, pageNumber, className = '') {
+    const li = document.createElement('li');
+    li.className = 'page-item';
+
+    const a = document.createElement('a');
+    a.className = `page-link ${className}`;
+    a.href = '#';
+    a.textContent = text;
+    a.onclick = (e) => {
+        e.preventDefault();
+        goToPage(pageNumber);
+    };
+
+    li.appendChild(a);
+    container.appendChild(li);
+}
+
+function addEllipsis(container) {
+    const li = document.createElement('li');
+    li.className = 'page-item';
+    li.innerHTML = '<span class="ellipsis">...</span>';
+    container.appendChild(li);
+}
+
+function goToPage(pageNumber) {
+    if (pageNumber < 1 || pageNumber > totalPages || isLoading) {
+        console.log('Некорректная страница или загрузка в процессе');
+        return;
+    }
+
+    // Если уже на этой странице, ничего не делаем
+    if (pageNumber === currentPage) {
+        console.log(`Уже на странице ${pageNumber}`);
+        return;
+    }
+
+    console.log(`Переход на страницу ${pageNumber}`);
+    currentPage = pageNumber;
+
+    // Показываем загрузку
+    showLoading();
+
+    // Используем setTimeout для анимации
+    setTimeout(() => {
+        // Обновляем URL
+        const url = new URL(window.location);
+        url.searchParams.set('page', pageNumber);
+        window.history.pushState({ page: pageNumber }, '', url.toString());
+
+        // Рендерим страницу
+        renderCurrentPage();
+        initPagination(totalPages, currentPage);
+
+        // Скрываем загрузку
+        hideLoading();
+
+        console.log(`Страница ${pageNumber} успешно загружена`);
+    }, 300);
+}
+
+// ==================== СКРОЛЛИНГ ====================
+function initScrollSystem() {
+    let scrollTimeout;
+    let lastScrollTime = 0;
+    const SCROLL_DEBOUNCE = 500; // Защита от частых вызовов
+
+    window.addEventListener('scroll', function() {
+        const now = Date.now();
+
+        // Защита от слишком частых вызовов
+        if (now - lastScrollTime < SCROLL_DEBOUNCE) {
+            return;
+        }
+
+        if (!scrollTimeout) {
+            scrollTimeout = setTimeout(() => {
+                handleScroll();
+                scrollTimeout = null;
+                lastScrollTime = Date.now();
+            }, 100);
+        }
+    });
+
+    // Обработчик кнопок вперед/назад браузера
+    window.addEventListener('popstate', function(event) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const page = parseInt(urlParams.get('page')) || 1;
+
+        if (page !== currentPage) {
+            console.log(`Popstate: переход на страницу ${page}`);
+            currentPage = page;
+            renderCurrentPage();
+            initPagination(totalPages, currentPage);
+        }
+    });
+}
+
+function handleScroll() {
+    if (isLoading) return;
+
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = window.innerHeight;
+
+    // Определяем пороги для смены страниц
+    const scrollThreshold = 100; // 100px от края
+
+    // Скролл вниз - следующая страница
+    if (scrollTop + clientHeight >= scrollHeight - scrollThreshold) {
+        if (currentPage < totalPages) {
+            console.log(`Скролл вниз: страница ${currentPage} -> ${currentPage + 1}`);
+            goToPage(currentPage + 1);
+        }
+    }
+
+    // Скролл вверх - предыдущая страница
+    else if (scrollTop <= scrollThreshold) {
+        if (currentPage > 1) {
+            console.log(`Скролл вверх: страница ${currentPage} -> ${currentPage - 1}`);
+            goToPage(currentPage - 1);
+        }
+    }
+}
+
+// ==================== СКРЫВАЮЩАЯСЯ ШАПКА ====================
+function initHeaderScroll() {
+    let lastScroll = 0;
+
+    window.addEventListener('scroll', function() {
+        const currentScroll = window.pageYOffset;
+
+        if (currentScroll <= 10) {
+            navbar.style.transform = 'translateY(0)';
+            smartPagination.style.top = '95px';
+        } else if (currentScroll > lastScroll) {
+            navbar.style.transform = 'translateY(-100%)';
+            smartPagination.style.top = '0';
+        } else {
+            navbar.style.transform = 'translateY(0)';
+            smartPagination.style.top = '95px';
+        }
+
+        lastScroll = currentScroll;
+    });
+}
+
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 function showLoading() {
     const loading = document.getElementById('loading');
     if (loading) {
@@ -789,95 +1042,11 @@ function hideLoading() {
     }
 }
 
-// Инициализация пагинации
-function initPagination(totalPages, currentPage) {
-    const pagination = document.getElementById('pagination');
-    if (!pagination) return;
-
-    pagination.innerHTML = '';
-
-    // Кнопка "В начало"
-    addPageItem(pagination, '««', 1, currentPage === 1 ? 'arrow disabled' : 'arrow');
-
-    // Кнопка "Назад"
-    addPageItem(pagination, '«', currentPage - 1, currentPage === 1 ? 'arrow disabled' : 'arrow');
-
-    // Показываем страницы
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, currentPage + 2);
-
-    if (currentPage <= 3) {
-        endPage = Math.min(5, totalPages);
-    }
-    if (currentPage >= totalPages - 2) {
-        startPage = Math.max(1, totalPages - 4);
-    }
-
-    if (startPage > 1) {
-        addPageItem(pagination, 1, 1);
-        if (startPage > 2) addEllipsis(pagination);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-        addPageItem(pagination, i, i, i === currentPage ? 'active' : '');
-    }
-
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) addEllipsis(pagination);
-        addPageItem(pagination, totalPages, totalPages);
-    }
-
-    // Кнопка "Вперед"
-    addPageItem(pagination, '»', currentPage + 1, currentPage === totalPages ? 'arrow disabled' : 'arrow');
-
-    // Кнопка "В конец"
-    addPageItem(pagination, '»»', totalPages, currentPage === totalPages ? 'arrow disabled' : 'arrow');
-}
-
-function addPageItem(container, text, pageNumber, className = '') {
-    const li = document.createElement('li');
-    li.className = 'page-item';
-
-    const a = document.createElement('a');
-    a.className = `page-link ${className}`;
-    a.href = '#';
-    a.textContent = text;
-
-    if (!className.includes('disabled')) {
-        a.onclick = function(e) {
-            e.preventDefault();
-            loadPage(pageNumber);
-        };
-    }
-
-    li.appendChild(a);
-    container.appendChild(li);
-}
-
-function addEllipsis(container) {
-    const li = document.createElement('li');
-    li.className = 'page-item';
-    li.innerHTML = '<span class="ellipsis">...</span>';
-    container.appendChild(li);
-}
-
-//Код кнопки избранного
+// ==================== ИЗБРАННОЕ (оставляем ваш код) ====================
 function initFavorites() {
     console.log('Initializing favorites...');
     updateFavoritesCount();
     markExistingFavorites();
-
-    // Обработчики для всех кнопок избранного
-    document.querySelectorAll('.js-favorite-btn').forEach(btn => {
-        btn.addEventListener('click', function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const itemId = this.dataset.itemId;
-            const itemData = JSON.parse(this.dataset.item);
-            toggleFavorite(itemId, itemData, this);
-        });
-    });
 }
 
 function toggleFavorite(itemId, itemData, buttonElement) {
@@ -886,12 +1055,10 @@ function toggleFavorite(itemId, itemData, buttonElement) {
         const existingIndex = favorites.findIndex(fav => fav.id === itemId);
 
         if (existingIndex === -1) {
-            // Добавляем в избранное
             favorites.push(itemData);
             if (buttonElement) buttonElement.classList.add('active');
             console.log(`✅ "${itemData.name}" добавлен в избранное`);
         } else {
-            // Удаляем из избранного
             favorites.splice(existingIndex, 1);
             if (buttonElement) buttonElement.classList.remove('active');
             console.log(`❌ "${itemData.name}" удален из избранного`);
@@ -918,22 +1085,18 @@ function getFavorites() {
 function saveFavorites(favorites) {
     try {
         localStorage.setItem('favorites', JSON.stringify(favorites));
-        // Синхронизация между вкладками
         window.dispatchEvent(new Event('storage'));
     } catch (error) {
         console.error('Error saving favorites:', error);
     }
 }
 
-// Обновленная функция обновления счетчика
 function updateFavoritesCount() {
     try {
         const favorites = getFavorites();
         const count = favorites.length;
         const counter = document.getElementById('favorites-count');
         const headerBtn = document.getElementById('header-favorites-btn');
-
-        console.log(`Updating favorites count: ${count}`);
 
         if (counter) {
             counter.textContent = count;
@@ -962,7 +1125,6 @@ function updateFavoritesCount() {
 function markExistingFavorites() {
     try {
         const favorites = getFavorites();
-
         document.querySelectorAll('.js-favorite-btn').forEach(btn => {
             try {
                 const itemData = JSON.parse(btn.getAttribute('data-item'));
@@ -983,376 +1145,12 @@ function markExistingFavorites() {
     }
 }
 
-// Синхронизация между вкладками
 window.addEventListener('storage', function(event) {
     if (event.key === 'favorites') {
         updateFavoritesCount();
         markExistingFavorites();
     }
 });
-
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    initFavorites();
-});
-//Конец кода кнопки избранного
-
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    // Инициализация пагинации
-    initPagination(totalPages, currentPage);
-
-    // Анимация загрузки карточек
-    const cards = document.querySelectorAll('.restaurant-card');
-    cards.forEach((card, index) => {
-        card.style.animationDelay = (index * 0.1) + 's';
-    });
-});
-
-// Обработчики для карточек
-document.querySelectorAll('.restaurant-card').forEach(card => {
-    card.addEventListener('click', function() {
-        const onclickAttr = this.getAttribute('onclick');
-        if (onclickAttr) {
-            const match = onclickAttr.match(/window\.location\.href\s*=\s*'([^']+)'/);
-            if (match && match[1]) {
-                window.location.href = match[1];
-            }
-        }
-    });
-});
-
-//Кнопки Футера - Начало
-
-const homeLink = document.getElementById('homeLink');
-const aboutLink = document.getElementById('aboutLink');
-const contactsLink = document.getElementById('contactsLink');
-const helpLink = document.getElementById('helpLink');
-const aboutModal = document.getElementById('aboutModal');
-const closeModal = document.getElementById('closeModal');
-const arrowContainer = document.getElementById('arrowContainer');
-const arrowLine = document.getElementById('arrowLine');
-const arrowHead = document.getElementById('arrowHead');
-const contactsTitle = document.getElementById('contactsTitle');
-
-// Обработчик для кнопки "Главная"
-homeLink.addEventListener('click', function(e) {
-    e.preventDefault();
-    // В реальном приложении здесь будет переход на главную страницу
-    window.location.href = "/";
-});
-
-// Обработчик для кнопки "О проекте"
-aboutLink.addEventListener('click', function(e) {
-    e.preventDefault();
-    aboutModal.style.display = 'flex';
-});
-
-// Обработчик для закрытия модального окна
-closeModal.addEventListener('click', function() {
-    aboutModal.style.display = 'none';
-});
-
-// Закрытие модального окна при клике вне его
-window.addEventListener('click', function(e) {
-    if (e.target === aboutModal) {
-        aboutModal.style.display = 'none';
-    }
-});
-
-// Обработчик для кнопки "Контакты"
-contactsLink.addEventListener('click', function(e) {
-    e.preventDefault();
-
-    // Получаем позиции элементов относительно документа
-    const contactsLinkRect = contactsLink.getBoundingClientRect();
-    const contactsTitle = document.querySelector('.footer-section.contact h3');
-    const contactsTitleRect = contactsTitle.getBoundingClientRect();
-
-    // Добавляем scroll offset к координатам
-    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-    const startX = contactsLinkRect.left + scrollX + contactsLinkRect.width + 10;
-    const startY = contactsLinkRect.top + scrollY + contactsLinkRect.height / 2;
-
-    const endX = contactsTitleRect.left + scrollX - 5;
-    const endY = contactsTitleRect.top + scrollY + contactsTitleRect.height;
-
-    // Удаляем предыдущую стрелку если есть
-    const existingArrow = document.querySelector('.arrow-to-contacts');
-    if (existingArrow) {
-        existingArrow.remove();
-    }
-
-    // Создаем контейнер для SVG стрелки
-    const arrowContainer = document.createElement('div');
-    arrowContainer.className = 'arrow-to-contacts';
-    document.body.appendChild(arrowContainer);
-
-    // Создаем SVG для стрелки с завитушкой
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "100%");
-    svg.style.position = 'absolute';
-    svg.style.top = '0';
-    svg.style.left = '0';
-    svg.style.pointerEvents = 'none';
-
-    // Вычисляем границы для SVG
-    const minX = Math.min(startX, endX) - 50;
-    const minY = Math.min(startY, endY) - 50;
-    const maxX = Math.max(startX, endX) + 50;
-    const maxY = Math.max(startY, endY) + 50;
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    // Создаем путь с завитушкой
-    const path = document.createElementNS(svgNS, "path");
-    const curveIntensity = 80;
-
-    // Путь с красивой кривой
-    const pathData = `M ${startX - minX} ${startY - minY}
-                     C ${startX - minX + curveIntensity} ${startY - minY - curveIntensity},
-                       ${endX - minX - curveIntensity} ${endY - minY - curveIntensity},
-                       ${endX - minX} ${endY - minY}`;
-
-    path.setAttribute("d", pathData);
-    path.setAttribute("class", "arrow-path");
-    path.style.filter = 'drop-shadow(0 0 2px rgba(52, 152, 219, 0.5))';
-
-    // Создаем головку стрелки
-    const arrowHead = document.createElementNS(svgNS, "polygon");
-    arrowHead.setAttribute("points", "0,0 -10,-7 -10,7");
-    arrowHead.setAttribute("class", "arrow-head");
-    arrowHead.setAttribute("fill", "#3498db");
-
-    // Вычисляем угол для головки стрелки
-    const pathElement = document.createElementNS(svgNS, "path");
-    pathElement.setAttribute("d", pathData);
-    const pathLength = pathElement.getTotalLength();
-    const point = pathElement.getPointAtLength(Math.max(0, pathLength - 1));
-    const pointBefore = pathElement.getPointAtLength(Math.max(0, pathLength - 20));
-    const angle = Math.atan2(point.y - pointBefore.y, point.x - pointBefore.x) * 180 / Math.PI;
-
-    arrowHead.setAttribute("transform", `translate(${endX - minX},${endY - minY}) rotate(${angle})`);
-    arrowHead.style.filter = 'drop-shadow(0 0 2px rgba(52, 152, 219, 0.5))';
-
-    // Устанавливаем размеры SVG
-    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    arrowContainer.style.width = width + 'px';
-    arrowContainer.style.height = height + 'px';
-    arrowContainer.style.left = minX + 'px';
-    arrowContainer.style.top = minY + 'px';
-    arrowContainer.style.position = 'absolute'; // Меняем fixed на absolute
-
-    svg.appendChild(path);
-    svg.appendChild(arrowHead);
-    arrowContainer.appendChild(svg);
-
-    // Показываем стрелку
-    arrowContainer.style.opacity = '1';
-    arrowContainer.style.transition = 'opacity 0.5s';
-
-    // Добавляем класс для подчёркивания
-    contactsTitle.classList.add('contacts-underline');
-
-    // Анимируем прорисовку пути
-    setTimeout(() => {
-        path.style.transition = 'stroke-dashoffset 1.2s ease-in-out';
-        path.style.strokeDashoffset = '0';
-        setTimeout(() => {contactsTitle.classList.add('animate');}, 450)
-    }, 100);
-
-    // Анимируем появление головки стрелки и подчёркивание
-    setTimeout(() => {
-        arrowHead.style.opacity = '1';
-        arrowHead.style.transition = 'opacity 0.3s ease-in-out';
-    }, 550);
-
-    // Удаляем стрелку через 3 секунды
-    setTimeout(() => {
-        arrowContainer.style.opacity = '0';
-        contactsTitle.classList.remove('animate');
-
-        setTimeout(() => {
-            if (arrowContainer.parentNode) {
-                arrowContainer.parentNode.removeChild(arrowContainer);
-            }
-            contactsTitle.classList.remove('contacts-underline');
-        }, 500);
-    }, 2000);
-});
-
-function showWindow() {
-                document.getElementById('overlay').style.display = 'block';
-                const windowElement = document.getElementById('content_window');
-                windowElement.classList.add('show');
-                windowElement.style.display = 'block';
-            }
-
-            function hideWindow() {
-                document.getElementById('overlay').style.display = 'none';
-                const windowElement = document.getElementById('content_window');
-                windowElement.classList.remove('show');
-                windowElement.style.display = 'none';
-                document.body.classList.remove('no-scroll');
-            }
-
-            function showWindow1() {
-                document.getElementById('overlay').style.display = 'block';
-                const windowElement = document.getElementById('content_window2');
-                windowElement.classList.add('show');
-                windowElement.style.display = 'block';
-            }
-
-            function hideWindow1() {
-                document.getElementById('overlay').style.display = 'none';
-                const windowElement = document.getElementById('content_window2');
-                windowElement.classList.remove('show');
-                windowElement.style.display = 'none';
-                document.body.classList.remove('no-scroll');
-            }
-
-            // Закрытие окна при клике вне его
-            document.getElementById('overlay').addEventListener('click', function() {
-                const window1 = document.getElementById('content_window');
-                const window2 = document.getElementById('content_window2');
-                if (window1.classList.contains('show')) {
-                    hideWindow();
-                } else if (window2.classList.contains('show')) {
-                    hideWindow1();
-                }
-            });
-
-            // Обработчики кнопок входа/регистрации
-            document.getElementById('loginButton').addEventListener('click', showWindow);
-            document.getElementById('registerButton').addEventListener('click', showWindow1);
-
-            // Обработчик для формы регистрации
-            document.getElementById('regForm').onsubmit = function(event) {
-                event.preventDefault();
-
-                const username = document.getElementById('username1').value;
-                const password = document.getElementById('password1').value;
-                const confirmPassword = document.getElementById('password2').value;
-                const secretKey = document.getElementById('secret_key').value;
-
-                if (password !== confirmPassword) {
-                    alert('Пароли не совпадают');
-                    return;
-                }
-
-                fetch('/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        'username': username,
-                        'password': password,
-                        'secret_key': secretKey
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('welcomeUser').innerText = data.username;
-                        document.getElementById('userInfo').style.display = 'flex';
-                        document.getElementById('overlay').style.display = 'none';
-                        document.getElementById('content_window2').classList.remove('show');
-                        document.getElementById('content_window2').style.display = 'none';
-                        document.getElementById('loginButton').style.display = 'none';
-                        document.getElementById('registerButton').style.display = 'none';
-                        localStorage.setItem('username', data.username);
-                    } else {
-                        alert(data.message);
-                    }
-                });
-            };
-
-            // Обработчик для формы входа
-            document.getElementById('loginForm').onsubmit = function(event) {
-                event.preventDefault();
-
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
-
-                fetch('/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        'username': username,
-                        'password': password
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('welcomeUser').innerText = data.username;
-                        document.getElementById('userInfo').style.display = 'flex';
-                        document.getElementById('overlay').style.display = 'none';
-                        document.getElementById('content_window').classList.remove('show');
-                        document.getElementById('content_window').style.display = 'none';
-                        document.getElementById('loginButton').style.display = 'none';
-                        document.getElementById('registerButton').style.display = 'none';
-                        localStorage.setItem('username', data.username);
-                    } else {
-                        alert(data.message);
-                    }
-                });
-            };
-
-            // Обработчик кнопки выхода
-            document.querySelector('.btn-logout').addEventListener('click', function() {
-                fetch('/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('userInfo').style.display = 'none';
-                        document.getElementById('loginButton').style.display = 'block';
-                        document.getElementById('registerButton').style.display = 'block';
-                        localStorage.removeItem('username');
-                    } else {
-                        alert(data.message);
-                    }
-                });
-            });
-
-            // Проверка состояния пользователя при загрузке страницы
-            window.addEventListener('load', function() {
-                const username = localStorage.getItem('username');
-                if (username) {
-                    document.getElementById('welcomeUser').innerText = username;
-                    document.getElementById('userInfo').style.display = 'flex';
-                    document.getElementById('loginButton').style.display = 'none';
-                    document.getElementById('registerButton').style.display = 'none';
-                }
-            });
-
-            // Синхронизация состояния пользователя между вкладками
-            window.addEventListener('storage', function(event) {
-                if (event.key === 'username') {
-                    if (event.newValue) {
-                        document.getElementById('welcomeUser').innerText = event.newValue;
-                        document.getElementById('userInfo').style.display = 'flex';
-                        document.getElementById('loginButton').style.display = 'none';
-                        document.getElementById('registerButton').style.display = 'none';
-                    } else {
-                        document.getElementById('userInfo').style.display = 'none';
-                        document.getElementById('loginButton').style.display = 'block';
-                        document.getElementById('registerButton').style.display = 'block';
-                    }
-                }
-            });
     </script>
 </body>
 </html>

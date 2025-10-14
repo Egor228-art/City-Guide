@@ -693,10 +693,6 @@ body.no-scroll {
     min-width: 0; /* Добавлено, чтобы предотвратить изменение размера */
     padding-right: 70px;
 }
-
-.details-section h1 {
-        padding-right: 500px;
-}
 .schedule {
     position: absolute;
     bottom: 60px;
@@ -2347,7 +2343,7 @@ body.no-scroll {
     position: relative;
     display: flex;
     align-items: center;
-    max-width: 600px;
+    max-width: 900px;
 }
 
 .tags-scroller {
