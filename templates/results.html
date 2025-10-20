@@ -7,43 +7,309 @@
     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Style.css') }}">
     <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
     <style>
-        .results {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+.page-link.arrow {
+    font-size: 18px;
+}
+
+        /* Исправленный параллакс фон */
+.parallax-background {
+    position: fixed; /* Меняем absolute на fixed */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    overflow: hidden;
+}
+
+.parallax-background img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: none; /* Убираем transform для fixed позиционирования */
+}
+
+/* Основной контент должен иметь отступ сверху */
+.search-results {
+    max-width: 1200px;
+    margin: 160px auto 30px auto; /* Увеличиваем отступ сверху */
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 1;
+}
+
+        .search-query {
+            color: #e74c3c;
+            font-weight: bold;
         }
 
-        .restaurant-card {
+        .results-count {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 50px 20px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+
+        .search-card {
             display: flex;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             background-color: white;
             border-radius: 15px;
             overflow: hidden;
             box-shadow: 0 3px 10px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
-        .results {
-            max-width: 1200px;
-            margin: 50px auto;
-            padding: 20px;
-            background-color: rgba(255, 255, 255, 0.9);
-            border-radius: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        .search-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
         }
 
-        .no-results {
-            text-align: center;
-            padding: 20px;
-            color: #666;
+        .search-card .image-wrapper {
+            width: 280px;
+            height: 220px;
+            position: relative;
+            overflow: hidden;
         }
-    </style>
+
+        .search-card .restaurant-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: all 0.5s ease;
+        }
+
+        .search-card:hover .restaurant-image {
+            transform: scale(1.05);
+        }
+
+        .search-card .restaurant-info {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .search-card .restaurant-name {
+            font-size: 22px;
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+
+        .rating-badge {
+            color: #ffd700;
+        }
+
+        @media (max-width: 768px) {
+            .search-card {
+                flex-direction: column;
+            }
+
+            .search-card .image-wrapper {
+                width: 100%;
+                height: 200px;
+            }
+        }
+
+.no-results {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.no-results h3 {
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.no-results p {
+    font-size: 16px;
+}
+
+    .distance-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 5px 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.distance-info svg {
+    width: 16px;
+    height: 16px;
+    color: #667eea;
+}
+
+.rating-badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    background: white; /* или ваш цвет */
+}
+
+.filters-container {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 90px auto -30px;
+    max-width: 1200px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.filters-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.filters-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.clear-filters {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.clear-filters:hover {
+    background: #ff5252;
+}
+
+.filter-options {
+    left: 0; !important;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.filter-select {
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    background: white;
+    font-size: 14px;
+    min-width: 200px;
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.rating-filter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rating-filter label {
+    font-weight: 500;
+    color: #555;
+}
+
+.rating-stars-filter {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 2px;
+}
+
+.rating-stars-filter input {
+    display: none;
+}
+
+.rating-stars-filter label {
+    font-size: 24px;
+    color: #ddd;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.rating-stars-filter input:checked ~ label,
+.rating-stars-filter label:hover,
+.rating-stars-filter label:hover ~ label {
+    color: #ffd700;
+}
+
+.rating-stars-filter input:checked + label {
+    color: #ffd700;
+}
+
+.rating-overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 5px 5px;
+    border-radius: 15px;
+}
+
+.rating-badge {
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.rating-badge::after {
+    content: '★';
+    color: #ffd700;
+    font-size: 16px;
+}
+
+/* Если рейтинг 0, делаем его менее заметным */
+.rating-badge[data-rating="0"] {
+    opacity: 0.6;
+}
+
+.image-wrapper {
+    position: relative;
+}
+</style>
 </head>
 <body>
-    <!-- Навигация с функционалом из HTML 1 и стилями из HTML 2 -->
+    <!-- Навигация -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="logo" onclick="window.location.href='/';">
@@ -51,9 +317,9 @@
                 <span>Городской Гид</span>
             </div>
 
-            <!-- Поиск из HTML 1 -->
-            <form class="search-box" action="/search" method="POST">
-                <input type="text" name="query" placeholder="Поиск заведений..." class="search-input">
+            <!-- Форма поиска -->
+            <form class="search-box" action="/search" method="GET">
+                <input type="text" name="q" placeholder="Поиск заведений..." class="search-input" value="{{ query }}">
                 <button type="submit" class="search-button">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -61,6 +327,21 @@
                     </svg>
                 </button>
             </form>
+
+            <!-- Кнопка избранного из старого HTML -->
+            <div class="favorites-wrapper">
+                <div class="favorite-wrapper" id="header-favorites-btn" style="display: none;" onclick="window.location.href='/favorites'">
+                  <span class="particle particle-1">✦</span>
+                  <span class="particle particle-2">✦</span>
+                  <span class="particle particle-3">✦</span>
+                  <span class="particle particle-4">✦</span>
+                  <span class="particle particle-5">✦</span>
+                  <span class="particle particle-6">✦</span>
+                  <span class="particle particle-7">✦</span>
+                  <span class="heart-icon">❤</span>
+                  <span class="favorites-counter" id="favorites-count">0</span>
+                </div>
+            </div>
 
             <!-- Кнопки входа/регистрации из HTML 1 -->
             <div class="auth-buttons">
@@ -121,56 +402,104 @@
         </form>
     </div>
 
-    <!-- Параллакс фон из первого HTML -->
+    <!-- Умная пагинация -->
+    <div class="smart-pagination" id="smartPagination">
+        <div class="filters-container-left">
+            <div class="filter-options">
+                <select id="sortFilter" class="filter-select" onchange="applyFilters()">
+                    <option value="default">По умолчанию</option>
+                    <option value="distance" id="distanceOption">Ближайший ко мне</option>
+                    <option value="rating_high">Наивысший рейтинг</option>
+                    <option value="rating_low">Низший рейтинг</option>
+                    <option value="name_asc">По названию (А-Я)</option>
+                    <option value="name_desc">По названию (Я-А)</option>
+                </select>
+            </div>
+        </div>
+        <div class="pagination-container">
+            <ul class="pagination" id="pagination">
+                <!-- Кнопки будут добавлены через JavaScript -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Параллакс фон -->
     <div class="parallax-background">
         <img src="{{ url_for('static', filename='Фотки зданий/ПоискФон.jpg') }}" alt="Фон Поиск">
     </div>
 
-    <!-- Умная пагинация -->
-    <div class="smart-pagination">
-        <ul class="pagination" id="pagination">
-            <!-- Кнопки будут добавлены через JavaScript -->
-        </ul>
-        <div id="loading" style="display: none; text-align: center; padding: 20px;">
-            Загрузка...
-        </div>
-    </div>
+    <!-- Основной контент -->
+    <div class="search-results">
+        <div id="resultsContainer">
+            {% if results %}
+            {% for place in results %}
+            <div class="search-card"
+                 data-id="{{ place.id }}"
+                 data-rating="{{ place.avg_rating }}"
+                 data-name="{{ place.title | lower if place.title else '' }}"
+                 {% if place.latitude and place.longitude %}data-lat="{{ place.latitude }}" data-lon="{{ place.longitude }}"{% endif %}
+                 onclick="window.location.href='{{ place.url }}'">
 
-    <!-- Контейнер с ресторанами - совмещаем структуру из обоих вариантов -->
-    <div class="results">
-        {% if results %}
-            {% for restaurant in results %}
-                <div class="restaurant-card" {% if loop.last %}style="margin-bottom: 0px"{% endif %}>
-                    <div class="image-wrapper">
-                        <img class="restaurant-image" src="{{ url_for('static', filename=restaurant.image) }}" alt="{{ restaurant.name }}">
+                <div class="image-wrapper">
+                    {% if place.image_path %}
+                        <img class="restaurant-image"
+                             src="{{ url_for('static', filename=place.image_path) }}"
+                             alt="{{ place.title }}">
+                    {% else %}
+                        <img class="restaurant-image"
+                             src="{{ url_for('static', filename='Фотки зданий/default.png') }}"
+                             alt="Нет изображения">
+                    {% endif %}
+
+                    <!-- ВСЕГДА показываем рейтинг -->
+                    <div class="rating-overlay">
+                        <span class="rating-badge">{{ "%.1f"|format(place.avg_rating) if place.avg_rating else "0.0" }}</span>
                     </div>
-                    <div class="restaurant-info">
-                        <h3 class="restaurant-name">{{ restaurant.name }}</h3>
-                        <p class="restaurant-description">{{ restaurant.description }}</p>
-                        <div class="restaurant-contacts">
-                            <div>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                                </svg>
-                                <span>{{ restaurant.contact }}</span>
-                            </div>
-                            <div class="metka">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                    <circle cx="12" cy="10" r="3"></circle>
-                                </svg>
-                                <span>{{ restaurant.contact2 }}</span>
-                            </div>
+                </div>
+
+                <div class="restaurant-info">
+                    <h3 class="restaurant-name">{{ place.title }}</h3>
+
+                    <p class="restaurant-description">
+                        {{ place.description or 'Описание отсутствует' }}
+                        {% if place.review_count > 0 %}
+                        <br><small>Отзывов: {{ place.review_count }}</small>
+                        {% endif %}
+                    </p>
+
+                    <div class="restaurant-contacts">
+                        <div>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                            </svg>
+                            <span>{{ place.telephone or 'Телефон не указан' }}</span>
+                        </div>
+                        <div class="metka">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                <circle cx="12" cy="10" r="3"></circle>
+                            </svg>
+                            <span>{{ place.address or 'Адрес не указан' }}</span>
                         </div>
                     </div>
                 </div>
+            </div>
             {% endfor %}
+        {% elif query %}
+            <div class="no-results">
+                <h3>Ничего не найдено</h3>
+                <p>Попробуйте изменить поисковый запрос</p>
+            </div>
         {% else %}
-            <p class="no-results">Ничего не найдено.</p>
+            <div class="no-results">
+                <h3>Введите поисковый запрос</h3>
+                <p>Найдите интересующие вас заведения Великого Новгорода</p>
+            </div>
         {% endif %}
+        </div>
     </div>
 
-     <!-- Модальное окно "О проекте" -->
+    <!-- Модальное окно "О проекте" -->
     <div class="modal" id="aboutModal">
         <div class="modal-content">
             <span class="close-modal" id="closeModal">&times;</span>
@@ -212,6 +541,7 @@
                     <li><a href="#" id="aboutLink">О проекте</a></li>
                     <li><a href="#" id="contactsLink">Контакты</a></li>
                     <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
+                    <li><a href="#" id="luckyButton">Мне повезёт</a></li>
                 </ul>
             </div>
 
@@ -227,476 +557,509 @@
             &copy; 2025 Городской Гид | Все права защищены
         </div>
     </footer>
-    <script>
-    //Кнопки Футера - Начало
+<script>
+// ==================== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ====================
+let currentPage = {{ current_page }};
+let totalPages = {{ total_pages }};
+let totalResults = {{ total_results }};
+let isLoading = false;
+let currentSort = 'default';
+let userLocation = null;
+const query = '{{ query }}';
 
-    const homeLink = document.getElementById('homeLink');
-    const aboutLink = document.getElementById('aboutLink');
-    const contactsLink = document.getElementById('contactsLink');
-    const helpLink = document.getElementById('helpLink');
-    const aboutModal = document.getElementById('aboutModal');
-    const closeModal = document.getElementById('closeModal');
-    const arrowContainer = document.getElementById('arrowContainer');
-    const arrowLine = document.getElementById('arrowLine');
-    const arrowHead = document.getElementById('arrowHead');
-    const contactsTitle = document.getElementById('contactsTitle');
+// Элементы DOM
+const navbar = document.querySelector('.navbar');
+const smartPagination = document.getElementById('smartPagination');
+const resultsContainer = document.getElementById('resultsContainer');
 
-    // Обработчик для кнопки "Главная"
-    homeLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        // В реальном приложении здесь будет переход на главную страницу
-        window.location.href = "/";
-    });
+// ==================== ИНИЦИАЛИЗАЦИЯ ====================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Инициализация страницы поиска...');
 
-    // Обработчик для кнопки "О проекте"
-    aboutLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        aboutModal.style.display = 'flex';
-    });
+    if (totalResults > 0) {
+        initFilters();
+        initPagination(totalPages, currentPage);
+        initScrollSystem();
 
-    // Обработчик для закрытия модального окна
-    closeModal.addEventListener('click', function() {
-        aboutModal.style.display = 'none';
-    });
-
-    // Закрытие модального окна при клике вне его
-    window.addEventListener('click', function(e) {
-        if (e.target === aboutModal) {
-            aboutModal.style.display = 'none';
-        }
-    });
-
-    // Обработчик для кнопки "Контакты"
-    contactsLink.addEventListener('click', function(e) {
-        e.preventDefault();
-
-        // Получаем позиции элементов относительно документа
-        const contactsLinkRect = contactsLink.getBoundingClientRect();
-        const contactsTitle = document.querySelector('.footer-section.contact h3');
-        const contactsTitleRect = contactsTitle.getBoundingClientRect();
-
-        // Добавляем scroll offset к координатам
-        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-        const startX = contactsLinkRect.left + scrollX + contactsLinkRect.width + 10;
-        const startY = contactsLinkRect.top + scrollY + contactsLinkRect.height / 2;
-
-        const endX = contactsTitleRect.left + scrollX - 5;
-        const endY = contactsTitleRect.top + scrollY + contactsTitleRect.height;
-
-        // Удаляем предыдущую стрелку если есть
-        const existingArrow = document.querySelector('.arrow-to-contacts');
-        if (existingArrow) {
-            existingArrow.remove();
-        }
-
-        // Создаем контейнер для SVG стрелки
-        const arrowContainer = document.createElement('div');
-        arrowContainer.className = 'arrow-to-contacts';
-        document.body.appendChild(arrowContainer);
-
-        // Создаем SVG для стрелки с завитушкой
-        const svgNS = "http://www.w3.org/2000/svg";
-        const svg = document.createElementNS(svgNS, "svg");
-        svg.setAttribute("width", "100%");
-        svg.setAttribute("height", "100%");
-        svg.style.position = 'absolute';
-        svg.style.top = '0';
-        svg.style.left = '0';
-        svg.style.pointerEvents = 'none';
-
-        // Вычисляем границы для SVG
-        const minX = Math.min(startX, endX) - 50;
-        const minY = Math.min(startY, endY) - 50;
-        const maxX = Math.max(startX, endX) + 50;
-        const maxY = Math.max(startY, endY) + 50;
-        const width = maxX - minX;
-        const height = maxY - minY;
-
-        // Создаем путь с завитушкой
-        const path = document.createElementNS(svgNS, "path");
-        const curveIntensity = 80;
-
-        // Путь с красивой кривой
-        const pathData = `M ${startX - minX} ${startY - minY}
-                         C ${startX - minX + curveIntensity} ${startY - minY - curveIntensity},
-                           ${endX - minX - curveIntensity} ${endY - minY - curveIntensity},
-                           ${endX - minX} ${endY - minY}`;
-
-        path.setAttribute("d", pathData);
-        path.setAttribute("class", "arrow-path");
-        path.style.filter = 'drop-shadow(0 0 2px rgba(52, 152, 219, 0.5))';
-
-        // Создаем головку стрелки
-        const arrowHead = document.createElementNS(svgNS, "polygon");
-        arrowHead.setAttribute("points", "0,0 -10,-7 -10,7");
-        arrowHead.setAttribute("class", "arrow-head");
-        arrowHead.setAttribute("fill", "#3498db");
-
-        // Вычисляем угол для головки стрелки
-        const pathElement = document.createElementNS(svgNS, "path");
-        pathElement.setAttribute("d", pathData);
-        const pathLength = pathElement.getTotalLength();
-        const point = pathElement.getPointAtLength(Math.max(0, pathLength - 1));
-        const pointBefore = pathElement.getPointAtLength(Math.max(0, pathLength - 20));
-        const angle = Math.atan2(point.y - pointBefore.y, point.x - pointBefore.x) * 180 / Math.PI;
-
-        arrowHead.setAttribute("transform", `translate(${endX - minX},${endY - minY}) rotate(${angle})`);
-        arrowHead.style.filter = 'drop-shadow(0 0 2px rgba(52, 152, 219, 0.5))';
-
-        // Устанавливаем размеры SVG
-        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-        arrowContainer.style.width = width + 'px';
-        arrowContainer.style.height = height + 'px';
-        arrowContainer.style.left = minX + 'px';
-        arrowContainer.style.top = minY + 'px';
-        arrowContainer.style.position = 'absolute'; // Меняем fixed на absolute
-
-        svg.appendChild(path);
-        svg.appendChild(arrowHead);
-        arrowContainer.appendChild(svg);
-
-        // Показываем стрелку
-        arrowContainer.style.opacity = '1';
-        arrowContainer.style.transition = 'opacity 0.5s';
-
-        // Добавляем класс для подчёркивания
-        contactsTitle.classList.add('contacts-underline');
-
-        // Анимируем прорисовку пути
-        setTimeout(() => {
-            path.style.transition = 'stroke-dashoffset 1.2s ease-in-out';
-            path.style.strokeDashoffset = '0';
-            setTimeout(() => {contactsTitle.classList.add('animate');}, 450)
-        }, 100);
-
-        // Анимируем появление головки стрелки и подчёркивание
-        setTimeout(() => {
-            arrowHead.style.opacity = '1';
-            arrowHead.style.transition = 'opacity 0.3s ease-in-out';
-        }, 550);
-
-        // Удаляем стрелку через 3 секунды
-        setTimeout(() => {
-            arrowContainer.style.opacity = '0';
-            contactsTitle.classList.remove('animate');
-
-            setTimeout(() => {
-                if (arrowContainer.parentNode) {
-                    arrowContainer.parentNode.removeChild(arrowContainer);
-                }
-                contactsTitle.classList.remove('contacts-underline');
-            }, 500);
-        }, 2000);
-    });
-
-        // Управление навигацией при скролле
-        let lastScroll = 0;
-        const navbar = document.querySelector('.navbar'); // Добавляем шапку
-        const smartPagination = document.querySelector('.smart-pagination');
-
-        window.addEventListener('scroll', function() {
-            const currentScroll = window.pageYOffset;
-
-            // Управление навигацией и пагинацией
-            if (currentScroll <= 0) {
-                navbar.classList.remove('hidden');
-                navbar.style.transform = 'translateY(0)'; // Явно показываем шапку
-                smartPagination.style.top = '95px';
-                smartPagination.style.zIndex = '900';
-            } else if (currentScroll > lastScroll) {
-                // Скролл вниз - скрываем оба элемента
-                navbar.classList.add('hidden');
-                navbar.style.transform = 'translateY(-100%)'; // Явно скрываем шапку
-                smartPagination.style.top = '0';
-                smartPagination.style.zIndex = '1001';
-            } else {
-                // Скролл вверх - показываем оба элемента
-                navbar.classList.remove('hidden');
-                navbar.style.transform = 'translateY(0)';
-                smartPagination.style.top = '95px';
-                smartPagination.style.zIndex = '900';
+        // Добавляем обработчик для ручного показа шапки при клике вверху
+        document.addEventListener('click', function(e) {
+            const scrollTop = window.scrollY || document.documentElement.scrollTop;
+            if (scrollTop < 100) {
+                showHeader();
             }
-
-            lastScroll = currentScroll;
         });
+    }
+});
 
-        // Анимация загрузки карточек
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.restaurant-card');
-            cards.forEach((card, index) => {
-                card.style.animationDelay = (index * 0.1) + 's';
-            });
+// ==================== ФИЛЬТРЫ ====================
+function initFilters() {
+    const sortFilter = document.getElementById('sortFilter');
+    if (sortFilter) {
+        // Восстанавливаем последний выбранный фильтр
+        const lastFilter = localStorage.getItem('lastSortFilter');
+        if (lastFilter) {
+            sortFilter.value = lastFilter;
+            currentSort = lastFilter;
+        }
 
-            // Инициализация пагинации
-            initPagination(10, 1); // Всего 10 страниц, текущая 1
+        sortFilter.addEventListener('change', function() {
+            applyFilters();
         });
+    }
 
-        // Умная пагинация
-        function initPagination(totalPages, currentPage) {
-            const pagination = document.getElementById('pagination');
-            pagination.innerHTML = '';
+    // Пробуем получить геолокацию при загрузке
+    getUserLocation().catch(error => {
+        console.log('Геолокация недоступна:', error.message);
+    });
+}
 
-            // Кнопка "В начало"
-            if (currentPage > 1) {
-                addPageItem(pagination, '««', 1, 'arrow');
-            } else {
-                addPageItem(pagination, '««', 1, 'arrow disabled');
-            }
+// Функция получения местоположения
+function getUserLocation() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation is not supported'));
+            return;
+        }
 
-            // Кнопка "Назад"
-            if (currentPage > 1) {
-                addPageItem(pagination, '«', currentPage - 1, 'arrow');
-            } else {
-                addPageItem(pagination, '«', currentPage - 1, 'arrow disabled');
-            }
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                userLocation = {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
+                };
+                console.log('Местоположение получено:', userLocation);
 
-            // Всегда показываем первую страницу
-            if (currentPage > 3) {
-                addPageItem(pagination, 1, 1);
-                if (currentPage > 4) {
-                    addEllipsis(pagination);
+                // Активируем опцию в фильтре
+                const distanceOption = document.getElementById('distanceOption');
+                if (distanceOption) {
+                    distanceOption.textContent = 'Ближайший ко мне';
                 }
-            }
 
-            // Показываем 2 страницы перед текущей
-            for (let i = Math.max(1, currentPage - 2); i < currentPage; i++) {
-                addPageItem(pagination, i, i);
-            }
+                resolve(userLocation);
+            },
+            error => {
+                console.warn('Доступ к местоположению запрещен или не удался:', error);
 
-            // Текущая страница
-            addPageItem(pagination, currentPage, currentPage, 'active');
-
-            // Показываем 2 страницы после текущей
-            for (let i = currentPage + 1; i <= Math.min(totalPages, currentPage + 2); i++) {
-                addPageItem(pagination, i, i);
-            }
-
-            // Всегда показываем последнюю страницу
-            if (currentPage < totalPages - 2) {
-                if (currentPage < totalPages - 3) {
-                    addEllipsis(pagination);
+                // Деактивируем опцию в фильтре
+                const distanceOption = document.getElementById('distanceOption');
+                if (distanceOption) {
+                    distanceOption.textContent = 'Ближайший ко мне (недоступно)';
+                    distanceOption.disabled = true;
                 }
-                addPageItem(pagination, totalPages, totalPages);
+
+                reject(error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000
             }
+        );
+    });
+}
 
-            // Кнопка "Вперед"
-            if (currentPage < totalPages) {
-                addPageItem(pagination, '»', currentPage + 1, 'arrow');
-            } else {
-                addPageItem(pagination, '»', currentPage + 1, 'arrow disabled');
-            }
+// Функция расчета расстояния (формула Гаверсинуса)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Радиус Земли в км
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
 
-            // Кнопка "В конец"
-            if (currentPage < totalPages) {
-                addPageItem(pagination, '»»', totalPages, 'arrow');
-            } else {
-                addPageItem(pagination, '»»', totalPages, 'arrow disabled');
-            }
-        }
+// ==================== ПРИМЕНЕНИЕ ФИЛЬТРОВ ====================
+function applyFilters() {
+    const sortFilter = document.getElementById('sortFilter');
+    if (!sortFilter) return;
 
-        function addPageItem(container, text, pageNumber, className = '') {
-            const li = document.createElement('li');
-            li.className = 'page-item';
+    currentSort = sortFilter.value;
 
-            const a = document.createElement('a');
-            a.className = `page-link ${className}`;
-            a.href = `?page=${pageNumber}`;
-            a.textContent = text;
-            a.onclick = function(e) {
-                e.preventDefault();
-                // Здесь можно добавить загрузку страницы через AJAX
-                console.log(`Переход на страницу ${pageNumber}`);
-                initPagination(10, pageNumber); // Обновляем пагинацию
-            };
+    // Сохраняем выбранный фильтр в localStorage
+    localStorage.setItem('lastSortFilter', currentSort);
 
-            li.appendChild(a);
-            container.appendChild(li);
-        }
-
-        function addEllipsis(container) {
-            const li = document.createElement('li');
-            li.className = 'page-item';
-            li.innerHTML = '<span class="ellipsis">...</span>';
-            container.appendChild(li);
-        }
-
-        // Обработчики для карточек
-        document.querySelectorAll('.restaurant-card').forEach(card => {
-            card.addEventListener('click', function() {
-                window.location.href = this.getAttribute('onclick').match(/'(.*?)'/)[1];
-            });
+    if (currentSort === 'distance') {
+        getUserLocation().then(() => {
+            applySortingToAll();
+        }).catch(error => {
+            console.error('Ошибка геолокации:', error);
+            alert('Не удалось получить ваше местоположение. Проверьте разрешения браузера.');
+            sortFilter.value = 'default';
+            currentSort = 'default';
+            localStorage.setItem('lastSortFilter', 'default');
         });
+    } else {
+        applySortingToAll();
+    }
+}
 
-            function showWindow() {
-                document.getElementById('overlay').style.display = 'block';
-                const windowElement = document.getElementById('content_window');
-                windowElement.classList.add('show');
-                windowElement.style.display = 'block';
-            }
+// Собираем все места со страницы для фильтрации
+function getAllPlacesFromPage() {
+    const places = [];
+    const cards = document.querySelectorAll('.search-card');
 
-            function hideWindow() {
-                document.getElementById('overlay').style.display = 'none';
-                const windowElement = document.getElementById('content_window');
-                windowElement.classList.remove('show');
-                windowElement.style.display = 'none';
-                document.body.classList.remove('no-scroll');
-            }
+    cards.forEach(card => {
+        const id = card.getAttribute('data-id');
+        const title = card.querySelector('.restaurant-name')?.textContent || '';
+        const address = card.querySelector('.metka span')?.textContent || '';
+        const rating = parseFloat(card.getAttribute('data-rating') || 0);
+        const lat = parseFloat(card.getAttribute('data-lat'));
+        const lon = parseFloat(card.getAttribute('data-lon'));
 
-            function showWindow1() {
-                document.getElementById('overlay').style.display = 'block';
-                const windowElement = document.getElementById('content_window2');
-                windowElement.classList.add('show');
-                windowElement.style.display = 'block';
-            }
-
-            function hideWindow1() {
-                document.getElementById('overlay').style.display = 'none';
-                const windowElement = document.getElementById('content_window2');
-                windowElement.classList.remove('show');
-                windowElement.style.display = 'none';
-                document.body.classList.remove('no-scroll');
-            }
-
-            // Закрытие окна при клике вне его
-            document.getElementById('overlay').addEventListener('click', function() {
-                const window1 = document.getElementById('content_window');
-                const window2 = document.getElementById('content_window2');
-                if (window1.classList.contains('show')) {
-                    hideWindow();
-                } else if (window2.classList.contains('show')) {
-                    hideWindow1();
-                }
+        if (id) {
+            places.push({
+                id: id,
+                title: title,
+                address: address,
+                rating: rating,
+                latitude: lat,
+                longitude: lon,
+                element: card,
+                name: title.toLowerCase()
             });
+        }
+    });
 
-            // Обработчики кнопок входа/регистрации
-            document.getElementById('loginButton').addEventListener('click', showWindow);
-            document.getElementById('registerButton').addEventListener('click', showWindow1);
+    return places;
+}
 
-            // Обработчик для формы регистрации
-            document.getElementById('regForm').onsubmit = function(event) {
-                event.preventDefault();
+// Применяем сортировку ко всем элементам
+function applySortingToAll() {
+    const places = getAllPlacesFromPage();
+    if (places.length === 0) {
+        console.log('Нет данных для сортировки');
+        return;
+    }
 
-                const username = document.getElementById('username1').value;
-                const password = document.getElementById('password1').value;
-                const confirmPassword = document.getElementById('password2').value;
-                const secretKey = document.getElementById('secret_key').value;
+    showLoading();
 
-                if (password !== confirmPassword) {
-                    alert('Пароли не совпадают');
+    setTimeout(() => {
+        const sortedPlaces = [...places];
+
+        switch(currentSort) {
+            case 'rating_high':
+                sortedPlaces.sort((a, b) => b.rating - a.rating || a.name.localeCompare(b.name));
+                break;
+            case 'rating_low':
+                sortedPlaces.sort((a, b) => a.rating - b.rating || a.name.localeCompare(b.name));
+                break;
+            case 'name_asc':
+                sortedPlaces.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'name_desc':
+                sortedPlaces.sort((a, b) => b.name.localeCompare(a.name));
+                break;
+            case 'distance':
+                if (!userLocation) {
+                    alert('Не удалось получить ваше местоположение');
+                    document.getElementById('sortFilter').value = 'default';
+                    currentSort = 'default';
+                    localStorage.setItem('lastSortFilter', 'default');
+                    hideLoading();
                     return;
                 }
 
-                fetch('/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        'username': username,
-                        'password': password,
-                        'secret_key': secretKey
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('welcomeUser').innerText = data.username;
-                        document.getElementById('userInfo').style.display = 'flex';
-                        document.getElementById('overlay').style.display = 'none';
-                        document.getElementById('content_window2').classList.remove('show');
-                        document.getElementById('content_window2').style.display = 'none';
-                        document.getElementById('loginButton').style.display = 'none';
-                        document.getElementById('registerButton').style.display = 'none';
-                        localStorage.setItem('username', data.username);
+                // Рассчитываем расстояние для каждого места
+                sortedPlaces.forEach(place => {
+                    if (place.latitude && place.longitude) {
+                        place.distance = calculateDistance(
+                            userLocation.latitude,
+                            userLocation.longitude,
+                            place.latitude,
+                            place.longitude
+                        );
                     } else {
-                        alert(data.message);
+                        place.distance = 9999;
                     }
                 });
-            };
 
-            // Обработчик для формы входа
-            document.getElementById('loginForm').onsubmit = function(event) {
-                event.preventDefault();
+                sortedPlaces.sort((a, b) => a.distance - b.distance);
+                break;
+            case 'default':
+            default:
+                // В поиске оставляем порядок по умолчанию (как пришел с сервера)
+                sortedPlaces.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+                break;
+        }
 
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
+        // Перемещаем элементы в новом порядке
+        const container = document.getElementById('resultsContainer');
+        if (container) {
+            // Сначала удаляем все существующие distance-info
+            container.querySelectorAll('.distance-info').forEach(el => el.remove());
 
-                fetch('/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: new URLSearchParams({
-                        'username': username,
-                        'password': password
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('welcomeUser').innerText = data.username;
-                        document.getElementById('userInfo').style.display = 'flex';
-                        document.getElementById('overlay').style.display = 'none';
-                        document.getElementById('content_window').classList.remove('show');
-                        document.getElementById('content_window').style.display = 'none';
-                        document.getElementById('loginButton').style.display = 'none';
-                        document.getElementById('registerButton').style.display = 'none';
-                        localStorage.setItem('username', data.username);
-                    } else {
-                        alert(data.message);
-                    }
-                });
-            };
+            // Затем добавляем карточки в новом порядке
+            sortedPlaces.forEach(place => {
+                container.appendChild(place.element);
 
-            // Обработчик кнопки выхода
-            document.querySelector('.btn-logout').addEventListener('click', function() {
-                fetch('/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        document.getElementById('userInfo').style.display = 'none';
-                        document.getElementById('loginButton').style.display = 'block';
-                        document.getElementById('registerButton').style.display = 'block';
-                        localStorage.removeItem('username');
-                    } else {
-                        alert(data.message);
-                    }
-                });
-            });
-
-            // Проверка состояния пользователя при загрузке страницы
-            window.addEventListener('load', function() {
-                const username = localStorage.getItem('username');
-                if (username) {
-                    document.getElementById('welcomeUser').innerText = username;
-                    document.getElementById('userInfo').style.display = 'flex';
-                    document.getElementById('loginButton').style.display = 'none';
-                    document.getElementById('registerButton').style.display = 'none';
-                }
-            });
-
-            // Синхронизация состояния пользователя между вкладками
-            window.addEventListener('storage', function(event) {
-                if (event.key === 'username') {
-                    if (event.newValue) {
-                        document.getElementById('welcomeUser').innerText = event.newValue;
-                        document.getElementById('userInfo').style.display = 'flex';
-                        document.getElementById('loginButton').style.display = 'none';
-                        document.getElementById('registerButton').style.display = 'none';
-                    } else {
-                        document.getElementById('userInfo').style.display = 'none';
-                        document.getElementById('loginButton').style.display = 'block';
-                        document.getElementById('registerButton').style.display = 'block';
+                // Добавляем расстояние в карточку если нужно
+                if (currentSort === 'distance' && place.distance !== undefined && place.distance < 9999) {
+                    const distanceInfo = document.createElement('div');
+                    distanceInfo.className = 'distance-info';
+                    distanceInfo.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2s4 4.5 4 10-4 10-4 10-4-4.5-4-10 4-10 4-10z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <span>${place.distance.toFixed(1)} км</span>
+                    `;
+                    const restaurantInfo = place.element.querySelector('.restaurant-info');
+                    if (restaurantInfo) {
+                        // Вставляем перед контактами
+                        const contacts = restaurantInfo.querySelector('.restaurant-contacts');
+                        if (contacts) {
+                            restaurantInfo.insertBefore(distanceInfo, contacts);
+                        }
                     }
                 }
             });
-        </script>
+        }
+
+        hideLoading();
+        console.log(`Применена сортировка: ${currentSort}`);
+    }, 300);
+}
+
+// ==================== УЛУЧШЕННАЯ ПАГИНАЦИЯ ====================
+function initPagination(totalPages, currentPage) {
+    const pagination = document.getElementById('pagination');
+    const smartPagination = document.getElementById('smartPagination');
+
+    if (!pagination) {
+        console.error('Элемент пагинации не найден!');
+        return;
+    }
+
+    pagination.innerHTML = '';
+
+    // Если всего 1 страница или нет данных, скрываем пагинацию
+    if (totalPages <= 1 || totalResults === 0) {
+        pagination.style.display = 'none';
+        pagination.classList.add('hidden');
+        if (smartPagination) smartPagination.classList.add('no-pagination');
+        return;
+    } else {
+        pagination.style.display = 'flex';
+        pagination.classList.remove('hidden');
+        if (smartPagination) smartPagination.classList.remove('no-pagination');
+    }
+
+    // Кнопка "В начало"
+    addPageItem(pagination, '«', 1, 'arrow');
+
+    // Предыдущая страница
+    if (currentPage > 1) {
+        addPageItem(pagination, '‹', currentPage - 1, 'arrow');
+    }
+
+    // Умное отображение страниц (как в списках)
+    if (totalPages <= 7) {
+        // Показываем все страницы если их мало
+        for (let i = 1; i <= totalPages; i++) {
+            addPageItem(pagination, i, i, i === currentPage ? 'active' : '');
+        }
+    } else {
+        // Умная пагинация для большого количества страниц
+        if (currentPage <= 3) {
+            // В начале: 1 2 3 4 ... N
+            for (let i = 1; i <= 4; i++) {
+                addPageItem(pagination, i, i, i === currentPage ? 'active' : '');
+            }
+            addEllipsis(pagination);
+            addPageItem(pagination, totalPages, totalPages);
+        } else if (currentPage >= totalPages - 2) {
+            // В конце: 1 ... N-3 N-2 N-1 N
+            addPageItem(pagination, 1, 1);
+            addEllipsis(pagination);
+            for (let i = totalPages - 3; i <= totalPages; i++) {
+                addPageItem(pagination, i, i, i === currentPage ? 'active' : '');
+            }
+        } else {
+            // В середине: 1 ... C-1 C C+1 ... N
+            addPageItem(pagination, 1, 1);
+            addEllipsis(pagination);
+            for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                addPageItem(pagination, i, i, i === currentPage ? 'active' : '');
+            }
+            addEllipsis(pagination);
+            addPageItem(pagination, totalPages, totalPages);
+        }
+    }
+
+    // Следующая страница
+    if (currentPage < totalPages) {
+        addPageItem(pagination, '›', currentPage + 1, 'arrow');
+    }
+
+    // Кнопка "В конец"
+    addPageItem(pagination, '»', totalPages, 'arrow');
+}
+
+function addPageItem(container, text, pageNumber, className = '') {
+    const li = document.createElement('li');
+    li.className = 'page-item';
+
+    const a = document.createElement('a');
+    a.className = `page-link ${className}`;
+    a.href = '#';
+    a.textContent = text;
+    a.onclick = (e) => {
+        e.preventDefault();
+        goToPage(pageNumber);
+    };
+
+    li.appendChild(a);
+    container.appendChild(li);
+}
+
+function addEllipsis(container) {
+    const li = document.createElement('li');
+    li.className = 'page-item';
+    li.innerHTML = '<span class="ellipsis">...</span>';
+    container.appendChild(li);
+}
+
+function goToPage(pageNumber) {
+    if (pageNumber < 1 || pageNumber > totalPages || isLoading) {
+        console.log('Некорректная страница или загрузка в процессе');
+        return;
+    }
+
+    if (pageNumber === currentPage) {
+        console.log(`Уже на странице ${pageNumber}`);
+        return;
+    }
+
+    console.log(`Переход на страницу ${pageNumber}`);
+    currentPage = pageNumber;
+    isLoading = true;
+
+    showLoading();
+
+    // Используем requestAnimationFrame для плавности
+    requestAnimationFrame(() => {
+        const url = new URL(window.location);
+        url.searchParams.set('page', pageNumber);
+        window.history.pushState({ page: pageNumber }, '', url.toString());
+
+        // Простая перезагрузка страницы с новым номером
+        window.location.href = url.toString();
+    });
+}
+
+// ==================== СИСТЕМА СКРОЛЛИНГА ====================
+function initScrollSystem() {
+    let isScrolling = false;
+    let scrollTimer;
+
+    window.addEventListener('scroll', function() {
+        if (!isScrolling) {
+            isScrolling = true;
+
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => {
+                handleScroll();
+                isScrolling = false;
+            }, 150);
+        }
+    });
+}
+
+function handleScroll() {
+    if (isLoading) return;
+
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight;
+    const clientHeight = window.innerHeight;
+
+    // Управляем пагинацией (ТОЛЬКО скрываем при скролле вниз, НЕ показываем при скролле вверх)
+    handlePaginationScroll(scrollTop);
+
+    // Автозагрузка следующей страницы при скролле вниз
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+        if (currentPage < totalPages) {
+            console.log(`Достигнут конец страницы: загружаем страницу ${currentPage + 1}`);
+            goToPage(currentPage + 1);
+        }
+    }
+}
+
+function handlePaginationScroll(scrollTop) {
+    if (!navbar || !smartPagination) return;
+
+    const scrollThreshold = 10;
+
+    if (scrollTop <= scrollThreshold) {
+        // Вверху страницы - показываем всё
+        navbar.style.transform = 'translateY(0)';
+        smartPagination.style.transform = 'translateX(-50%) translateY(0)';
+        navbar.style.transition = 'transform 0.3s ease';
+        smartPagination.style.transition = 'transform 0.3s ease';
+    } else if (scrollTop > lastScroll) {
+        // Скроллим вниз - скрываем
+        navbar.style.transform = 'translateY(-100%)';
+        smartPagination.style.transform = 'translateX(-50%) translateY(-110%)';
+    } else {
+        // Скроллим вверх - показываем
+        navbar.style.transform = 'translateY(0)';
+        smartPagination.style.transform = 'translateX(-50%) translateY(0)';
+    }
+
+    lastScroll = scrollTop;
+}
+
+function handleParallax(scrollTop) {
+    const parallaxBg = document.querySelector('.parallax-background');
+    if (parallaxBg) {
+        const scrolled = scrollTop / 2;
+        parallaxBg.style.transform = `translateY(${scrolled}px)`;
+    }
+}
+
+// ==================== СКРЫВАЮЩАЯСЯ ШАПКА ====================
+let lastScroll = 0;
+
+function initHeaderScroll() {
+    if (!navbar || !smartPagination) return;
+
+    window.addEventListener('scroll', function() {
+        const currentScroll = window.pageYOffset;
+        handlePaginationScroll(currentScroll);
+    });
+}
+
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+function showLoading() {
+    // Можно добавить индикатор загрузки если нужно
+    console.log('Загрузка...');
+}
+
+function hideLoading() {
+    console.log('Загрузка завершена');
+}
+
+// Плавное появление карточек при загрузке
+function animateCards() {
+    const cards = document.querySelectorAll('.search-card');
+    cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+}
+
+// Инициализация анимации при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(animateCards, 100);
+});
+</script>
 </body>
 </html>

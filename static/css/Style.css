@@ -416,22 +416,6 @@ body {
     background: rgba(255, 255, 255, 0.7);
 }
 
-/* Умная пагинация */
-.smart-pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 0 auto;
-    padding: 20px 0;
-    position: sticky;
-    top: 95px;
-    z-index: 101; /* Выше чем шапка (100) и облака (99) */
-    background-color: rgba(255, 255, 255, 0.8);
-    max-width: 1240px;
-    border-radius: 0 0 15px 15px;
-    transition: top 0.3s ease;
-}
-
 .pagination {
     z-index: 200; /* Самый высокий уровень */
     position: relative;
@@ -477,7 +461,7 @@ body {
 }
 
 .page-link.arrow {
-    font-size: 18px;
+    font-size: 14px;
 }
 
 .ellipsis {
@@ -488,7 +472,7 @@ body {
 /* Контейнер ресторанов */
 .restaurants-container {
     max-width: 1200px;
-    margin: 50px auto;
+    margin: 130px auto;
     padding: 20px;
     background-color: rgba(255, 255, 255, 0.9);
     border-radius: 20px;
@@ -916,3 +900,66 @@ body.no-scroll {
     }
 }
 /*-------------------------------------- Адаптация для мобильных и прочее --------------------------------------------*/
+
+/* Обновленный контейнер пагинации */
+.smart-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: fixed;
+    top: 95px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1003; /* Выше облаков */
+    background: white;
+    padding: 15px 20px;
+    transition: top 0.3s ease;
+    max-width: 1200px;
+    width: 90%;
+    box-sizing: border-box;
+    border-radius: 0 0 15px 15px;
+}
+
+/* Контейнер для пагинации по центру */
+.pagination-container {
+    padding-right: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+}
+
+/* Контейнер для фильтров слева */
+.filters-container-left {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-right: auto;
+}
+
+/* Скрытие пагинации когда мало элементов */
+.pagination.hidden {
+    display: none !important;
+}
+
+/* Когда пагинация скрыта - центрируем фильтры */
+.smart-pagination.no-pagination {
+    justify-content: center;
+}
+
+.smart-pagination.no-pagination .filters-container-left {
+    margin-right: 0;
+    justify-content: center;
+}
+
+/* Стили для кнопок пагинации */
+.page-link.first-last {
+    font-weight: bold;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    margin: 0 2px;
+}
+
+.page-link.first-last:hover {
+    background: #e9ecef;
+}

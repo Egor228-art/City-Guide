@@ -19,8 +19,8 @@
             </div>
 
             <!-- Поиск из HTML 1 -->
-            <form class="search-box" action="/search" method="POST">
-                <input type="text" name="query" placeholder="Поиск заведений..." class="search-input">
+            <form class="search-box" action="/search" method="GET">
+                <input type="text" name="q" placeholder="Поиск заведений..." class="search-input">
                 <button type="submit" class="search-button">
                     <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -113,6 +113,15 @@
                 <button class="btn-explore Menu">Начать исследовать</button>
             </div>
             <img src="{{ url_for('static', filename='Фотки зданий/ВеликийНовгород.png') }}" alt="Великий Новгород" class="hero-image">
+        </section>
+
+        <section class="popular-place" id="popularPlaceSection" style="display: none;">
+            <div class="container">
+                <h2>🔥 Самое популярное заведение</h2>
+                <div class="popular-card" id="popularPlaceCard" style="opacity: 0;">
+                    <!-- Контент будет загружен через JavaScript -->
+                </div>
+            </div>
         </section>
 
         <!-- Категории -->
@@ -236,6 +245,7 @@
                     <li><a href="#" id="aboutLink">О проекте</a></li>
                     <li><a href="#" id="contactsLink">Контакты</a></li>
                     <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
+                    <li><a href="#" id="luckyButton">Мне повезёт</a></li>
                 </ul>
             </div>
 
@@ -252,6 +262,79 @@
         </div>
     </footer>
     <script>
+// Функция для загрузки популярного заведения
+function loadPopularPlace() {
+    fetch('/api/popular-place')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.place) {
+                const section = document.getElementById('popularPlaceSection');
+                const card = document.getElementById('popularPlaceCard');
+
+                // Форматируем описание (обрезаем если слишком длинное)
+                let description = data.place.description || 'Описание отсутствует';
+                if (description.length > 150) {
+                    description = description.substring(0, 150) + '...';
+                }
+
+                card.innerHTML = `
+                    <div class="image-wrapper">
+                        <img class="restaurant-image"
+                             src="${data.place.image_path ? '/static/' + data.place.image_path : '/static/Фотки зданий/default.png'}"
+                             alt="${data.place.title}">
+                        <div class="rating-overlay">
+                            <span class="rating-badge">★ ${data.place.avg_rating.toFixed(1)}</span>
+                        </div>
+                    </div>
+
+                    <div class="restaurant-info">
+                        <h3 class="restaurant-name">${data.place.title}</h3>
+
+                        <p class="restaurant-description">
+                            ${description}
+                            ${data.place.review_count > 0 ? `<br><small>Отзывов: ${data.place.review_count}</small>` : ''}
+                        </p>
+
+                        <div class="restaurant-contacts">
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                                </svg>
+                                <span>${data.place.telephone || 'Телефон не указан'}</span>
+                            </div>
+                            <div class="metka">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                                <span>${data.place.address || 'Адрес не указан'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Добавляем обработчик клика
+                card.onclick = function() {
+                    window.location.href = data.place.url;
+                };
+
+                // Показываем секцию с анимацией
+                section.style.display = 'block';
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                }, 100);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading popular place:', error);
+        });
+}
+
+// Загружаем популярное заведение при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    loadPopularPlace();
+});
+
     //Код кнопки избранного
 function initFavorites() {
     console.log('Initializing favorites...');
@@ -575,6 +658,38 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 500);
         }, 2000);
     });
+
+    // Добавляем после других обработчиков футера
+const luckyButton = document.getElementById('luckyButton');
+
+luckyButton.addEventListener('click', function(e) {
+    e.preventDefault();
+
+    // Показываем анимацию загрузки
+    luckyButton.innerHTML = '🌀 Ищем...';
+    luckyButton.style.pointerEvents = 'none';
+
+    fetch('/api/random-place')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.place_url) {
+                // Переходим на случайную страницу
+                window.location.href = data.place_url;
+            } else {
+                alert('Не удалось найти случайное заведение');
+                luckyButton.innerHTML = 'Мне повезёт';
+                luckyButton.style.pointerEvents = 'auto';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при поиске случайного заведения');
+            luckyButton.innerHTML = 'Мне повезёт';
+            luckyButton.style.pointerEvents = 'auto';
+        });
+});
+
+//Кнопки футера - КОНЕЦ
 
         function showWindow() {
             document.getElementById('overlay').style.display = 'block';

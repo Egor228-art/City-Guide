@@ -2,10 +2,14 @@ import hashlib
 import json
 import re
 import os
+from ctypes import cast
+from tokenize import String
+
 import pytz
 import math
 import sqlite3
 
+from sqlalchemy import desc, asc
 from werkzeug.utils import secure_filename
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
@@ -13,6 +17,7 @@ from flask_admin import Admin
 from flask import Flask, jsonify, render_template, request, url_for, session
 from datetime import datetime, timezone, timedelta
 from flask_migrate import Migrate
+from flask import abort
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -254,6 +259,88 @@ def get_secret(key_name):
     with app.app_context():
         secret = Secret.query.filter_by(key_name=key_name).first()
         return secret.secret_value if secret else None
+
+def advanced_search(query):
+    """Умный поиск с запасным вариантом и ДОБАВЛЕННЫМ поиском по категориям"""
+    # Сначала пробуем точный поиск
+    precise_results = precise_search(query)
+
+    if precise_results.count() > 0:
+        print(f"Точный поиск нашел {precise_results.count()} результатов")
+        return precise_results
+
+def precise_search(query):
+    """Точный поиск с учетом всех слов, ВКЛЮЧАЯ поиск по категориям"""
+    search_words = query.strip().lower().split()
+    base_query = Place.query.filter(Place.category != 'Иконка')
+
+    if not search_words:
+        return base_query
+
+    conditions = []
+    for word in search_words:
+        if len(word) >= 2:
+            pattern = f'%{word}%'
+
+            # Создаем маппинг русских названий категорий для поиска
+            category_mapping = {
+                'ресторан': 'Ресторан',
+                'кафе': 'Кафе',
+                'магазин': 'Магазин',
+                'музей': 'Музей',
+                'театр': 'Театр',
+                'библиотека': 'Библиотека',
+                'парк': 'Парк',
+                'кинотеатр': 'Кинотеатр',
+                'спортплощадка': 'Спортплощадка',
+                'церковь': 'Церковь',
+                'гостиница': 'Гостиница',
+                'отель': 'Гостиница',
+                'кофейня': 'Кафе',
+                'бар': 'Ресторан',
+                'пиццерия': 'Ресторан',
+                'суши': 'Ресторан',
+                'паб': 'Ресторан',
+                'бистро': 'Ресторан'
+            }
+
+            # СУЩЕСТВУЮЩИЕ условия поиска (название, описание, адрес, теги)
+            word_conditions = [
+                Place.title.ilike(pattern),
+                Place.description.ilike(pattern),
+                Place.tags.ilike(pattern),
+                Place.address.ilike(pattern),
+                Place.telephone.ilike(pattern),
+                # ДОБАВЛЯЕМ поиск по категориям
+                Place.category.ilike(pattern),
+                Place.category_en.ilike(pattern)
+            ]
+
+            # ДОБАВЛЯЕМ поиск по маппингу категорий (например, "ресторан" -> категория "Ресторан")
+            if word in category_mapping:
+                category_ru = category_mapping[word]
+                word_conditions.append(Place.category == category_ru)
+                print(f"Применен маппинг категории: '{word}' -> '{category_ru}'")
+
+            # Для русских слов добавляем поиск с разным регистром
+            if any(cyrillic in word for cyrillic in 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'):
+                word_conditions.extend([
+                    Place.title.ilike(f'%{word.capitalize()}%'),
+                    Place.title.ilike(f'%{word.upper()}%'),
+                    Place.address.ilike(f'%{word.capitalize()}%'),
+                    Place.address.ilike(f'%{word.upper()}%'),
+                    # ДОБАВЛЯЕМ поиск по категориям с разным регистром
+                    Place.category.ilike(f'%{word.capitalize()}%'),
+                    Place.category.ilike(f'%{word.upper()}%')
+                ])
+
+            word_condition = db.or_(*word_conditions)
+            conditions.append(word_condition)
+
+    if conditions:
+        return base_query.filter(db.and_(*conditions))
+    else:
+        return base_query.filter(False)
 
 # Обновим endpoint проверки редактирования
 @app.route('/api/reviews/<int:review_id>/permissions', methods=['GET'])
@@ -1439,34 +1526,236 @@ def index():
 def test():
     return render_template("ЛичныеСтраницы/test.html", title="Городской гид")
 
-@app.route("/search", methods=["POST"])
+@app.route("/search", methods=["GET", "POST"])
 def search():
-    query = request.form.get("query")
-    results = []
+    """Улучшенный поиск по базе данных с поддержкой тегов и улицы"""
+    try:
+        # Получаем запрос из GET или POST параметров
+        if request.method == 'POST':
+            query = request.form.get('query', '').strip()
+        else:
+            query = request.args.get('q', '').strip()
 
-    if query:
-        # Разбиваем запрос на слова
-        query_words = query.lower().split()
+        page = request.args.get('page', 1, type=int)
+        per_page = 10
 
-        # Ищем в базе данных
-        places = Place.query.all()
+        print(f"Поисковый запрос: '{query}', страница: {page}")
 
-        for place in places:
-            search_text = f"{place.title or ''} {place.description or ''} {place.tags or ''} {place.address or ''}".lower()
+        if not query:
+            return render_template("results.html",
+                                   results=[],
+                                   query="",
+                                   title="Поиск",
+                                   current_page=1,
+                                   total_pages=0,
+                                   total_results=0)
 
-            if any(word in search_text for word in query_words):
-                results.append({
+        # Базовый запрос с улучшенным поиском
+        base_query = advanced_search(query)
+
+        # Получаем общее количество результатов
+        total_results = base_query.count()
+        total_pages = math.ceil(total_results / per_page) if total_results > 0 else 1
+
+        print(f"Найдено результатов: {total_results}, страниц: {total_pages}")
+
+        # Получаем результаты для текущей страницы
+        results = base_query.offset((page - 1) * per_page).limit(per_page).all()
+
+        # Формируем данные для шаблона
+        results_data = []
+        for place in results:
+            try:
+                # ПРАВИЛЬНО получаем рейтинг - несколько способов
+                avg_rating = 0.0
+                review_count = 0
+
+                # Способ 1: Ищем в таблице Restaurant по ID места
+                restaurant = Restaurant.query.get(str(place.id))
+                if restaurant and restaurant.total_rating is not None:
+                    avg_rating = round(float(restaurant.total_rating), 1)
+                    review_count = restaurant.review_count or 0
+                    print(f"Рейтинг из Restaurant для {place.title}: {avg_rating}")
+                else:
+                    # Способ 2: Ищем по slug
+                    if place.slug:
+                        restaurant_by_slug = Restaurant.query.get(place.slug)
+                        if restaurant_by_slug and restaurant_by_slug.total_rating is not None:
+                            avg_rating = round(float(restaurant_by_slug.total_rating), 1)
+                            review_count = restaurant_by_slug.review_count or 0
+                            print(f"Рейтинг из Restaurant по slug для {place.title}: {avg_rating}")
+                    else:
+                        # Способ 3: Вычисляем из отзывов
+                        reviews = Review.query.filter_by(restaurant_id=str(place.id)).all()
+                        if reviews:
+                            total_rating = sum(review.rating for review in reviews)
+                            avg_rating = round(total_rating / len(reviews), 1)
+                            review_count = len(reviews)
+                            print(f"Рейтинг из Review для {place.title}: {avg_rating}")
+
+                # Формируем URL
+                if place.slug and place.category_en:
+                    place_url = url_for('place_page_by_slug',
+                                        category_en=place.category_en,
+                                        slug=place.slug,
+                                        _external=False)
+                else:
+                    place_url = url_for('restaurant_page', id=place.id, _external=False)
+
+                # Обрезаем длинное описание
+                description = place.description or ''
+                if len(description) > 200:
+                    description = description[:200] + '...'
+
+                results_data.append({
                     'id': place.id,
-                    'title': place.title,
-                    'description': place.description,
-                    'telephone': place.telephone,
-                    'address': place.address,
+                    'title': place.title or 'Без названия',
+                    'description': description,
+                    'telephone': place.telephone or '',
+                    'address': place.address or '',
                     'image_path': place.image_path,
-                    'category': place.category,
-                    'slug': place.slug
+                    'category': place.category or 'Не указана',
+                    'slug': place.slug,
+                    'category_en': place.category_en,
+                    'avg_rating': avg_rating,
+                    'review_count': review_count,
+                    'url': place_url,
+                    'latitude': place.latitude,
+                    'longitude': place.longitude
                 })
+            except Exception as e:
+                print(f"Ошибка обработки места {place.id}: {e}")
+                continue
 
-    return render_template("results.html", query=query, results=results, title="Результаты поиска")
+        print(f"Успешно обработано результатов: {len(results_data)}")
+
+        # Обычный запрос - рендерим HTML
+        return render_template("results.html",
+                               results=results_data,
+                               query=query,
+                               title=f"Поиск: {query}",
+                               current_page=page,
+                               total_pages=total_pages,
+                               total_results=total_results)
+
+    except Exception as e:
+        print(f"Критическая ошибка поиска: {e}")
+        import traceback
+        traceback.print_exc()
+
+        return render_template("results.html",
+                               results=[],
+                               query=query if 'query' in locals() else '',
+                               title="Поиск",
+                               error="Произошла ошибка при поиске")
+
+@app.route('/api/search')
+def api_search():
+    """API для AJAX поиска с пагинацией, фильтрами и расстояниями"""
+    try:
+        query = request.args.get('q', '').strip()
+        page = request.args.get('page', 1, type=int)
+        sort_by = request.args.get('sort_by', 'default')
+        user_lat = request.args.get('lat', type=float)
+        user_lon = request.args.get('lon', type=float)
+        per_page = 10
+
+        if not query:
+            return jsonify({
+                'results': [],
+                'total_results': 0,
+                'total_pages': 0,
+                'current_page': page,
+                'query': query
+            })
+
+        # Базовый запрос - исключаем иконки
+        base_query = Place.query.filter(Place.category != 'Иконка')
+        base_query = advanced_search(query)
+
+        # Получаем общее количество
+        total_results = base_query.count()
+        total_pages = math.ceil(total_results / per_page) if total_results > 0 else 1
+
+        # Получаем результаты для страницы
+        results = base_query.offset((page - 1) * per_page).limit(per_page).all()
+
+        # Формируем данные с расчетом расстояний если есть координаты пользователя
+        results_data = []
+        for place in results:
+            restaurant = Restaurant.query.get(str(place.id))
+            avg_rating = round(float(restaurant.total_rating), 1) if restaurant and restaurant.total_rating else 0.0
+            review_count = restaurant.review_count if restaurant else 0
+
+            if place.slug and place.category_en:
+                place_url = url_for('place_page_by_slug', category_en=place.category_en, slug=place.slug,
+                                    _external=False)
+            else:
+                place_url = url_for('restaurant_page', id=place.id, _external=False)
+
+            # Рассчитываем расстояние если есть координаты пользователя и места
+            distance = None
+            if user_lat and user_lon and place.latitude and place.longitude:
+                distance = calculate_distance(user_lat, user_lon, place.latitude, place.longitude)
+
+            place_data = {
+                'id': place.id,
+                'title': place.title or 'Без названия',
+                'description': place.description or '',
+                'telephone': place.telephone or '',
+                'address': place.address or '',
+                'image_path': place.image_path,
+                'avg_rating': avg_rating,
+                'review_count': review_count,
+                'url': place_url,
+                'latitude': place.latitude,
+                'longitude': place.longitude,
+                'distance': distance
+            }
+            results_data.append(place_data)
+
+        # Применяем сортировку на стороне сервера для расстояний
+        if sort_by == 'distance' and user_lat and user_lon:
+            results_data.sort(key=lambda x: x['distance'] if x['distance'] else float('inf'))
+        elif sort_by == 'rating_high':
+            results_data.sort(key=lambda x: x['avg_rating'], reverse=True)
+        elif sort_by == 'rating_low':
+            results_data.sort(key=lambda x: x['avg_rating'])
+        elif sort_by == 'name_asc':
+            results_data.sort(key=lambda x: (x['title'] or '').lower())
+        elif sort_by == 'name_desc':
+            results_data.sort(key=lambda x: (x['title'] or '').lower(), reverse=True)
+
+        return jsonify({
+            'results': results_data,
+            'total_results': total_results,
+            'total_pages': total_pages,
+            'current_page': page,
+            'query': query
+        })
+
+    except Exception as e:
+        print(f"Ошибка в API поиска: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Расчет расстояния между двумя точками в км"""
+    from math import radians, sin, cos, sqrt, atan2
+
+    R = 6371  # Радиус Земли в км
+
+    lat1_rad = radians(lat1)
+    lon1_rad = radians(lon1)
+    lat2_rad = radians(lat2)
+    lon2_rad = radians(lon2)
+
+    dlon = lon2_rad - lon1_rad
+    dlat = lat2_rad - lat1_rad
+
+    a = sin(dlat / 2) ** 2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2) ** 2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    return R * c
 
 @app.route('/restaurant/<int:id>')
 def restaurant_page(id):
@@ -1490,6 +1779,7 @@ def restaurant_page(id):
 
     except Exception as e:
         print(f"Ошибка загрузки страницы {id}: {e}")
+        abort(404)  # ✅ Правильное использование 404
 
 @app.route('/<category_en>/<slug>')
 def place_page_by_slug(category_en, slug):
@@ -1513,7 +1803,14 @@ def place_page_by_slug(category_en, slug):
 @app.route('/<category_type>')
 def universal_category_page(category_type):
     """Универсальный маршрут для ВСЕХ категорий"""
-    print(f"DEBUG: Запрос категории: {category_type}")
+
+    # Сначала проверяем, является ли это специальным маршрутом
+    SPECIAL_ROUTES = ['404', '500', 'test', 'admin', 'debug']  # добавьте нужные
+    if category_type in SPECIAL_ROUTES:
+        # Отдаем 404 для специальных маршрутов
+        return render_template('error.html',
+                             error_code=404,
+                             error_name="Страница не найдена"), 404
 
     CATEGORY_MAPPING = {
         'restaurant': 'Ресторан',
@@ -1529,7 +1826,14 @@ def universal_category_page(category_type):
         'hotels': 'Гостиница'
     }
 
-    category_ru = CATEGORY_MAPPING.get(category_type)
+    # Проверяем, что запрошенная категория существует
+    if category_type not in CATEGORY_MAPPING:
+        # Если категории нет - отдаем 404
+        return render_template('Error.html',
+                             error_code=404,
+                             error_name="Категория не найдена"), 404
+
+    category_ru = CATEGORY_MAPPING[category_type]
 
     page = request.args.get('page', 1, type=int)
     per_page = 10
@@ -1756,6 +2060,101 @@ def api_category_places(category_slug):
         'has_next': page < total_pages,
         'has_prev': page > 1
     })
+
+
+@app.route('/api/random-place')
+def api_random_place():
+    """API для получения случайного заведения"""
+    try:
+        # Получаем все места у которых есть slug (значит есть личная страница)
+        places = Place.query.filter(Place.slug.isnot(None)).all()
+
+        if not places:
+            return jsonify({'success': False, 'message': 'No places found'}), 404  # ✅ Добавляем статус 404
+
+        # Выбираем случайное место
+        import random
+        random_place = random.choice(places)
+
+        # Формируем URL
+        place_url = url_for('place_page_by_slug',
+                            category_en=random_place.category_en,
+                            slug=random_place.slug)
+
+        return jsonify({
+            'success': True,
+            'place_url': place_url,
+            'place_title': random_place.title
+        })
+
+    except Exception as e:
+        print(f"Error in api_random_place: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+
+
+@app.route('/api/popular-place')
+def api_popular_place():
+    """API для получения самого популярного заведения"""
+    try:
+        # Получаем все рестораны с рейтингом и количеством отзывов
+        restaurants = Restaurant.query.filter(
+            Restaurant.total_rating > 0,
+            Restaurant.review_count > 0
+        ).all()
+
+        if not restaurants:
+            return jsonify({'success': False, 'message': 'No rated places found'}), 404
+
+        # Сортируем по критериям:
+        popular_restaurant = max(restaurants, key=lambda r: (
+            r.total_rating,  # основное - средний рейтинг
+            r.review_count,  # второе - количество оценок
+            r.last_updated.timestamp() if r.last_updated else 0  # третье - дата обновления
+        ))
+
+        # Находим соответствующее место
+        place = None
+
+        # Сначала ищем по slug
+        if popular_restaurant.id:
+            place = Place.query.filter_by(slug=popular_restaurant.id).first()
+
+        # Если не нашли, ищем по названию
+        if not place:
+            place = Place.query.filter_by(title=popular_restaurant.name).first()
+
+        # Если все еще не нашли, берем первое место с таким же рейтингом
+        if not place:
+            place = Place.query.first()
+
+        if not place:
+            return jsonify({'success': False, 'message': 'Place not found'}), 404
+
+        # Формируем URL
+        place_url = url_for('place_page_by_slug',
+                            category_en=place.category_en,
+                            slug=place.slug, _external=False)
+
+        return jsonify({
+            'success': True,
+            'place': {
+                'id': place.id,
+                'title': place.title,
+                'description': place.description,
+                'telephone': place.telephone,
+                'address': place.address,
+                'image_path': place.image_path,
+                'avg_rating': round(popular_restaurant.total_rating, 1),
+                'review_count': popular_restaurant.review_count,
+                'category': place.category,
+                'url': place_url,
+                'last_updated': popular_restaurant.last_updated.isoformat() if popular_restaurant.last_updated else None
+            }
+        })
+
+    except Exception as e:
+        print(f"Error in api_popular_place: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
 
 @app.route('/restaurants')
 def restaurants_page():
@@ -2049,40 +2448,113 @@ def fix_slugs_route():
     fix_slug_duplicates()
     return "Slug исправлены!"
 
-@app.route('/debug/working-hours/<int:place_id>')
-def debug_working_hours(place_id):
-    """Проверка времени работы для отладки"""
-    place = Place.query.get_or_404(place_id)
-    return jsonify({
-        'id': place.id,
-        'title': place.title,
-        'working_hours_raw': place.working_hours,
-        'working_hours_type': type(place.working_hours).__name__,
-        'working_hours_display': place.get_working_hours_display(),
-        'working_hours_safe': place.get_working_hours_safe()
-    })
 
-@app.route('/debug-slugs')
-def debug_slugs():
-    """Проверка slug для отладки"""
-    places_with_restaurants = []
+@app.route('/fix-ratings')
+def fix_ratings():
+    """Принудительное обновление всех рейтингов"""
+    try:
+        places = Place.query.all()
+        fixed_count = 0
 
-    for place in Place.query.all():
-        restaurant = None
-        if place.slug:
-            restaurant = Restaurant.query.get(place.slug)
+        for place in places:
+            # Обновляем статистику для этого места
+            update_restaurant_stats(str(place.id))
+            fixed_count += 1
 
-        places_with_restaurants.append({
-            'place_id': place.id,
-            'place_title': place.title,
-            'place_slug': place.slug,
-            'restaurant_id': restaurant.id if restaurant else None,
-            'restaurant_rating': restaurant.total_rating if restaurant else None
+        return jsonify({
+            'success': True,
+            'message': f'Обновлены рейтинги для {fixed_count} мест',
+            'fixed_count': fixed_count
         })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/debug/search-test')
+def debug_search_test():
+    """Тестирование поиска по улице и тегам"""
+    test_cases = [
+        "Санкт-Петербургская",  # поиск по улице
+        "Ломоносова",  # поиск по улице
+        "ул.",  # поиск по аббревиатуре
+        "Wi-Fi",  # поиск по тегу
+        "кофе",  # поиск по тегу
+        "ресторан",  # поиск по категории
+    ]
+
+    results = {}
+    for test_query in test_cases:
+        query_result = advanced_search(test_query)
+        places = query_result.all()
+        results[test_query] = {
+            'count': len(places),
+            'places': [{
+                'title': place.title,
+                'address': place.address,
+                'tags': place.tags,
+                'category': place.category
+            } for place in places]
+        }
+
+    return jsonify(results)
+
+@app.route('/search-debug/<query>')
+def search_debug(query):
+    """Отладка поиска по категориям"""
+    print(f"=== ОТЛАДКА ПОИСКА ПО КАТЕГОРИЯМ: '{query}' ===")
+
+    # Проверяем поиск по разным полям отдельно
+    tests = {
+        'по названию': Place.title.ilike(f'%{query}%'),
+        'по адресу': Place.address.ilike(f'%{query}%'),
+        'по тегам': Place.tags.ilike(f'%{query}%'),
+        'по описанию': Place.description.ilike(f'%{query}%'),
+        'по категории (ru)': Place.category.ilike(f'%{query}%'),
+        'по категории (en)': Place.category_en.ilike(f'%{query}%')
+    }
+
+    results = {}
+    for test_name, condition in tests.items():
+        places = Place.query.filter(condition).filter(Place.category != 'Иконка').all()
+        place_titles = [place.title for place in places]
+        results[test_name] = {
+            'count': len(places),
+            'places': place_titles
+        }
+        print(f"{test_name}: {len(places)} результатов - {place_titles}")
+
+    # Проверяем маппинг категорий
+    category_mapping = {
+        'ресторан': 'Ресторан',
+        'кафе': 'Кафе',
+        'магазин': 'Магазин',
+        'музей': 'Музей',
+        'театр': 'Театр',
+        'библиотека': 'Библиотека',
+        'парк': 'Парк',
+        'кинотеатр': 'Кинотеатр',
+        'спортплощадка': 'Спортплощадка',
+        'церковь': 'Церковь',
+        'гостиница': 'Гостиница'
+    }
+
+    if query.lower() in category_mapping:
+        mapped_category = category_mapping[query.lower()]
+        mapped_places = Place.query.filter(Place.category == mapped_category).all()
+        results['маппинг категорий'] = {
+            'count': len(mapped_places),
+            'places': [place.title for place in mapped_places],
+            'mapping': f"'{query}' -> '{mapped_category}'"
+        }
+        print(f"Маппинг категорий: '{query}' -> '{mapped_category}': {len(mapped_places)} результатов")
+
+    print("=== КОНЕЦ ОТЛАДКИ ===")
+    return jsonify(results)
 
 if __name__ == '__main__':
     with app.app_context():
         init_database()
+        debug_search_test()
         migrate_categories_to_english()
         check_review_table_structure()
         db.create_all()

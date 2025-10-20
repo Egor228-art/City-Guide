@@ -329,7 +329,6 @@ body {
 .particle-7 { --tx: -1; --ty: 1; transition-delay: 0.1s; }
 
 /* Кнопка в карточке */
-/* Стили кнопки избранного в карточке */
 .favorite-btn {
   position: absolute;
   top: 10px;
@@ -338,8 +337,8 @@ body {
   border: 2px solid #000; /* Чёрная обводка */
   color: white; /* Белое сердце по умолчанию */
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   cursor: pointer;
   font-size: 18px;
   display: flex;
@@ -545,7 +544,7 @@ body.no-scroll {
     height: 30px;
     cursor: pointer;
     font-size: 16px;
-    display: none;
+    display: none; /* Скрыта по умолчанию */
     align-items: center;
     justify-content: center;
     z-index: 10;
@@ -609,7 +608,7 @@ body.no-scroll {
 .schedule-content {
     display: none;
     position: absolute;
-    top: 30px;
+    top: 40px;
     left: 0;
     min-width: 180px; /* Увеличиваем минимальную ширину */
     background: rgba(0,0,0,0.6);
@@ -630,6 +629,41 @@ body.no-scroll {
 
 .image-back .back-btn {
     display: block;
+}
+
+/* Стили для кнопки возврата на карте */
+.back-btn {
+    position: absolute;
+    padding: 8px 16px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    z-index: 10;
+    display: block; /* Всегда видима на карте */
+}
+
+/* Кнопка развернуть - всегда видима */
+.expand-btn {
+    width: 40px;
+    height: 40px;
+    display: none;
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border: none;
+    border-radius: 100px;
+    cursor: pointer;
+    z-index: 10;
+    padding: 4px 12px;
+}
+
+/* Остальные кнопки скрыты по умолчанию */
+.map-btn, .menu-btn, .schedule-btn {
+    display: none;
 }
 
 /* Карта */
@@ -1621,19 +1655,6 @@ body.no-scroll {
 .scroll-button.visible {
     display: flex;
     pointer-events: auto;
-}
-
-.expand-btn {
-    display: none;
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    background: rgba(0,0,0,0.7);
-    color: white;
-    border: none;
-    border-radius: 100px;
-    cursor: pointer;
-    z-index: 10;
 }
 
 /* Стили для синего подчёркнутого текста вместо кнопки */

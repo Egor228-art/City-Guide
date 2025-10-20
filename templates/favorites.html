@@ -407,6 +407,7 @@ body {
                 <li><a href="#" id="aboutLink">О проекте</a></li>
                 <li><a href="#" id="contactsLink">Контакты</a></li>
                 <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
+                <li><a href="#" id="luckyButton">Мне повезёт</a></li>
             </ul>
         </div>
 
@@ -877,6 +878,39 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 500);
         }, 2000);
     });
+
+    // Добавляем после других обработчиков футера
+const luckyButton = document.getElementById('luckyButton');
+
+luckyButton.addEventListener('click', function(e) {
+    e.preventDefault();
+
+    // Показываем анимацию загрузки
+    luckyButton.innerHTML = '🌀 Ищем...';
+    luckyButton.style.pointerEvents = 'none';
+
+    fetch('/api/random-place')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.place_url) {
+                // Переходим на случайную страницу
+                window.location.href = data.place_url;
+            } else {
+                alert('Не удалось найти случайное заведение');
+                luckyButton.innerHTML = 'Мне повезёт';
+                luckyButton.style.pointerEvents = 'auto';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при поиске случайного заведения');
+            luckyButton.innerHTML = 'Мне повезёт';
+            luckyButton.style.pointerEvents = 'auto';
+        });
+});
+
+//Кнопки Футера - КОНЕЦ
+
         document.addEventListener('DOMContentLoaded', function() {
             try {
                 const favoritesManager = {

@@ -178,7 +178,6 @@
                                         'Спортплощадка': '⚽',
                                         'Церковь': '⛪',
                                         'Гостиница': '🏨',
-                                        'Иконка': '📍'
                                     };
                                     return icons[category] || '📍';
                                 }
@@ -187,18 +186,14 @@
                                     const emoji = getCategoryIcon(category);
 
                                     return [
-                                        '<svg width="50" height="60" xmlns="http://www.w3.org/2000/svg">',
-                                        '  <!-- Внешний серый круг -->',
-                                        '  <circle cx="25" cy="25" r="22" fill="#666666" stroke="#ffffff" stroke-width="2"/>',
+                                        '<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg">',
+                                        '  <!-- Внешний круг (пончик) -->',
+                                        '  <circle cx="30" cy="30" r="24" fill="#666666" stroke="#ffffff" stroke-width="3"/>',
+                                        '  <!-- Внутренний круг -->',
+                                        '  <circle cx="30" cy="30" r="16" fill="#ffffff"/>',
                                         '  <!-- Эмодзи в центре -->',
-                                        '  <text x="25" y="32" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="16" font-weight="bold">',
+                                        '  <text x="30" y="38" text-anchor="middle" fill="#333333" font-family="Arial, sans-serif" font-size="22" font-weight="bold">',
                                         '    ' + emoji,
-                                        '  </text>',
-                                        '  <!-- Фон названия -->',
-                                        '  <rect x="5" y="42" width="40" height="16" rx="8" fill="#666666" stroke="#ffffff" stroke-width="1"/>',
-                                        '  <!-- Название заведения -->',
-                                        '  <text x="25" y="54" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="9" font-weight="bold">',
-                                        '    ' + (title.length > 12 ? title.substring(0, 12) + '...' : title),
                                         '  </text>',
                                         '</svg>'
                                     ].join('');
@@ -224,8 +219,8 @@
                                             // Кастомная иконка
                                             iconLayout: 'default#image',
                                             iconImageHref: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(createCustomMarkerSVG(category, title)))),
-                                            iconImageSize: [70, 60],
-                                            iconImageOffset: [-25, -60],
+                                            iconImageSize: [60, 60],
+                                            iconImageOffset: [-30, -60],
                                             balloonCloseButton: true,
                                             hideIconOnBalloonOpen: false
                                         }
@@ -234,6 +229,7 @@
                                     map.geoObjects.add(customPlacemark);
                                 });
                             </script>
+                            <button class="back-btn" onclick="flipCard()">Вернуться</button>
                             {% else %}
                             <p>Карта недоступна</p>
                             {% endif %}
@@ -546,6 +542,7 @@
                     <li><a href="#" id="aboutLink">О проекте</a></li>
                     <li><a href="#" id="contactsLink">Контакты</a></li>
                     <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
+                    <li><a href="#" id="luckyButton">Мне повезёт</a></li>
                 </ul>
             </div>
 
@@ -735,6 +732,36 @@ contactsLink.addEventListener('click', function(e) {
     }, 2000);
 });
 
+// Добавляем после других обработчиков футера
+const luckyButton = document.getElementById('luckyButton');
+
+luckyButton.addEventListener('click', function(e) {
+    e.preventDefault();
+
+    // Показываем анимацию загрузки
+    luckyButton.innerHTML = '🌀 Ищем...';
+    luckyButton.style.pointerEvents = 'none';
+
+    fetch('/api/random-place')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.place_url) {
+                // Переходим на случайную страницу
+                window.location.href = data.place_url;
+            } else {
+                alert('Не удалось найти случайное заведение');
+                luckyButton.innerHTML = 'Мне повезёт';
+                luckyButton.style.pointerEvents = 'auto';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка при поиске случайного заведения');
+            luckyButton.innerHTML = 'Мне повезёт';
+            luckyButton.style.pointerEvents = 'auto';
+        });
+});
+
 //Кнопки Футера - Конец
 
 let isReviewsLoading = false;
@@ -773,6 +800,8 @@ document.addEventListener('DOMContentLoaded', function() {
     markExistingFavorites();
     initFavorites();
     setInterval(saveRatingsToStorage, 30000); // Периодическое сохранение (каждые 30 секунд)
+    hideMenuButtonForNonFood();
+    initImageHoverEffects();
 
     document.getElementById('full-review-modal').style.display = 'none';
 
@@ -3747,10 +3776,73 @@ function hideHeaderButton() {
         }
     };
 
-    // Переворот карточки
     function flipCard() {
-        document.querySelector('.image-flip-container').classList.toggle('flipped');
+    const flipContainer = document.querySelector('.image-flip-container');
+    const imageFront = document.querySelector('.image-front');
+
+    flipContainer.classList.toggle('flipped');
+
+    // Получаем все кнопки
+    const mapBtn = document.querySelector('.map-btn');
+    const menuBtn = document.querySelector('.menu-btn');
+    const expandBtn = document.querySelector('.expand-btn');
+    const scheduleBtn = document.querySelector('.schedule-btn');
+    const favoriteBtn = document.querySelector('.favorite-btn');
+
+    if (flipContainer.classList.contains('flipped')) {
+        // Мы на карте - скрываем все кнопки передней стороны
+        if (mapBtn) mapBtn.style.display = 'none';
+        if (menuBtn) menuBtn.style.display = 'none';
+        if (expandBtn) expandBtn.style.display = 'none';
+        if (scheduleBtn) scheduleBtn.style.display = 'none';
+        if (favoriteBtn) favoriteBtn.style.display = 'none';
+    } else {
+        // Мы вернулись на фото - принудительно скрываем все кнопки
+        // Они появятся снова при наведении благодаря обработчикам
+        if (mapBtn) mapBtn.style.display = 'none';
+        if (menuBtn) menuBtn.style.display = 'none';
+        if (expandBtn) expandBtn.style.display = 'none';
+        if (scheduleBtn) scheduleBtn.style.display = 'none';
+        if (favoriteBtn) favoriteBtn.style.display = 'none';
+
+        // Если курсор над фото после переворота, показываем кнопки
+        if (imageFront && isMouseOverElement(imageFront)) {
+            showImageButtons();
+        }
     }
+}
+
+// Функция проверки находится ли курсор над элементом
+function isMouseOverElement(element) {
+    const rect = element.getBoundingClientRect();
+    return (
+        rect.top <= (window.event?.clientY || 0) &&
+        rect.bottom >= (window.event?.clientY || 0) &&
+        rect.left <= (window.event?.clientX || 0) &&
+        rect.right >= (window.event?.clientX || 0)
+    );
+}
+
+// Функция показа кнопок (дублирует логику из mouseenter)
+function showImageButtons() {
+    const category = '{{ place.category }}';
+    const menuBtn = document.querySelector('.menu-btn');
+    const mapBtn = document.querySelector('.map-btn');
+    const expandBtn = document.querySelector('.expand-btn');
+    const scheduleBtn = document.querySelector('.schedule-btn');
+    const favoriteBtn = document.querySelector('.favorite-btn');
+
+    // Показываем все кнопки
+    if (mapBtn) mapBtn.style.display = 'block';
+    if (expandBtn) expandBtn.style.display = 'flex';
+    if (scheduleBtn) scheduleBtn.style.display = 'block';
+    if (favoriteBtn) favoriteBtn.style.display = 'flex';
+
+    // Кнопку меню показываем только для ресторанов и кафе
+    if (menuBtn && (category === 'Ресторан' || category === 'Кафе')) {
+        menuBtn.style.display = 'block';
+    }
+}
 
     // Развернуть изображение
     function expandImage(btn) {
@@ -3791,6 +3883,50 @@ function hideHeaderButton() {
     function closeMenuModal() {
         document.getElementById('menu-modal').style.display = 'none';
     }
+
+// Функция для скрытия кнопки меню у всех кроме ресторанов и кофе
+function hideMenuButtonForNonFood() {
+    const category = '{{ place.category }}';
+    const menuBtn = document.querySelector('.menu-btn');
+
+    if (menuBtn) {
+        // Скрываем кнопку для всех кроме ресторанов и кафе
+        if (category !== 'Ресторан' && category !== 'Кафе') {
+            menuBtn.style.display = 'none';
+        }
+    }
+}
+
+function initImageHoverEffects() {
+    const imageFront = document.querySelector('.image-front');
+
+    if (imageFront) {
+        // Показываем кнопки при наведении на картинку
+        imageFront.addEventListener('mouseenter', function() {
+            showImageButtons();
+        });
+
+        // Скрываем кнопки когда убираем курсор
+        imageFront.addEventListener('mouseleave', function() {
+            hideImageButtons();
+        });
+    }
+}
+
+// Функция скрытия кнопок (дублирует логику из mouseleave)
+function hideImageButtons() {
+    const mapBtn = document.querySelector('.map-btn');
+    const menuBtn = document.querySelector('.menu-btn');
+    const expandBtn = document.querySelector('.expand-btn');
+    const scheduleBtn = document.querySelector('.schedule-btn');
+    const favoriteBtn = document.querySelector('.favorite-btn');
+
+    if (mapBtn) mapBtn.style.display = 'none';
+    if (expandBtn) expandBtn.style.display = 'none';
+    if (scheduleBtn) scheduleBtn.style.display = 'none';
+    if (favoriteBtn) favoriteBtn.style.display = 'none';
+    if (menuBtn) menuBtn.style.display = 'none';
+}
 
 // 🔥 ИСПРАВЛЕННАЯ функция открытия модального окна отзыва
 function openReviewModal() {
