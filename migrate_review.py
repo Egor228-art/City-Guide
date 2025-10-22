@@ -1,44 +1,60 @@
 import sqlite3
 
-def migrate_place_table():
-    """Миграция таблицы place - добавление новых столбцов"""
+
+def fix_role_field():
+    conn = sqlite3.connect('instance/database.db')
+    cursor = conn.cursor()
+
+    print("🔧 Исправление поля role...")
+
     try:
-        conn = sqlite3.connect('instance/database.db')
-        cursor = conn.cursor()
+        # Проверяем текущий тип поля role
+        cursor.execute("PRAGMA table_info(user)")
+        columns = cursor.fetchall()
+        role_column = next((col for col in columns if col[1] == 'role'), None)
 
-        # Проверяем существующие столбцы
-        cursor.execute("PRAGMA table_info(place)")
-        columns = [column[1] for column in cursor.fetchall()]
-        print(f"Существующие колонки: {columns}")
+        if role_column:
+            print(f"Текущий тип role: {role_column[2]}")
 
-        # Добавляем отсутствующие колонки
-        new_columns = [
-            ('tags', 'TEXT'),
-            ('slug', 'VARCHAR(100)'),
-            ('latitude', 'FLOAT'),
-            ('longitude', 'FLOAT'),
-            ('working_hours', 'TEXT'),
-            ('menu', 'TEXT')
-        ]
+            # Если тип неправильный, пересоздаем таблицу
+            if role_column[2] != 'VARCHAR(50)':
+                print("Пересоздаем таблицу user...")
 
-        for column_name, column_type in new_columns:
-            if column_name not in columns:
-                print(f"Добавляем колонку {column_name}...")
-                cursor.execute(f"ALTER TABLE place ADD COLUMN {column_name} {column_type}")
+                # Создаем временную таблицу
+                cursor.execute("""
+                    CREATE TABLE user_temp (
+                        id INTEGER PRIMARY KEY,
+                        username VARCHAR(150) NOT NULL UNIQUE,
+                        password VARCHAR(150) NOT NULL,
+                        role VARCHAR(50) DEFAULT 'trainee',
+                        created_at TEXT,
+                        last_login TEXT
+                    )
+                """)
+
+                # Копируем данные
+                cursor.execute("""
+                    INSERT INTO user_temp (id, username, password, role, created_at, last_login)
+                    SELECT id, username, password, role, created_at, last_login FROM user
+                """)
+
+                # Удаляем старую таблицу
+                cursor.execute("DROP TABLE user")
+
+                # Переименовываем временную таблицу
+                cursor.execute("ALTER TABLE user_temp RENAME TO user")
+
+                print("✅ Таблица user пересоздана")
 
         conn.commit()
-        print("Миграция таблицы place завершена успешно!")
-
-        # Показываем результат
-        cursor.execute("PRAGMA table_info(place)")
-        final_columns = [column[1] for column in cursor.fetchall()]
-        print(f"Финальные колонки: {final_columns}")
+        print("✅ Поле role исправлено")
 
     except Exception as e:
-        print(f"Ошибка при миграции: {e}")
+        print(f"❌ Ошибка: {e}")
         conn.rollback()
     finally:
         conn.close()
 
+
 if __name__ == "__main__":
-    migrate_place_table()
+    fix_role_field()

@@ -1,0 +1,258 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Управление отзывами - Админ-панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Управление отзывами</h1>
+</div>
+
+<!-- Информация о пагинации -->
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+    <span>
+        Показано <strong>{{ reviews_data|length }}</strong> из <strong>{{ pagination.total }}</strong> отзывов
+    </span>
+    <span>
+        Страница <strong>{{ pagination.page }}</strong> из <strong>{{ pagination.pages }}</strong>
+    </span>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Пользователь</th>
+                        <th>Место</th>
+                        <th>Рейтинг</th>
+                        <th>Комментарий</th>
+                        <th>Дата</th>
+                        <th>Лайки</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in reviews_data %}
+                    {% set review = item.review %}
+                    <tr>
+                        <td>{{ review.id }}</td>
+                        <td>{{ review.username }}</td>
+                        <td>
+                            <a href="{{ item.place_url }}" target="_blank" class="text-decoration-none">
+                                {{ item.place_title }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if review.rating >= 4 else 'warning' }} if review.rating == 3 else 'danger' }}">
+                                {{ review.rating }}/5
+                            </span>
+                        </td>
+                        <td>
+                            {% if review.comment %}
+                                {{ review.comment[:100] }}{% if review.comment|length > 100 %}...{% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ review.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        <td>
+                            <small class="text-success">👍 {{ review.likes or 0 }}</small>
+                            <small class="text-danger">👎 {{ review.dislikes or 0 }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <!-- Кнопка "Показать" -->
+                                <a href="{{ item.place_url }}#review-{{ review.id }}"
+                                   class="btn btn-outline-primary"
+                                   target="_blank"
+                                   title="Перейти к отзыву">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+
+                                <!-- Кнопка "Редактировать" -->
+                                <button class="btn btn-outline-warning edit-review"
+                                        data-review-id="{{ review.id }}"
+                                        data-username="{{ review.username }}"
+                                        data-rating="{{ review.rating }}"
+                                        data-comment="{{ review.comment }}"
+                                        title="Редактировать отзыв">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+
+                                <!-- Кнопка "Удалить" -->
+                                <button class="btn btn-outline-danger delete-review"
+                                        data-review-id="{{ review.id }}"
+                                        data-username="{{ review.username }}"
+                                        title="Удалить отзыв">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Пагинация -->
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <!-- Кнопка "Назад" -->
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link"
+                       href="{{ url_for('admin_reviews_page', page=pagination.prev_num) if pagination.has_prev else '#' }}">
+                        &laquo; Назад
+                    </a>
+                </li>
+
+                <!-- Номера страниц -->
+                {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin_reviews_page', page=page_num) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Кнопка "Вперед" -->
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link"
+                       href="{{ url_for('admin_reviews_page', page=pagination.next_num) if pagination.has_next else '#' }}">
+                        Вперед &raquo;
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно редактирования отзыва -->
+<div class="modal fade" id="editReviewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать отзыв</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editReviewForm">
+                    <input type="hidden" id="editReviewId" name="review_id">
+                    <div class="mb-3">
+                        <label class="form-label">Пользователь</label>
+                        <input type="text" class="form-control" id="editReviewUsername" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Рейтинг</label>
+                        <select class="form-select" id="editReviewRating" name="rating" required>
+                            <option value="1">★ (1)</option>
+                            <option value="2">★★ (2)</option>
+                            <option value="3">★★★ (3)</option>
+                            <option value="4">★★★★ (4)</option>
+                            <option value="5">★★★★★ (5)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Комментарий</label>
+                        <textarea class="form-control" id="editReviewComment" name="comment" rows="4"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveReviewChanges">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Редактирование отзыва
+document.querySelectorAll('.edit-review').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const reviewId = this.dataset.reviewId;
+        const username = this.dataset.username;
+        const rating = this.dataset.rating;
+        const comment = this.dataset.comment;
+
+        // Заполняем форму редактирования
+        document.getElementById('editReviewId').value = reviewId;
+        document.getElementById('editReviewUsername').value = username;
+        document.getElementById('editReviewRating').value = rating;
+        document.getElementById('editReviewComment').value = comment || '';
+
+        // Показываем модальное окно
+        const modal = new bootstrap.Modal(document.getElementById('editReviewModal'));
+        modal.show();
+    });
+});
+
+// Сохранение изменений отзыва
+document.getElementById('saveReviewChanges').addEventListener('click', function() {
+    const reviewId = document.getElementById('editReviewId').value;
+    const rating = document.getElementById('editReviewRating').value;
+    const comment = document.getElementById('editReviewComment').value;
+
+    fetch(`/admin/api/reviews/${reviewId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            rating: parseInt(rating),
+            comment: comment
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Отзыв успешно обновлен');
+            bootstrap.Modal.getInstance(document.getElementById('editReviewModal')).hide();
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка сети');
+    });
+});
+
+// Удаление отзыва
+document.querySelectorAll('.delete-review').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const reviewId = this.dataset.reviewId;
+        const username = this.dataset.username;
+
+        if (confirm(`Вы уверены, что хотите удалить отзыв пользователя ${username}?`)) {
+            fetch(`/admin/api/reviews/${reviewId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Отзыв удален');
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Ошибка сети');
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

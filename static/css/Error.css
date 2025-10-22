@@ -177,7 +177,7 @@ body {
     transform: translateY(-2px);
 }
 
-.Коробка {
+.btn-admin {
     position: relative;
     display: flex;
     align-items: center;
@@ -200,7 +200,7 @@ body {
     border-radius: 50%;
 }
 
-.Коробка:hover #avatar {
+.btn-admin:hover #avatar {
     transform: scale(1.1) rotate(5deg);
 }
 

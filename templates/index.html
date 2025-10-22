@@ -49,7 +49,7 @@
                 <button id="loginButton" class="btn-login">Вход</button>
                 <button id="registerButton" class="btn-register">Регистрация</button>
                 <div id="userInfo" style="display: none;">
-                    <div class="box">
+                    <div class="btn-admin" id="adminButton" onclick="window.location.href='/admin'">
                         <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar">
                         <span id="welcomeUser"></span>
                     </div>
@@ -292,7 +292,7 @@ function loadPopularPlace() {
 
                         <p class="restaurant-description">
                             ${description}
-                            ${data.place.review_count > 0 ? `<br><small>Отзывов: ${data.place.review_count}</small>` : ''}
+                            ${data.place.review_count > 0 ? `` : ''}
                         </p>
 
                         <div class="restaurant-contacts">
@@ -779,38 +779,43 @@ luckyButton.addEventListener('click', function(e) {
         };
 
         // Обработчик для формы входа
-        document.getElementById('loginForm').onsubmit = function(event) {
-            event.preventDefault();
+document.getElementById('loginForm').onsubmit = function(event) {
+    event.preventDefault();
 
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
 
-            fetch('/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    'username': username,
-                    'password': password
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('welcomeUser').innerText = data.username;
-                    document.getElementById('userInfo').style.display = 'flex';
-                    document.getElementById('overlay').style.display = 'none';
-                    document.getElementById('content_window').classList.remove('show');
-                    document.getElementById('content_window').style.display = 'none';
-                    document.getElementById('loginButton').style.display = 'none';
-                    document.getElementById('registerButton').style.display = 'none';
-                    localStorage.setItem('username', data.username);
-                } else {
-                    alert(data.message);
-                }
-            });
-        };
+    fetch('/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'username': username,
+            'password': password
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('welcomeUser').innerText = data.username;
+            document.getElementById('userInfo').style.display = 'flex';
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('content_window').classList.remove('show');
+            document.getElementById('content_window').style.display = 'none';
+            document.getElementById('loginButton').style.display = 'none';
+            document.getElementById('registerButton').style.display = 'none';
+
+            // АВТОМАТИЧЕСКИ ПОКАЗЫВАЕМ АДМИНКУ ДЛЯ ВСЕХ ЗАРЕГИСТРИРОВАННЫХ
+            document.getElementById('adminButton').style.display = 'flex';
+
+            localStorage.setItem('username', data.username);
+            localStorage.setItem('is_admin', true);
+        } else {
+            alert(data.message);
+        }
+    });
+};
 
         // Обработчик кнопки выхода
         document.querySelector('.btn-logout').addEventListener('click', function() {
@@ -834,15 +839,21 @@ luckyButton.addEventListener('click', function(e) {
         });
 
         // Проверка состояния пользователя при загрузке страницы
-        window.addEventListener('load', function() {
-            const username = localStorage.getItem('username');
-            if (username) {
-                document.getElementById('welcomeUser').innerText = username;
-                document.getElementById('userInfo').style.display = 'flex';
-                document.getElementById('loginButton').style.display = 'none';
-                document.getElementById('registerButton').style.display = 'none';
-            }
-        });
+// Проверка состояния пользователя при загрузке страницы
+window.addEventListener('load', function() {
+    const username = localStorage.getItem('username');
+    const isAdmin = localStorage.getItem('is_admin') === 'true';
+
+    if (username) {
+        document.getElementById('welcomeUser').innerText = username;
+        document.getElementById('userInfo').style.display = 'flex';
+        document.getElementById('loginButton').style.display = 'none';
+        document.getElementById('registerButton').style.display = 'none';
+
+        // АВТОМАТИЧЕСКИ ПОКАЗЫВАЕМ АДМИНКУ
+        document.getElementById('adminButton').style.display = 'flex';
+    }
+});
 
         // Синхронизация состояния пользователя между вкладками
         window.addEventListener('storage', function(event) {

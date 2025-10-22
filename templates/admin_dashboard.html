@@ -1,0 +1,174 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Дашборд - Админ-панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Дашборд</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary">Экспорт</button>
+        </div>
+    </div>
+</div>
+
+<!-- Статистика -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Всего мест
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_places }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-building fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Всего отзывов
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_reviews }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-comments fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Пользователей
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_users }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-users fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2 stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Средний рейтинг
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.avg_rating }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-star fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Быстрые действия -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Быстрые действия</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if current_user.has_permission('create_place') %}
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('add_place') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-plus"></i> Добавить заведение
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    {% if current_user.role in ['moderator', 'editor', 'admin'] %}
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-success w-100">
+                            <i class="fas fa-user-plus"></i> Управление пользователями
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    {% if current_user.role in ['moderator', 'editor', 'admin'] %}
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin_reviews_page') }}" class="btn btn-info w-100">
+                            <i class="fas fa-edit"></i> Модерация отзывов
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Последние отзывы -->
+{% if current_user.has_permission('edit_review') %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Последние отзывы</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_reviews %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Пользователь</th>
+                                <th>Место</th>
+                                <th>Рейтинг</th>
+                                <th>Комментарий</th>
+                                <th>Дата</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for review in recent_reviews %}
+                            <tr>
+                                <td>{{ review.username }}</td>
+                                <td>{{ review.place_title }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if review.rating >= 4 else 'warning' }} if review.rating == 3 else 'danger' }}">
+                                        {{ review.rating }}/5
+                                    </span>
+                                </td>
+                                <td>{{ review.comment[:50] }}{% if review.comment|length > 50 %}...{% endif %}</td>
+                                <td>{{ review.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">Нет отзывов для модерации</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

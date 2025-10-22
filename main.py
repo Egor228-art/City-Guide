@@ -2,21 +2,18 @@ import hashlib
 import json
 import re
 import os
-from ctypes import cast
-from tokenize import String
 
 import pytz
 import math
 import sqlite3
 
-from sqlalchemy import desc, asc
-from werkzeug.utils import secure_filename
+from werkzeug.utils import secure_filename, redirect
 from flask_bcrypt import Bcrypt
 from flask_sqlalchemy import SQLAlchemy
-from flask_admin import Admin
-from flask import Flask, jsonify, render_template, request, url_for, session
+from flask import Flask, jsonify, render_template, request, url_for, session, flash
 from datetime import datetime, timezone, timedelta
 from flask_migrate import Migrate
+from functools import wraps
 from flask import abort
 
 app = Flask(__name__)
@@ -25,7 +22,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 MOSCOW_TZ = pytz.timezone('Europe/Moscow')
 
 db = SQLAlchemy(app)
-admin = Admin(app)
 bcrypt = Bcrypt(app)
 migrate = Migrate(app, db) #Обнавление столбцов в бд
 def get_moscow_time():
@@ -42,11 +38,159 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 # Создаем папку при запуске
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Роли и их права
+# Улучшенная система прав
+ROLE_PERMISSIONS = {
+    'trainee': {
+        'name': 'Стажёр',
+        'permissions': [
+            'view_dashboard',
+            'create_place',
+            'create_category',
+            'view_stats'
+        ]
+    },
+    'moderator': {
+        'name': 'Модератор',
+        'permissions': [
+            'view_dashboard',
+            'create_place', 'edit_place', 'delete_place',
+            'create_category', 'edit_category', 'delete_category',
+            'edit_review', 'delete_review',
+            'manage_trainees',  # Может управлять стажёрами
+            'view_stats'
+        ]
+    },
+    'editor': {
+        'name': 'Редактор',
+        'permissions': [
+            'view_dashboard',
+            'create_place', 'edit_place', 'delete_place',
+            'create_category', 'edit_category', 'delete_category',
+            'edit_review', 'delete_review',
+            'manage_trainees', 'manage_moderators', 'manage_editors',
+            'view_stats',
+            'system_settings'
+        ]
+    },
+    'admin': {
+        'name': 'Администратор',
+        'permissions': ['all']  # Все права
+    }
+}
+
+def get_role_permissions(role):
+    """Получить права для роли"""
+    role_permissions = {
+        'trainee': ['create_place', 'create_category', 'view_stats'],
+        'moderator': ['create_place', 'edit_place', 'delete_place',
+                      'create_category', 'edit_category', 'delete_category',
+                      'edit_review', 'delete_review', 'manage_trainees', 'view_stats'],
+        'editor': ['create_place', 'edit_place', 'delete_place',
+                   'create_category', 'edit_category', 'delete_category',
+                   'edit_review', 'delete_review', 'manage_trainees', 'manage_moderators',
+                   'manage_editors', 'view_stats', 'system_settings'],
+        'admin': ['all']
+    }
+
+    if role not in role_permissions:
+        return []
+
+    permissions = role_permissions[role]
+    if 'all' in permissions:
+        return ['all']  # Специальный маркер для всех прав
+    return permissions
+
+def get_role_display_name(role):
+    """Получить отображаемое имя роли"""
+    return ROLE_PERMISSIONS.get(role, {}).get('name', role)
+
+
+def permission_required(permission):
+    """Декоратор для проверки прав"""
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'username' not in session:
+                abort(401)
+
+            user = User.query.filter_by(username=session['username']).first()
+
+            # Admin имеет все права
+            if user.role == 'admin':
+                return f(*args, **kwargs)
+
+            # Проверяем конкретное право
+            user_permissions = get_role_permissions(user.role)
+            if permission not in user_permissions and 'all' not in user_permissions:
+                abort(403)
+
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+def role_required(required_permission):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'username' not in session:
+                abort(401)
+
+            user = User.query.filter_by(username=session['username']).first()
+            if not user:
+                abort(401)
+
+            # Admin имеет все права
+            if user.role == 'admin':
+                return f(*args, **kwargs)
+
+            # Проверяем права для роли (ИСПРАВЛЕННАЯ СТРОКА)
+            user_permissions = get_role_permissions(user.role)
+            if required_permission not in user_permissions and 'all' not in user_permissions:
+                abort(403)
+
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+# Конкретные декораторы для удобства
+def trainee_required(f):
+    return role_required('create_place')(f)
+
+def moderator_required(f):
+    return role_required('manage_trainees')(f)
+
+def editor_required(f):
+    return role_required('manage_moderators')(f)
+
 # Определяем модель пользователя
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), nullable=False, unique=True)
     password = db.Column(db.String(150), nullable=False)
+    role = db.Column(db.String(50), default='trainee')  # trainee, moderator, editor, admin
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
+
+    def __repr__(self):
+        return f'<User {self.username} ({self.role})>'
+
+    @property
+    def role_display(self):
+        return get_role_display_name(self.role)
+
+    def has_permission(self, permission):
+        user_permissions = get_role_permissions(self.role)
+        return 'all' in user_permissions or permission in user_permissions
+
+    def can_manage_user(self, target_user):
+        if self.id == target_user.id:
+            return False
+        role_hierarchy = {'trainee': 1, 'moderator': 2, 'editor': 3, 'admin': 4}
+        return role_hierarchy.get(self.role, 0) > role_hierarchy.get(target_user.role, 0)
 
 # Определение модели для хранения секретов
 class Secret(db.Model):
@@ -166,8 +310,6 @@ class Review(db.Model):
     user_token = db.Column(db.String(255))  # Для анонимных пользователей
     device_fingerprint = db.Column(db.String(255))  # Добавляем это поле
     user_ratings = db.Column(db.JSON, default=dict)
-
-# def register_user(username, password, secret_key):
 
 # Хелпер-функции
 def get_client_hash(request):
@@ -341,6 +483,460 @@ def precise_search(query):
         return base_query.filter(db.and_(*conditions))
     else:
         return base_query.filter(False)
+
+
+
+#Админские штуки - НАЧАЛО
+
+@app.route('/admin/api/create-test-data')
+def create_test_data():
+    """Создание тестовых данных для админ-панели"""
+    try:
+        # Создаем тестовое место если нет мест
+        if Place.query.count() == 0:
+            test_place = Place(
+                title='Тестовый Ресторан',
+                description='Тестовое описание',
+                category='Ресторан',
+                category_en='restaurant',
+                slug='test-restaurant'
+            )
+            db.session.add(test_place)
+            db.session.commit()
+
+        # Создаем тестовые отзывы если нет отзывов
+        if Review.query.count() == 0:
+            test_review = Review(
+                restaurant_id='1',  # ID тестового места
+                username='Тестовый Пользователь',
+                rating=5,
+                comment='Отличное тестовое заведение!',
+                user_token='test_token',
+                device_fingerprint='test_fingerprint'
+            )
+            db.session.add(test_review)
+            db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Тестовые данные созданы'})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/debug')
+def admin_debug():
+    """Отладочный endpoint для проверки данных"""
+    try:
+        print("🛠️ Отладочный endpoint вызван")
+
+        # Проверяем доступ к данным
+        total_places = Place.query.count()
+        total_reviews = Review.query.count()
+        total_users = User.query.count()
+
+        # Проверяем последние отзывы
+        recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(3).all()
+        reviews_data = []
+        for review in recent_reviews:
+            reviews_data.append({
+                'id': review.id,
+                'username': review.username,
+                'rating': review.rating,
+                'comment': review.comment
+            })
+
+        # Проверяем сессию
+        session_info = {
+            'username': session.get('username'),
+            'has_session': 'username' in session
+        }
+
+        return jsonify({
+            'status': 'ok',
+            'database': {
+                'total_places': total_places,
+                'total_reviews': total_reviews,
+                'total_users': total_users,
+                'recent_reviews_count': len(recent_reviews)
+            },
+            'session': session_info,
+            'recent_reviews': reviews_data
+        })
+    except Exception as e:
+        print(f"❌ Ошибка в отладочном endpoint: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# Декоратор для проверки авторизации администратора
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'username' not in session:
+            flash('Требуется авторизация', 'error')
+            return redirect(url_for('index'))
+
+        user = User.query.filter_by(username=session['username']).first()
+
+        # Добавляем current_user в контекст запроса
+        from flask import g
+        g.current_user = user
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+@app.route('/admin/api/stats')
+@admin_required
+def admin_stats():
+    try:
+        # Общая статистика
+        total_places = Place.query.count()
+        total_reviews = Review.query.count()
+        total_users = User.query.count()
+
+        # Средний рейтинг
+        avg_rating_result = db.session.query(db.func.avg(Review.rating)).scalar()
+        avg_rating = round(avg_rating_result, 2) if avg_rating_result else 0.0
+
+        # Последние отзывы
+        recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(10).all()
+        reviews_data = []
+        for review in recent_reviews:
+            # Пробуем найти место по ID
+            place = None
+            if review.restaurant_id.isdigit():
+                place = Place.query.get(int(review.restaurant_id))
+            else:
+                # Если ID не цифровой, ищем по slug
+                place = Place.query.filter_by(slug=review.restaurant_id).first()
+
+            reviews_data.append({
+                'id': review.id,
+                'username': review.username,
+                'rating': review.rating,
+                'comment': review.comment,
+                'created_at': review.created_at.isoformat(),
+                'place_title': place.title if place else review.restaurant_id
+            })
+
+        return jsonify({
+            'total_places': total_places,
+            'total_reviews': total_reviews,
+            'total_users': total_users,
+            'avg_rating': avg_rating,
+            'recent_reviews': reviews_data
+        })
+
+    except Exception as e:
+        print(f"Error in admin_stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# API для получения всех отзывов
+@app.route('/admin/api/reviews')
+@admin_required
+def admin_reviews():
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+
+        reviews = Review.query.order_by(Review.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+
+        reviews_data = []
+        for review in reviews.items:
+            # Пробуем найти место по ID
+            place = None
+            if review.restaurant_id.isdigit():
+                place = Place.query.get(int(review.restaurant_id))
+            else:
+                place = Place.query.filter_by(slug=review.restaurant_id).first()
+
+            reviews_data.append({
+                'id': review.id,
+                'username': review.username,
+                'rating': review.rating,
+                'comment': review.comment,
+                'created_at': review.created_at.isoformat(),
+                'likes': review.likes or 0,
+                'dislikes': review.dislikes or 0,
+                'place_title': place.title if place else review.restaurant_id,
+                'restaurant_id': review.restaurant_id
+            })
+
+        return jsonify({
+            'reviews': reviews_data,
+            'total': reviews.total,
+            'pages': reviews.pages,
+            'current_page': page
+        })
+
+    except Exception as e:
+        print(f"Error in admin_reviews: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# API для удаления отзыва
+@app.route('/admin/api/reviews/<int:review_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_review(review_id):
+    try:
+        review = Review.query.get_or_404(review_id)
+        restaurant_id = review.restaurant_id
+
+        db.session.delete(review)
+        db.session.commit()
+
+        # Обновляем статистику ресторана
+        update_restaurant_stats(restaurant_id)
+
+        return jsonify({'success': True, 'message': 'Отзыв удален'})
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting review: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# API для редактирования отзыва
+@app.route('/admin/api/reviews/<int:review_id>', methods=['PUT'])
+@admin_required
+def admin_edit_review(review_id):
+    try:
+        data = request.get_json()
+        review = Review.query.get_or_404(review_id)
+
+        if 'rating' in data:
+            new_rating = int(data['rating'])
+            if new_rating < 1 or new_rating > 5:
+                return jsonify({'error': 'Рейтинг должен быть от 1 до 5'}), 400
+            review.rating = new_rating
+
+        if 'comment' in data:
+            review.comment = data['comment']
+
+        review.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        # Обновляем статистику ресторана
+        update_restaurant_stats(review.restaurant_id)
+
+        return jsonify({'success': True, 'message': 'Отзыв обновлен'})
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error editing review: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/users', methods=['GET'])
+@admin_required
+def get_admin_users():
+    """Получение списка всех администраторов"""
+    try:
+        users = User.query.all()
+        current_user = User.query.filter_by(username=session['username']).first()
+
+        users_data = []
+        for user in users:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'role': user.role,
+                'role_display': get_role_display(user.role),
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'can_edit': can_edit_user(current_user, user),
+                'can_delete': can_delete_user(current_user, user)
+            })
+
+        return jsonify({'users': users_data})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def get_role_display(role):
+    """Отображаемое название роли"""
+    role_names = {
+        'trainee': 'Стажёр',
+        'moderator': 'Модератор',
+        'editor': 'Редактор',
+        'admin': 'Администратор'
+    }
+    return role_names.get(role, role)
+
+def can_edit_user(current_user, target_user):
+    """Может ли текущий пользователь редактировать целевого"""
+    if current_user.role == 'admin':
+        return target_user.username != 'admin'  # Нельзя редактировать главного админа
+    elif current_user.role == 'editor':
+        return target_user.role in ['trainee', 'moderator']
+    elif current_user.role == 'moderator':
+        return target_user.role == 'trainee'
+    return False
+
+def can_delete_user(current_user, target_user):
+    """Может ли текущий пользователь удалить целевого"""
+    return can_edit_user(current_user, target_user)  # Те же правила
+
+@app.route('/admin/api/users/<int:user_id>/role', methods=['PUT'])
+@admin_required
+def admin_change_user_role(user_id):
+    """API для изменения роли пользователя"""
+    try:
+        current_user = User.query.filter_by(username=session['username']).first()
+        target_user = User.query.get_or_404(user_id)
+
+        data = request.get_json()
+        new_role = data.get('role')
+
+        if not new_role or new_role not in ['trainee', 'moderator', 'editor', 'admin']:
+            return jsonify({'error': 'Некорректная роль'}), 400
+
+        # Проверка прав
+        if not current_user.can_manage_user(target_user):
+            return jsonify({'error': 'Недостаточно прав для изменения этого пользователя'}), 403
+
+        # Нельзя изменять главного админа
+        if target_user.username == 'admin' and current_user.username != 'admin':
+            return jsonify({'error': 'Нельзя изменять главного администратора'}), 403
+
+        # Нельзя понижать себя
+        if target_user.id == current_user.id and new_role != current_user.role:
+            return jsonify({'error': 'Нельзя изменять свою собственную роль'}), 403
+
+        target_user.role = new_role
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Роль пользователя {target_user.username} изменена на {get_role_display_name(new_role)}'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/users/<int:user_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_user(user_id):
+    """API для удаления пользователя"""
+    try:
+        current_user = User.query.filter_by(username=session['username']).first()
+        target_user = User.query.get_or_404(user_id)
+
+        # Проверка прав
+        if not current_user.can_manage_user(target_user):
+            return jsonify({'error': 'Недостаточно прав для удаления этого пользователя'}), 403
+
+        # Нельзя удалить главного админа
+        if target_user.username == 'admin':
+            return jsonify({'error': 'Нельзя удалить главного администратора'}), 403
+
+        # Нельзя удалить себя
+        if target_user.id == current_user.id:
+            return jsonify({'error': 'Нельзя удалить себя'}), 403
+
+        db.session.delete(target_user)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Пользователь удален'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/admin/api/users', methods=['POST'])
+@admin_required
+@permission_required('manage_trainees')
+def admin_create_user():
+    """API для создания нового пользователя"""
+    try:
+        current_user = User.query.filter_by(username=session['username']).first()
+        data = request.get_json()
+
+        username = data.get('username')
+        password = data.get('password')
+        role = data.get('role', 'trainee')
+        full_name = data.get('full_name')
+        email = data.get('email')
+
+        if not username or not password:
+            return jsonify({'error': 'Логин и пароль обязательны'}), 400
+
+        # Проверяем, что текущий пользователь может создавать пользователей с такой ролью
+        role_hierarchy = {'trainee': 1, 'moderator': 2, 'editor': 3, 'admin': 4}
+        if role_hierarchy.get(role, 0) > role_hierarchy.get(current_user.role, 0):
+            return jsonify({'error': 'Недостаточно прав для создания пользователя с такой ролью'}), 403
+
+        # Проверяем, не существует ли уже пользователь с таким логином
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            return jsonify({'error': 'Пользователь с таким логином уже существует'}), 400
+
+        # Создаем пользователя
+        hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+        new_user = User(
+            username=username,
+            password=hashed_password,
+            role=role,
+            full_name=full_name,
+            email=email,
+            is_active=True
+        )
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Пользователь {username} создан как {get_role_display_name(role)}',
+            'user': {
+                'id': new_user.id,
+                'username': new_user.username,
+                'role': new_user.role,
+                'role_display': get_role_display_name(new_user.role),
+                'full_name': new_user.full_name,
+                'email': new_user.email
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/change_role', methods=['POST'])
+@admin_required
+def change_user_role():
+    """API для изменения роли пользователя"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        new_role = data.get('role')
+
+        if not user_id or not new_role:
+            return jsonify({'error': 'Missing user_id or role'}), 400
+
+        if new_role not in ['trainee', 'moderator', 'editor']:
+            return jsonify({'error': 'Invalid role'}), 400
+
+        user = User.query.get_or_404(user_id)
+
+        # Проверки безопасности
+        if user.username == 'admin':
+            return jsonify({'error': 'Cannot change admin role'}), 403
+
+        user.role = new_role
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Роль пользователя {user.username} изменена на {new_role}'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+#Админские штуки - КОНЕЦ
+
+
 
 # Обновим endpoint проверки редактирования
 @app.route('/api/reviews/<int:review_id>/permissions', methods=['GET'])
@@ -619,7 +1215,7 @@ def get_time_left(created_at):
     time_left = 3 * 3600 - time_passed.total_seconds()
     return max(0, time_left)  # Не отрицательное значение
 
-def register_user(username, password, secret_key):
+def register_user(username, password, secret_key, role='trainee'):
     try:
         if secret_key != app.config['SECRET_KEY']:
             return False, "Неверный секретный ключ."
@@ -631,14 +1227,17 @@ def register_user(username, password, secret_key):
         # Хеширование пароля
         hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
 
-        new_user = User(username=username, password=hashed_password)
+        new_user = User(
+            username=username,
+            password=hashed_password,
+            role=role
+        )
         db.session.add(new_user)
         db.session.commit()
-        return True, "Пользователь успешно зарегистрирован."
+        return True, f"Пользователь {username} успешно зарегистрирован как {role}."
 
     except Exception as e:
         return False, str(e)
-
 
 # Добавьте эту функцию для проверки лимита отзывов
 def check_review_limit_per_restaurant(user_token, restaurant_id):
@@ -1283,11 +1882,95 @@ def delete_review(review_id):
         traceback.print_exc()
         return jsonify({'error': 'Internal server error'}), 500
 
+def fix_image_paths():
+    """Исправление путей изображений на английские"""
+    with app.app_context():
+        # Обновляем все пути в базе
+        places = Place.query.all()
+        for place in places:
+            if place.image_path and 'Фотки зданий' in place.image_path:
+                place.image_path = place.image_path.replace('Фотки зданий', 'images')
+
+        db.session.commit()
+        print("✅ Пути изображений обновлены")
+
+
+def initialize_icons():
+    """Добавление иконок категорий в базу с английскими путями"""
+    with app.app_context():
+        category_icons = {
+            'Ресторан': 'icon_restaurant.png',
+            'Кафе': 'icon_cafe.png',
+            'Магазин': 'icon_shop.png',
+            'Музей': 'icon_museum.png',
+            'Театр': 'icon_theatre.png',
+            'Библиотека': 'icon_library.png',
+            'Парк': 'icon_park.png',
+            'Кинотеатр': 'icon_cinema.png',
+            'Спортплощадка': 'icon_sports.png',
+            'Церковь': 'icon_church.png',
+            'Гостиница': 'icon_hotel.png'
+        }
+
+        for category, icon in category_icons.items():
+            existing_icon = Place.query.filter_by(category='Иконка', title=category).first()
+
+            if not existing_icon:
+                icon_place = Place(
+                    title=category,
+                    category='Иконка',
+                    category_en='icon',
+                    image_path=f'images/{icon}',  # Английский путь
+                    slug=f'icon_{category.lower()}'
+                )
+                db.session.add(icon_place)
+
+        db.session.commit()
+        print("✅ Иконки категорий добавлены в базу")
+
+def create_category_icon(category_name):
+    """Создает запись иконки для новой категории"""
+    # Проверяем, есть ли уже иконка
+    existing_icon = Place.query.filter_by(category='Иконка', title=category_name).first()
+
+    if not existing_icon:
+        # Создаем новую запись иконки
+        new_icon = Place(
+            title=category_name,
+            category='Иконка',
+            category_en='icon',
+            image_path='Фотки зданий/ИконкаМеста.png',  # БЕЗ static/!
+            slug=f'icon_{category_name.lower().replace(" ", "_")}'
+        )
+        db.session.add(new_icon)
+        db.session.commit()
+        print(f"✅ Создана запись иконки для категории: {category_name}")
+
 @app.route('/add_place', methods=['GET', 'POST'])
+@admin_required
 def add_place():
-    # Стандартные категории для выпадающего списка
-    categories = ['Ресторан', 'Кафе', 'Магазин', 'Музей', 'Театр', 'Библиотека',
-                  'Парк', 'Кинотеатр', 'Спортплощадка', 'Церковь', 'Гостиница', 'Иконка']
+    """Добавление нового заведения"""
+    user = User.query.filter_by(username=session['username']).first()
+
+    # Разрешаем доступ стажёрам, модераторам, редакторам и админам
+    if user.role not in ['trainee', 'moderator', 'editor', 'admin']:
+        return "Доступ запрещён", 403
+
+    # Получаем существующие категории из базы
+    categories = db.session.query(Place.category).distinct().all()
+    categories = [cat[0] for cat in categories if cat[0]]  # Извлекаем из кортежей
+
+    # Стандартные категории если нет в базе
+    standard_categories = ['Ресторан', 'Кафе', 'Магазин', 'Музей', 'Театр', 'Библиотека',
+                           'Парк', 'Кинотеатр', 'Спортплощадка', 'Церковь', 'Гостиница', 'Иконка']
+
+    # Объединяем и убираем дубликаты
+    all_categories = list(set(categories + standard_categories))
+    all_categories.sort()
+
+    # Получаем существующие заведения для проверки дубликатов
+    existing_places = Place.query.with_entities(Place.slug).all()
+    existing_places = [place[0] for place in existing_places if place[0]]
 
     if request.method == 'POST':
         try:
@@ -1296,58 +1979,41 @@ def add_place():
             description = request.form.get('description', '').strip()
             telephone = request.form.get('telephone', '').strip()
             address = request.form.get('address', '').strip()
-            working_hours = request.form.get('working_hours', '').strip()
-            menu = request.form.get('menu', '').strip()
+            existing_category = request.form.get('existing_category', '').strip()
+            new_category = request.form.get('new_category', '').strip()
+            slug = request.form.get('slug', '').strip()
             tags = request.form.get('tags', '').strip()
             latitude = request.form.get('latitude', '').strip()
             longitude = request.form.get('longitude', '').strip()
-            slug = request.form.get('slug', '').strip()
+            working_hours = request.form.get('working_hours', '{}')
+            menu = request.form.get('menu', '{}')
 
-            # Определяем категорию (существующая или новая)
-            existing_category = request.form.get('existing_category', '').strip()
-            new_category = request.form.get('new_category', '').strip()
-            category_en = request.form.get('category_en', '').strip()
-
-            # Проверяем что выбрана категория
-            if not existing_category and not new_category:
-                return 'Необходимо выбрать категорию', 400
+            # Если создана новая категория
+            if new_category and not existing_category:
+                # Обрабатываем новую категорию
+                handle_new_category(new_category)
 
             # Определяем финальную категорию
-            if existing_category:
-                category = existing_category
-                # Для существующих категорий генерируем английское название если не указано
-                if not category_en:
-                    category_mapping = {
-                        'Ресторан': 'restaurant',
-                        'Кафе': 'cafe',
-                        'Магазин': 'shop',
-                        'Музей': 'museum',
-                        'Театр': 'theatre',
-                        'Библиотека': 'library',
-                        'Парк': 'park',
-                        'Кинотеатр': 'cinema',
-                        'Спортплощадка': 'sports',
-                        'Церковь': 'church',
-                        'Гостиница': 'hotel',
-                        'Иконка': 'icon'
-                    }
-                    category_en = category_mapping.get(category, 'other')
-            else:
-                category = new_category
-                # Для новых категорий английское название обязательно
-                if not category_en:
-                    return 'Для новой категории необходимо английское название', 400
-
+            category = existing_category or new_category
             if not category:
-                return 'Категория обязательна для заполнения', 400
+                flash('Категория обязательна для заполнения', 'error')
+                return render_template('admin_add_place.html',
+                                       categories=all_categories,
+                                       existing_places=existing_places,
+                                       current_user=user)
 
-            # Валидация меню (JSON)
-            if menu:
-                try:
-                    menu_data = json.loads(menu)
-                    menu = json.dumps(menu_data, ensure_ascii=False, indent=2)
-                except json.JSONDecodeError:
-                    return 'Неверный формат меню. Должен быть валидный JSON', 400
+            # Определяем category_en
+            category_mapping = {
+                'Ресторан': 'restaurant', 'Кафе': 'cafe', 'Магазин': 'shop',
+                'Музей': 'museum', 'Театр': 'theatre', 'Библиотека': 'library',
+                'Парк': 'park', 'Кинотеатр': 'cinema', 'Спортплощадка': 'sports',
+                'Церковь': 'church', 'Гостиница': 'hotel', 'Иконка': 'icon'
+            }
+            category_en = category_mapping.get(category, category.lower().replace(' ', '_'))
+
+            # Генерируем slug если не указан
+            if not slug and title:
+                slug = generate_slug(title)
 
             # Обработка файла
             image_path = None
@@ -1355,11 +2021,19 @@ def add_place():
                 file = request.files['image']
                 if file.filename != '':
                     if not allowed_file(file.filename):
-                        return 'Недопустимый тип файла', 400
+                        flash('Недопустимый тип файла', 'error')
+                        return render_template('admin_add_place.html',
+                                               categories=all_categories,
+                                               existing_places=existing_places,
+                                               current_user=user)
 
                     filename = secure_filename(file.filename)
                     if not filename:
-                        return 'Недопустимое имя файла', 400
+                        flash('Недопустимое имя файла', 'error')
+                        return render_template('admin_add_place.html',
+                                               categories=all_categories,
+                                               existing_places=existing_places,
+                                               current_user=user)
 
                     save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     try:
@@ -1367,11 +2041,11 @@ def add_place():
                         image_path = 'Фотки зданий/' + filename
                     except Exception as e:
                         app.logger.error(f'Ошибка сохранения файла: {str(e)}')
-                        return 'Ошибка при сохранении файла', 500
-
-            # Генерируем slug если не сгенерирован автоматически
-            if not slug and title:
-                slug = generate_slug(title)
+                        flash('Ошибка при сохранении файла', 'error')
+                        return render_template('admin_add_place.html',
+                                               categories=all_categories,
+                                               existing_places=existing_places,
+                                               current_user=user)
 
             # Создаем новую запись
             new_place = Place(
@@ -1384,8 +2058,8 @@ def add_place():
                 category_en=category_en,
                 latitude=float(latitude) if latitude else None,
                 longitude=float(longitude) if longitude else None,
-                working_hours=working_hours or '{}',
-                menu=menu or '{}',
+                working_hours=working_hours,
+                menu=menu,
                 tags=tags or None,
                 slug=slug
             )
@@ -1393,14 +2067,23 @@ def add_place():
             db.session.add(new_place)
             db.session.commit()
 
-            return 'Место успешно добавлено!'
+            flash('Место успешно добавлено!', 'success')
+            return redirect(url_for('admin_places'))
 
         except Exception as e:
             db.session.rollback()
             app.logger.error(f'Ошибка при добавлении места: {str(e)}')
+            flash(f'Ошибка при добавлении места: {str(e)}', 'error')
+            return render_template('admin_add_place.html',
+                                   categories=all_categories,
+                                   existing_places=existing_places,
+                                   current_user=user)
 
     # GET запрос
-    return render_template('add_place.html', categories=categories)
+    return render_template('admin_add_place.html',
+                           categories=all_categories,
+                           existing_places=existing_places,
+                           current_user=user)
 
 def generate_slug(title):
     """Генерация slug из русского названия"""
@@ -1503,24 +2186,65 @@ def logout():
     session.pop('username', None)
     return jsonify({'success': True})
 
-@app.route("/", methods=['GET', 'POST'])
+@app.route("/")
 def index():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        confirm_password = request.form['confirm_password']
+    # Получаем все уникальные категории из базы данных (кроме Иконок)
+    categories_from_db = db.session.query(Place.category).filter(Place.category != 'Иконка').distinct().all()
+    categories_from_db = [cat[0] for cat in categories_from_db if cat[0]]
 
-        if password != confirm_password:
-            return jsonify({'success': False, 'message': "Пароли не совпадают."})
+    # Стандартные категории для гарантии
+    standard_categories = ['Ресторан', 'Кафе', 'Магазин', 'Музей', 'Театр', 'Библиотека',
+                           'Парк', 'Кинотеатр', 'Спортплощадка', 'Церковь', 'Гостиница']
 
-        success, message = register_user(username, password)
+    # Объединяем категории
+    all_categories = list(set(categories_from_db + standard_categories))
+    all_categories.sort()
 
-        if success:
-            return jsonify({'success': True, 'username': username})
+    # Получаем иконки для категорий из базы
+    category_data = {}
+    for category in all_categories:
+        icon_place = Place.query.filter_by(category='Иконка', title=category).first()
+
+        if icon_place and icon_place.image_path:
+            # Прямой путь без url_for (экспериментально)
+            icon_url = f'/static/{icon_place.image_path}'
         else:
-            return jsonify({'success': False, 'message': message})
+            icon_url = '/static/Фотки зданий/ИконкаМеста.png'
 
-    return render_template("index.html", title="Городской гид")
+        # Генерируем URL для категории
+        if category in ['Ресторан', 'Кафе', 'Магазин', 'Музей', 'Театр', 'Библиотека',
+                        'Парк', 'Кинотеатр', 'Спортплощадка', 'Церковь', 'Гостиница']:
+            category_url = f'/{category.lower()}'
+        else:
+            category_en = category.lower().replace(' ', '_')
+            category_url = f'/{category_en}'
+
+        category_data[category] = {
+            'url': category_url,
+            'icon': icon_url
+        }
+
+    return render_template("index.html",
+                           title="Городской гид",
+                           categories=all_categories,
+                           category_data=category_data)
+
+def handle_new_category(category_name):
+    """Обработка новой категории - просто логируем"""
+    import os
+
+    icon_path = os.path.join(app.static_folder, 'Фотки зданий', f'Иконка{category_name}.png')
+    default_icon = os.path.join(app.static_folder, 'Фотки зданий', 'ИконкаМеста.png')
+
+    # Если иконка не существует, используем иконку по умолчанию
+    if not os.path.exists(icon_path):
+        print(f"⚠️  Для категории '{category_name}' не найдена иконка. Используется иконка по умолчанию.")
+        # Можно добавить логику копирования иконки по умолчанию если нужно
+        # import shutil
+        # if os.path.exists(default_icon):
+        #     shutil.copy2(default_icon, icon_path)
+
+    return True
 
 @app.route("/test", methods=['GET', 'POST'])
 def test():
@@ -1805,35 +2529,28 @@ def universal_category_page(category_type):
     """Универсальный маршрут для ВСЕХ категорий"""
 
     # Сначала проверяем, является ли это специальным маршрутом
-    SPECIAL_ROUTES = ['404', '500', 'test', 'admin', 'debug']  # добавьте нужные
+    SPECIAL_ROUTES = ['404', '500', 'test', 'admin', 'debug', 'favorites', 'add_place']
     if category_type in SPECIAL_ROUTES:
-        # Отдаем 404 для специальных маршрутов
         return render_template('error.html',
-                             error_code=404,
-                             error_name="Страница не найдена"), 404
+                               error_code=404,
+                               error_name="Страница не найдена"), 404
 
-    CATEGORY_MAPPING = {
-        'restaurant': 'Ресторан',
-        'coffee': 'Кафе',
-        'shop': 'Магазин',
-        'museums': 'Музей',
-        'theatre': 'Театр',
-        'library': 'Библиотека',
-        'park': 'Парк',
-        'cinema': 'Кинотеатр',
-        'sports': 'Спортплощадка',
-        'church': 'Церковь',
-        'hotels': 'Гостиница'
-    }
+    # Получаем все категории из базы
+    all_categories = db.session.query(Place.category, Place.category_en).distinct().all()
 
-    # Проверяем, что запрошенная категория существует
-    if category_type not in CATEGORY_MAPPING:
-        # Если категории нет - отдаем 404
+    # Создаем словарь соответствия category_en -> category
+    category_mapping = {}
+    for cat_ru, cat_en in all_categories:
+        if cat_ru and cat_en:
+            category_mapping[cat_en] = cat_ru
+
+    # Проверяем, существует ли запрошенная категория
+    if category_type not in category_mapping:
         return render_template('Error.html',
-                             error_code=404,
-                             error_name="Категория не найдена"), 404
+                               error_code=404,
+                               error_name="Категория не найдена"), 404
 
-    category_ru = CATEGORY_MAPPING[category_type]
+    category_ru = category_mapping[category_type]
 
     page = request.args.get('page', 1, type=int)
     per_page = 10
@@ -1844,38 +2561,30 @@ def universal_category_page(category_type):
 
     places = places_query.offset((page - 1) * per_page).limit(per_page).all()
 
-    # Получаем рейтинги ИЗ ТАБЛИЦЫ restaurants
+    # Получаем рейтинги из таблицы restaurants
     places_with_ratings = []
     for place in places:
-        # АВТОМАТИЧЕСКИЙ ПОИСК: используем slug для поиска в restaurants
         restaurant = None
 
         if place.slug:
-            # Ищем ресторан по slug (английское название)
             restaurant = Restaurant.query.get(place.slug)
-            print(f"Поиск по slug: {place.slug} -> {restaurant.id if restaurant else 'Не найден'}")
 
-        # Если не нашли по slug, пробуем другие варианты
         if not restaurant and place.category_en:
             restaurant = Restaurant.query.get(place.category_en)
-            print(f"Поиск по category_en: {place.category_en} -> {restaurant.id if restaurant else 'Не найден'}")
 
         # Специальные случаи для обратной совместимости
         if not restaurant:
             special_cases = {
-                'Brewmen': 'Brewmen',  # если slug отличается
+                'Brewmen': 'Brewmen',
             }
             if place.title in special_cases:
                 restaurant = Restaurant.query.get(special_cases[place.title])
-
-        print(
-            f"DEBUG: Место {place.id} - '{place.title}' (slug: {place.slug}) -> Ресторан: {restaurant.id if restaurant else 'Не найден'}")
 
         if restaurant and restaurant.total_rating is not None:
             avg_rating = round(restaurant.total_rating, 1)
             review_count = restaurant.review_count or 0
         else:
-            avg_rating = 0.0  # Явно указываем 0.0 вместо None
+            avg_rating = 0.0
             review_count = 0
 
         places_with_ratings.append({
@@ -2203,6 +2912,212 @@ def favorites():
     print(url_for("favorites"))
     return render_template("favorites.html", title="Избранное")
 
+@app.route('/admin/dashboard')
+@admin_required
+def admin_dashboard():
+    """Главная страница админ-панели"""
+    user = User.query.filter_by(username=session['username']).first()
+
+    # Статистика
+    stats = {
+        'total_places': Place.query.count(),
+        'total_reviews': Review.query.count(),
+        'total_users': User.query.count(),
+        'avg_rating': db.session.query(db.func.avg(Review.rating)).scalar() or 0
+    }
+
+    # Последние отзывы (только для тех, у кого есть права)
+    recent_reviews = []
+    if user.has_permission('edit_review'):
+        recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(10).all()
+        # Добавляем название места к каждому отзыву
+        for review in recent_reviews:
+            place = Place.query.get(int(review.restaurant_id)) if review.restaurant_id.isdigit() else None
+            review.place_title = place.title if place else review.restaurant_id
+
+    return render_template('admin_dashboard.html',
+                           current_user=user,
+                           stats=stats,
+                           recent_reviews=recent_reviews)
+
+@app.route('/admin/users')
+@admin_required
+@permission_required('manage_trainees')
+def admin_users():
+    """Страница управления пользователями"""
+    user = User.query.filter_by(username=session['username']).first()
+    users = User.query.all()
+
+    return render_template('admin_users.html',
+                           current_user=user,
+                           users=users)
+
+@app.route('/admin/logout', methods=['POST'])
+def admin_logout():
+    """Выход из админ-панели"""
+    session.pop('username', None)
+    flash('Вы успешно вышли из системы', 'success')
+    return redirect(url_for('index'))
+
+
+@app.route('/admin/')
+@app.route('/admin')
+@admin_required
+def admin_panel():
+    """Главная админ-панель - перенаправляем на заведения"""
+    user = User.query.filter_by(username=session['username']).first()
+
+    # Для всех ролей перенаправляем на заведения
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/places')
+@admin_required
+def admin_places():
+    """Страница управления заведениями с пагинацией"""
+    user = User.query.filter_by(username=session['username']).first()
+
+    # Разрешаем доступ стажёрам, модераторам, редакторам и админам
+    if user.role not in ['trainee', 'moderator', 'editor', 'admin']:
+        return "Доступ запрещён", 403
+
+    # Пагинация - 50 заведений на страницу
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+
+    places_pagination = Place.query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
+    return render_template('admin_places.html',
+                           current_user=user,
+                           places=places_pagination.items,
+                           pagination=places_pagination)
+
+@app.route('/admin/places/<int:place_id>/edit')
+@admin_required
+def edit_place(place_id):
+    """Страница редактирования заведения"""
+    user = User.query.filter_by(username=session['username']).first()
+    if user.role == 'trainee':
+        return "Доступ запрещён", 403
+
+    place = Place.query.get_or_404(place_id)
+    categories = ['Ресторан', 'Кафе', 'Магазин', 'Музей', 'Театр', 'Библиотека',
+                  'Парк', 'Кинотеатр', 'Спортплощадка', 'Церковь', 'Гостиница', 'Иконка']
+
+    return render_template('edit_place.html',
+                           current_user=user,
+                           place=place,
+                           categories=categories)
+
+
+@app.route('/admin/api/places/<int:place_id>', methods=['DELETE'])
+@admin_required
+def admin_delete_place(place_id):
+    """API для удаления заведения"""
+    try:
+        user = User.query.filter_by(username=session['username']).first()
+        # Запрещаем стажёрам удалять заведения
+        if user.role == 'trainee':
+            return jsonify({'error': 'Недостаточно прав'}), 403
+
+        place = Place.query.get_or_404(place_id)
+        db.session.delete(place)
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Заведение удалено'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/places/<int:place_id>', methods=['PUT'])
+@admin_required
+def admin_update_place(place_id):
+    """API для обновления заведения"""
+    try:
+        user = User.query.filter_by(username=session['username']).first()
+        # Запрещаем стажёрам редактировать заведения
+        if user.role == 'trainee':
+            return jsonify({'error': 'Недостаточно прав'}), 403
+
+        place = Place.query.get_or_404(place_id)
+        data = request.get_json()
+
+        # Обновляем поля
+        if 'title' in data:
+            place.title = data['title'].strip()
+        if 'description' in data:
+            place.description = data['description'].strip()
+        if 'category' in data:
+            place.category = data['category']
+            # Автоматически генерируем category_en
+            category_mapping = {
+                'Ресторан': 'restaurant', 'Кафе': 'cafe', 'Магазин': 'shop',
+                'Музей': 'museum', 'Театр': 'theatre', 'Библиотека': 'library',
+                'Парк': 'park', 'Кинотеатр': 'cinema', 'Спортплощадка': 'sports',
+                'Церковь': 'church', 'Гостиница': 'hotel', 'Иконка': 'icon'
+            }
+            place.category_en = category_mapping.get(data['category'], 'other')
+        if 'telephone' in data:
+            place.telephone = data['telephone'].strip()
+        if 'address' in data:
+            place.address = data['address'].strip()
+        if 'slug' in data:
+            place.slug = data['slug'].strip()
+        if 'tags' in data:
+            place.tags = data['tags'].strip()
+
+        db.session.commit()
+
+        return jsonify({'success': True, 'message': 'Заведение обновлено'})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/reviews')
+@admin_required
+def admin_reviews_page():
+    """Страница управления отзывами"""
+    user = User.query.filter_by(username=session['username']).first()
+    if user.role == 'trainee':
+        return "Доступ запрещён", 403
+
+    # Пагинация для отзывов
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+
+    reviews_pagination = Review.query.order_by(Review.created_at.desc()).paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
+    # Добавляем информацию о местах к отзывам
+    reviews_with_places = []
+    for review in reviews_pagination.items:
+        place = None
+        if review.restaurant_id.isdigit():
+            place = Place.query.get(int(review.restaurant_id))
+        else:
+            place = Place.query.filter_by(slug=review.restaurant_id).first()
+
+        reviews_with_places.append({
+            'review': review,
+            'place_title': place.title if place else review.restaurant_id,
+            'place_url': url_for('place_page_by_slug', category_en=place.category_en,
+                                 slug=place.slug) if place and place.slug else url_for('restaurant_page',
+                                                                                       id=place.id) if place else '#'
+        })
+
+    return render_template('admin_reviews.html',
+                           current_user=user,
+                           reviews_data=reviews_with_places,
+                           pagination=reviews_pagination)
+
 # Добавьте эти обработчики ошибок
 @app.errorhandler(400)
 @app.errorhandler(401)
@@ -2309,107 +3224,6 @@ def init_database():
         except Exception as e:
             print(f"❌ Ошибка инициализации БД: {e}")
 
-
-@app.route('/debug/db-structure')
-def debug_db_structure():
-    """Проверка структуры базы данных"""
-    try:
-        conn = sqlite3.connect('instance/database.db')
-        cursor = conn.cursor()
-
-        # Проверяем таблицу place
-        cursor.execute("PRAGMA table_info(place)")
-        place_columns = cursor.fetchall()
-
-        # Проверяем данные
-        cursor.execute("SELECT COUNT(*) FROM place")
-        place_count = cursor.fetchone()[0]
-
-        cursor.execute("SELECT id, title, category, category_en FROM place LIMIT 5")
-        sample_places = cursor.fetchall()
-
-        conn.close()
-
-        return jsonify({
-            'place_columns': place_columns,
-            'place_count': place_count,
-            'sample_places': sample_places
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-
-@app.route('/debug/add-test-place')
-def debug_add_test_place():
-    """Добавление тестового ресторана для проверки"""
-    try:
-        # Добавляем тестовый ресторан
-        test_place = Place(
-            title='Тестовый Ресторан',
-            description='Это тестовый ресторан для проверки',
-            category='Ресторан',
-            category_en='Restaurant',
-            slug='test-restaurant',
-            telephone='+7 (999) 999-99-99',
-            address='Тестовая улица, 1',
-            image_path='Фотки зданий/Барашки.png'
-        )
-
-        db.session.add(test_place)
-        db.session.commit()
-
-        return jsonify({
-            'success': True,
-            'message': 'Тестовый ресторан добавлен',
-            'place_id': test_place.id
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)})
-
-@app.route('/debug/places')
-def debug_places():
-    """Отладочная страница для проверки данных"""
-    places = Place.query.all()
-    result = []
-    for place in places:
-        result.append({
-            'id': place.id,
-            'title': place.title,
-            'category': place.category,
-            'category_en': place.category_en,
-            'slug': place.slug
-        })
-    return jsonify(result)
-
-@app.route('/test-db')
-def test_db():
-    """Простая проверка работы БД"""
-    try:
-        count = Place.query.count()
-        return f"Всего мест в базе: {count}"
-    except Exception as e:
-        return f"Ошибка БД: {e}"
-
-
-@app.route('/debug/restaurant-links')
-def debug_restaurant_links():
-    """Проверка правильности генерации ссылок"""
-    restaurants = Place.query.filter_by(category='Ресторан').limit(5).all()
-
-    links = []
-    for restaurant in restaurants:
-        links.append({
-            'id': restaurant.id,
-            'title': restaurant.title,
-            'url': url_for('restaurant_page', id=restaurant.id),
-            'slug': restaurant.slug
-        })
-
-    return jsonify(links)
-
-
 def fix_slug_duplicates():
     """Исправление дублирующихся slug"""
     with app.app_context():
@@ -2470,92 +3284,13 @@ def fix_ratings():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/debug/search-test')
-def debug_search_test():
-    """Тестирование поиска по улице и тегам"""
-    test_cases = [
-        "Санкт-Петербургская",  # поиск по улице
-        "Ломоносова",  # поиск по улице
-        "ул.",  # поиск по аббревиатуре
-        "Wi-Fi",  # поиск по тегу
-        "кофе",  # поиск по тегу
-        "ресторан",  # поиск по категории
-    ]
-
-    results = {}
-    for test_query in test_cases:
-        query_result = advanced_search(test_query)
-        places = query_result.all()
-        results[test_query] = {
-            'count': len(places),
-            'places': [{
-                'title': place.title,
-                'address': place.address,
-                'tags': place.tags,
-                'category': place.category
-            } for place in places]
-        }
-
-    return jsonify(results)
-
-@app.route('/search-debug/<query>')
-def search_debug(query):
-    """Отладка поиска по категориям"""
-    print(f"=== ОТЛАДКА ПОИСКА ПО КАТЕГОРИЯМ: '{query}' ===")
-
-    # Проверяем поиск по разным полям отдельно
-    tests = {
-        'по названию': Place.title.ilike(f'%{query}%'),
-        'по адресу': Place.address.ilike(f'%{query}%'),
-        'по тегам': Place.tags.ilike(f'%{query}%'),
-        'по описанию': Place.description.ilike(f'%{query}%'),
-        'по категории (ru)': Place.category.ilike(f'%{query}%'),
-        'по категории (en)': Place.category_en.ilike(f'%{query}%')
-    }
-
-    results = {}
-    for test_name, condition in tests.items():
-        places = Place.query.filter(condition).filter(Place.category != 'Иконка').all()
-        place_titles = [place.title for place in places]
-        results[test_name] = {
-            'count': len(places),
-            'places': place_titles
-        }
-        print(f"{test_name}: {len(places)} результатов - {place_titles}")
-
-    # Проверяем маппинг категорий
-    category_mapping = {
-        'ресторан': 'Ресторан',
-        'кафе': 'Кафе',
-        'магазин': 'Магазин',
-        'музей': 'Музей',
-        'театр': 'Театр',
-        'библиотека': 'Библиотека',
-        'парк': 'Парк',
-        'кинотеатр': 'Кинотеатр',
-        'спортплощадка': 'Спортплощадка',
-        'церковь': 'Церковь',
-        'гостиница': 'Гостиница'
-    }
-
-    if query.lower() in category_mapping:
-        mapped_category = category_mapping[query.lower()]
-        mapped_places = Place.query.filter(Place.category == mapped_category).all()
-        results['маппинг категорий'] = {
-            'count': len(mapped_places),
-            'places': [place.title for place in mapped_places],
-            'mapping': f"'{query}' -> '{mapped_category}'"
-        }
-        print(f"Маппинг категорий: '{query}' -> '{mapped_category}': {len(mapped_places)} результатов")
-
-    print("=== КОНЕЦ ОТЛАДКИ ===")
-    return jsonify(results)
-
 if __name__ == '__main__':
     with app.app_context():
-        init_database()
-        debug_search_test()
+        # Инициализация базы данных
+        db.create_all()
+
+        # Другие инициализации
         migrate_categories_to_english()
         check_review_table_structure()
-        db.create_all()
+
     app.run(debug=True)

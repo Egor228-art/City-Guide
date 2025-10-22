@@ -320,7 +320,7 @@ body {
     transform: translateY(-2px);
 }
 
-.box {
+.btn-admin {
     position: relative;
     display: flex;
     align-items: center;
@@ -335,14 +335,6 @@ body {
     cursor: pointer;
 }
 
-.box:hover {
-    box-shadow:
-        0 0 0 2px #f8f8f8,
-        0 0 0 4px var(--accent-color),
-        0 8px 25px rgba(0,0,0,0.15);
-    transform: translateY(-2px);
-}
-
 /* Дополнительный акцент для аватара */
 #avatar {
     width: 36px !important; /* Чуть увеличим */
@@ -352,7 +344,7 @@ body {
     transition: transform 0.3s;
 }
 
-.box:hover #avatar {
+.btn-admin:hover #avatar {
     transform: scale(1.1) rotate(5deg);
 }
 

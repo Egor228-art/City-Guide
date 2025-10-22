@@ -184,7 +184,7 @@ body {
     transform: translateY(-2px);
 }
 
-.Коробка {
+.btn-admin {
     position: relative;
     display: flex;
     align-items: center;
@@ -205,7 +205,7 @@ body {
     transition: transform 0.3s;
 }
 
-.Коробка:hover #avatar {
+.btn-admin:hover #avatar {
     transform: scale(1.1) rotate(5deg);
 }
 

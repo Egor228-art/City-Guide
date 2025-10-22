@@ -1,0 +1,315 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Управление заведениями - Админ-панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Управление заведениями</h1>
+    {% if current_user.role in ['trainee', 'moderator', 'editor', 'admin'] %}
+    <a href="{{ url_for('add_place') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Добавить заведение
+    </a>
+    {% endif %}
+</div>
+
+<!-- Информация о пагинации -->
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+    <span>
+        Показано <strong>{{ places|length }}</strong> из <strong>{{ pagination.total }}</strong> заведений
+    </span>
+    <span>
+        Страница <strong>{{ pagination.page }}</strong> из <strong>{{ pagination.pages }}</strong>
+    </span>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название</th>
+                        <th>Категория</th>
+                        <th>Адрес</th>
+                        <th>Телефон</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for place in places %}
+                    <tr>
+                        <td>{{ place.id }}</td>
+                        <td>
+                            <strong>{{ place.title or 'Без названия' }}</strong>
+                            {% if place.slug %}
+                            <br><small class="text-muted">/{{ place.category_en }}/{{ place.slug }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ place.category }}</span>
+                        </td>
+                        <td>{{ place.address or '—' }}</td>
+                        <td>{{ place.telephone or '—' }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                            <!-- Кнопка "Просмотр" - доступна всем -->
+                            <a href="{{ url_for('place_page_by_slug', category_en=place.category_en, slug=place.slug) if place.slug else url_for('restaurant_page', id=place.id) }}"
+                               class="btn btn-outline-primary" target="_blank" title="Просмотр на сайте">
+                                <i class="fas fa-eye"></i>
+                            </a>
+
+                            <!-- Кнопка "Редактировать" - только модераторам и выше -->
+                            {% if current_user.role in ['moderator', 'editor', 'admin'] %}
+                            <button class="btn btn-outline-warning edit-place"
+                                    data-place-id="{{ place.id }}"
+                                    data-place-title="{{ place.title or '' }}"
+                                    data-place-description="{{ place.description or '' }}"
+                                    data-place-category="{{ place.category }}"
+                                    data-place-category-en="{{ place.category_en }}"
+                                    data-place-telephone="{{ place.telephone or '' }}"
+                                    data-place-address="{{ place.address or '' }}"
+                                    data-place-slug="{{ place.slug or '' }}"
+                                    data-place-tags="{{ place.tags or '' }}"
+                                    title="Редактировать заведение">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% endif %}
+
+                            <!-- Кнопка "Удалить" - только модераторам и выше -->
+                            {% if current_user.role in ['moderator', 'editor', 'admin'] %}
+                            <button class="btn btn-outline-danger delete-place"
+                                    data-place-id="{{ place.id }}"
+                                    data-place-title="{{ place.title or 'Без названия' }}"
+                                    title="Удалить заведение">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Пагинация -->
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <!-- Кнопка "Назад" -->
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link"
+                       href="{{ url_for('admin_places', page=pagination.prev_num) if pagination.has_prev else '#' }}">
+                        &laquo; Назад
+                    </a>
+                </li>
+
+                <!-- Номера страниц -->
+                {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('admin_places', page=page_num) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Кнопка "Вперед" -->
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link"
+                       href="{{ url_for('admin_places', page=pagination.next_num) if pagination.has_next else '#' }}">
+                        Вперед &raquo;
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальное окно редактирования заведения -->
+<div class="modal fade" id="editPlaceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать заведение</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPlaceForm">
+                    <input type="hidden" id="editPlaceId" name="place_id">
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Название *</label>
+                                <input type="text" class="form-control" id="editPlaceTitle" name="title" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Категория *</label>
+                                <select class="form-select" id="editPlaceCategory" name="category" required>
+                                    <option value="Ресторан">Ресторан</option>
+                                    <option value="Кафе">Кафе</option>
+                                    <option value="Магазин">Магазин</option>
+                                    <option value="Музей">Музей</option>
+                                    <option value="Театр">Театр</option>
+                                    <option value="Библиотека">Библиотека</option>
+                                    <option value="Парк">Парк</option>
+                                    <option value="Кинотеатр">Кинотеатр</option>
+                                    <option value="Спортплощадка">Спортплощадка</option>
+                                    <option value="Церковь">Церковь</option>
+                                    <option value="Гостиница">Гостиница</option>
+                                    <option value="Иконка">Иконка</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Описание</label>
+                        <textarea class="form-control" id="editPlaceDescription" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Телефон</label>
+                                <input type="text" class="form-control" id="editPlaceTelephone" name="telephone">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Адрес</label>
+                                <input type="text" class="form-control" id="editPlaceAddress" name="address">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Slug (английское название для URL)</label>
+                                <input type="text" class="form-control" id="editPlaceSlug" name="slug">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Теги (через запятую)</label>
+                                <input type="text" class="form-control" id="editPlaceTags" name="tags">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="savePlaceChanges">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Редактирование заведения
+document.querySelectorAll('.edit-place').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const placeId = this.dataset.placeId;
+        const placeTitle = this.dataset.placeTitle;
+        const placeDescription = this.dataset.placeDescription;
+        const placeCategory = this.dataset.placeCategory;
+        const placeCategoryEn = this.dataset.placeCategoryEn;
+        const placeTelephone = this.dataset.placeTelephone;
+        const placeAddress = this.dataset.placeAddress;
+        const placeSlug = this.dataset.placeSlug;
+        const placeTags = this.dataset.placeTags;
+
+        // Заполняем форму редактирования
+        document.getElementById('editPlaceId').value = placeId;
+        document.getElementById('editPlaceTitle').value = placeTitle;
+        document.getElementById('editPlaceDescription').value = placeDescription;
+        document.getElementById('editPlaceCategory').value = placeCategory;
+        document.getElementById('editPlaceTelephone').value = placeTelephone;
+        document.getElementById('editPlaceAddress').value = placeAddress;
+        document.getElementById('editPlaceSlug').value = placeSlug;
+        document.getElementById('editPlaceTags').value = placeTags;
+
+        // Показываем модальное окно
+        const modal = new bootstrap.Modal(document.getElementById('editPlaceModal'));
+        modal.show();
+    });
+});
+
+// Сохранение изменений заведения
+document.getElementById('savePlaceChanges').addEventListener('click', function() {
+    const placeId = document.getElementById('editPlaceId').value;
+    const formData = new FormData(document.getElementById('editPlaceForm'));
+
+    const placeData = {
+        title: formData.get('title'),
+        description: formData.get('description'),
+        category: formData.get('category'),
+        telephone: formData.get('telephone'),
+        address: formData.get('address'),
+        slug: formData.get('slug'),
+        tags: formData.get('tags')
+    };
+
+    fetch(`/admin/api/places/${placeId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(placeData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Заведение успешно обновлено');
+            bootstrap.Modal.getInstance(document.getElementById('editPlaceModal')).hide();
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка сети');
+    });
+});
+
+// Удаление заведения
+document.querySelectorAll('.delete-place').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const placeId = this.dataset.placeId;
+        const placeTitle = this.dataset.placeTitle;
+
+        if (confirm(`Вы уверены, что хотите удалить заведение "${placeTitle}"?`)) {
+            fetch(`/admin/api/places/${placeId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Заведение удалено');
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Ошибка сети');
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

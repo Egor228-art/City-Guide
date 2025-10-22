@@ -1,0 +1,209 @@
+{% extends "base_admin.html" %}
+
+{% block title %}Управление пользователями - Админ-панель{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Управление пользователями</h1>
+    {% if current_user.has_permission('manage_trainees') %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+        <i class="fas fa-user-plus"></i> Создать пользователя
+    </button>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Логин</th>
+                        <th>Имя</th>
+                        <th>Email</th>
+                        <th>Роль</th>
+                        <th>Дата регистрации</th>
+                        <th>Последний вход</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td>
+                            {{ user.username }}
+                            {% if user.username == 'admin' %}
+                            <span class="badge bg-danger">Главный</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ user.full_name or '—' }}</td>
+                        <td>{{ user.email or '—' }}</td>
+                        <td>
+                             <span class="badge bg-{{ 'danger' if user.role == 'admin' else 'warning'}} if user.role == 'editor' else 'info' if user.role == 'moderator' else 'secondary' }}">
+                                {{ user.role_display }}
+                            </span>
+                        </td>
+                        <td>{{ user.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                        <td>{{ user.last_login.strftime('%d.%m.%Y %H:%M') if user.last_login else '—' }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if current_user.can_manage_user(user) %}
+                                <select class="form-select form-select-sm role-select" data-user-id="{{ user.id }}" style="width: 140px;">
+                                    <option value="trainee" {{ 'selected' if user.role == 'trainee' }}>Стажёр</option>
+                                    <option value="moderator" {{ 'selected' if user.role == 'moderator' }}>Модератор</option>
+                                    <option value="editor" {{ 'selected' if user.role == 'editor' }}>Редактор</option>
+                                    {% if current_user.role == 'admin' and user.username != 'admin' %}
+                                    {% endif %}
+                                </select>
+                                <button class="btn btn-outline-danger delete-user" data-user-id="{{ user.id }}" data-username="{{ user.username }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% else %}
+                                <span class="text-muted">Все права</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно создания пользователя -->
+<div class="modal fade" id="createUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Создать пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createUserForm">
+                    <div class="mb-3">
+                        <label class="form-label">Логин *</label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Пароль *</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Роль *</label>
+                        <select class="form-select" name="role" required>
+                            <option value="trainee">Стажёр</option>
+                            <option value="moderator">Модератор</option>
+                            {% if current_user.role in ['editor', 'admin'] %}
+                            <option value="editor">Редактор</option>
+                            {% endif %}
+                            {% if current_user.role == 'admin' %}
+                            {% endif %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="createUserBtn">Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Изменение роли пользователя
+document.querySelectorAll('.role-select').forEach(select => {
+    select.addEventListener('change', function() {
+        const userId = this.dataset.userId;
+        const newRole = this.value;
+
+        fetch(`/admin/api/users/${userId}/role`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ role: newRole })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Роль успешно изменена');
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+                location.reload();
+            }
+        })
+        .catch(error => {
+            alert('Ошибка сети');
+            location.reload();
+        });
+    });
+});
+
+// Удаление пользователя
+document.querySelectorAll('.delete-user').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const userId = this.dataset.userId;
+        const username = this.dataset.username;
+
+        if (confirm(`Вы уверены, что хотите удалить пользователя ${username}?`)) {
+            fetch(`/admin/api/users/${userId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Пользователь удален');
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Ошибка сети');
+            });
+        }
+    });
+});
+
+// Создание пользователя
+document.getElementById('createUserBtn').addEventListener('click', function() {
+    const form = document.getElementById('createUserForm');
+    const formData = new FormData(form);
+
+    const userData = {
+        username: formData.get('username'),
+        password: formData.get('password'),
+        role: formData.get('role'),
+        full_name: formData.get('full_name'),
+        email: formData.get('email')
+    };
+
+    fetch('/admin/api/users', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Пользователь создан');
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка сети');
+    });
+});
+</script>
+{% endblock %}

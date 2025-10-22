@@ -309,7 +309,7 @@ body {
     transform: translateY(-2px);
 }
 
-.box {
+.btn-admin {
     position: relative;
     display: flex;
     align-items: center;
@@ -323,14 +323,6 @@ body {
     transform-style: preserve-3d;
 }
 
-.box:hover {
-    box-shadow:
-        0 0 0 2px #f8f8f8,
-        0 0 0 4px var(--accent-color),
-        0 8px 25px rgba(0,0,0,0.15);
-    transform: translateY(-2px);
-}
-
 /* Дополнительный акцент для аватара */
 #avatar {
     width: 36px !important; /* Чуть увеличим */
@@ -340,7 +332,7 @@ body {
     transition: transform 0.3s;
 }
 
-.box:hover #avatar {
+.btn-admin:hover #avatar {
     transform: scale(1.1) rotate(5deg);
 }
 
@@ -1064,4 +1056,16 @@ body.no-scroll {
     color: #555;
     margin: 1rem 0;
     line-height: 1.5;
+}
+
+.category-name {
+    margin-top: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    color: #333;
+    text-align: center;
+}
+
+.category-card:hover .category-name {
+    color: #007bff;
 }

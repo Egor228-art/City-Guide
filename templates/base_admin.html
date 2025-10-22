@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Админ-панель{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background: #2c3e50;
+        }
+        .sidebar .nav-link {
+            color: #ecf0f1;
+            padding: 12px 20px;
+            border-left: 4px solid transparent;
+        }
+        .sidebar .nav-link:hover {
+            background: #34495e;
+            border-left-color: #3498db;
+        }
+        .sidebar .nav-link.active {
+            background: #34495e;
+            border-left-color: #3498db;
+            color: #3498db;
+        }
+        .role-badge {
+            font-size: 0.7em;
+            padding: 3px 8px;
+        }
+        .stat-card {
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <!-- Навбар -->
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('admin_dashboard') }}">
+                <i class="fas fa-cogs"></i> Админ-панель
+            </a>
+            <div class="d-flex">
+                <span class="navbar-text me-3">
+                    {{ current_user.username }}
+                    <span class="badge bg-primary role-badge">{{ current_user.role_display }}</span>
+                </span>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-light btn-sm me-2">
+                    <i class="fas fa-home"></i> На сайт
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Сайдбар -->
+            <div class="col-md-3 col-lg-2 sidebar d-md-block">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if request.endpoint == 'admin_dashboard' }}"
+                               href="{{ url_for('admin_dashboard') }}">
+                                <i class="fas fa-tachometer-alt"></i> Дашборд
+                            </a>
+                        </li>
+
+                        <!-- Заведения - доступны стажёрам и выше -->
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if request.endpoint == 'admin_places' }}"
+                               href="{{ url_for('admin_places') }}">
+                                <i class="fas fa-building"></i> Заведения
+                            </a>
+                        </li>
+
+                        <!-- Отзывы - только модераторам и выше -->
+                        {% if current_user.role in ['moderator', 'editor', 'admin'] %}
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if request.endpoint == 'admin_reviews_page' }}"
+                               href="{{ url_for('admin_reviews_page') }}">
+                                <i class="fas fa-comments"></i> Отзывы
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- Пользователи - только модераторам и выше -->
+                        {% if current_user.role in ['moderator', 'editor', 'admin'] %}
+                        <li class="nav-item">
+                            <a class="nav-link {{ 'active' if request.endpoint == 'admin_users' }}"
+                               href="{{ url_for('admin_users') }}">
+                                <i class="fas fa-users"></i> Пользователи
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Основной контент -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

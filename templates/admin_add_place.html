@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Добавить место - Админ-панель</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .map-container { height: 400px; border-radius: 8px; overflow: hidden; }
+        .map-instructions { background: #e7f3ff; padding: 10px; border-radius: 5px; margin-bottom: 10px; }
+        .coordinates-display { background: #f8f9fa; padding: 10px; border-radius: 5px; margin-top: 10px; }
+        .auto-generated { background: #e7f3ff; padding: 8px; border-radius: 4px; margin-top: 5px; font-size: 14px; }
+        .category-section { border: 1px solid #dee2e6; padding: 15px; margin: 15px 0; border-radius: 8px; }
+        .time-slot { border: 1px solid #dee2e6; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .menu-builder { border: 1px solid #dee2e6; padding: 15px; margin: 15px 0; border-radius: 8px; }
+        .menu-category { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .menu-item { background: white; padding: 8px; margin: 5px 0; border-radius: 4px; border: 1px solid #dee2e6; }
+        .warning-alert { background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .help-text { font-size: 12px; color: #6c757d; }
+        .slug-warning { color: #dc3545; font-size: 12px; margin-top: 5px; }
+
+.accuracy-notification {
+    margin-top: 10px;
+}
+
+.accuracy-notification .alert {
+    margin-bottom: 0;
+}
+
+.coordinates-display.success {
+    background: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.coordinates-display.warning {
+    background: #fff3cd;
+    border-color: #ffeaa7;
+}
+
+.map-container {
+    height: 400px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid #e9ecef;
+}
+
+.map-instructions {
+    background: #e7f3ff;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    border-left: 4px solid #007bff;
+}
+
+.coordinates-display {
+    background: #d4edda;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+    border: 1px solid #c3e6cb;
+}
+
+.geocode-success {
+    background: #d1ecf1;
+    border: 1px solid #bee5eb;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/admin/places">
+                <i class="fas fa-arrow-left"></i> Назад к заведениям
+            </a>
+            <span class="navbar-text">
+                Добавление нового заведения
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="fas fa-plus-circle"></i> Добавить новое заведение</h4>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
+                            
+                            <!-- Основная информация -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h5>📝 Основная информация</h5>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Название заведения *</label>
+                                        <input type="text" class="form-control" name="title" id="title"
+                                               oninput="generateSlug()" required placeholder="Например: Кофейня 'Уютная'">
+                                        <div class="help-text">Только название заведения без адреса</div>
+                                    </div>
+
+                                    <!-- Добавляем новое поле для slug -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Улица для URL (опционально)</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="streetForSlug"
+                                                   oninput="generateSlug()" placeholder="Например: Воскресенский_бул">
+                                            <span class="input-group-text">/</span>
+                                            <input type="text" class="form-control" id="houseForSlug"
+                                                   oninput="generateSlug()" placeholder="17.22">
+                                        </div>
+                                        <div class="help-text">
+                                            Заполняйте только для сетевых заведений. Формат: Улица_и_номер/Доп_номер<br>
+                                            Пример: <code>Гурметто_Воскресенский_бул/17.22</code>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Описание</label>
+                                        <textarea class="form-control" name="description" rows="3" 
+                                                  placeholder="Описание заведения..."></textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Телефон</label>
+                                        <input type="tel" class="form-control" name="telephone" 
+                                               placeholder="+7 XXX XXX-XX-XX">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Адрес *</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" name="address" required
+                                                   placeholder="ул. Примерная, д. 10" id="addressInput">
+                                            <button type="button" class="btn btn-outline-primary" id="geocodeButton">
+                                                <i class="fas fa-search-location"></i> Найти на карте
+                                            </button>
+                                        </div>
+                                        <div class="help-text">Введите полный адрес с номером дома для точного определения</div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <!-- Автоматически генерируемый Slug -->
+                                    <div class="mb-3">
+                                        <label class="form-label">URL адрес (автоматически)</label>
+                                        <div class="auto-generated">
+                                            <strong>site.com/</strong><span id="slug-preview" class="text-muted">slug-будет-здесь</span>
+                                            <input type="hidden" name="slug" id="slug">
+                                        </div>
+                                        <div id="slug-warning" class="slug-warning" style="display: none;">
+                                            ⚠️ Заведение с похожим названием уже существует.
+                                        </div>
+                                    </div>
+
+                                    <!-- Теги -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Теги</label>
+                                        <input type="text" class="form-control" name="tags" 
+                                               placeholder="ресторан, доставка, европейская кухня">
+                                        <div class="help-text">Вводите теги через запятую</div>
+                                    </div>
+
+                                    <!-- Изображение -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Изображение заведения</label>
+                                        <input type="file" class="form-control" name="image" accept="image/*">
+                                        <div class="help-text">Рекомендуемый размер: 800x600px, форматы: JPG, PNG, GIF</div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                            <!-- Карта для координат -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5>📍 Выбор местоположения</h5>
+                                    <div class="map-instructions">
+                                        <i class="fas fa-info-circle"></i> Нажмите на карту, чтобы установить метку местоположения
+                                    </div>
+                                    <div id="map" class="map-container"></div>
+
+                                    <div id="coordinatesDisplay" class="coordinates-display" style="display: none;">
+                                        <i class="fas fa-check-circle text-success"></i>
+                                        <strong>Координаты установлены:</strong>
+                                        <span id="currentCoords"></span>
+                                        <input type="hidden" name="latitude" id="latInput">
+                                        <input type="hidden" name="longitude" id="lonInput">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Время работы -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h5>🕒 Время работы</h5>
+                                    <div id="timeWorkingsContainer">
+                                        <!-- Временные слоты будут добавляться здесь -->
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="addTimeSlot()">
+                                        <i class="fas fa-plus"></i> Добавить временной интервал
+                                    </button>
+                                    <input type="hidden" name="working_hours" id="workingHoursInput">
+                                </div>
+                            </div>
+
+                            <!-- Категории -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="category-section">
+                                        <h5>📁 Категория заведения</h5>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Выбрать существующую категорию:</label>
+                                            <select class="form-select" name="existing_category" id="existingCategory" onchange="onExistingCategoryChange()">
+                                                <option value="">-- Выберите категорию --</option>
+                                                {% for cat in categories %}
+                                                    <option value="{{ cat }}">{{ cat }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <div class="text-center my-3">
+                                            <strong>ИЛИ</strong>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">Создать новую категорию:</label>
+                                            <input type="text" class="form-control" name="new_category" id="newCategory" 
+                                                   placeholder="Введите название новой категории" oninput="generateCategoryEn()">
+                                            
+                                            <div class="auto-generated mt-2">
+                                                <strong>Английское название:</strong>
+                                                <span id="category-en-preview" class="text-muted">будет сгенерировано</span>
+                                                <input type="hidden" name="category_en" id="categoryEn">
+                                            </div>
+
+                                            <div class="warning-alert mt-2">
+                                                <i class="fas fa-exclamation-triangle"></i>
+                                                <strong>Внимание!</strong> Для новой категории необходимо загрузить иконку размером 64x64px в формате PNG.
+                                            </div>
+                                        </div>
+
+                                        <div class="auto-generated">
+                                            <strong>Итоговая категория:</strong>
+                                            <span id="final-category-preview" class="text-muted">не выбрана</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Меню -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="menu-builder">
+                                        <h5>🍽️ Меню</h5>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="hasMenuToggle" onchange="toggleMenuBuilder()">
+                                            <label class="form-check-label" for="hasMenuToggle">Добавить меню</label>
+                                        </div>
+
+                                        <div id="menuBuilder" style="display: none;">
+                                            <div id="menuCategoriesContainer">
+                                                <!-- Категории меню будут добавляться здесь -->
+                                            </div>
+                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addMenuCategory()">
+                                                <i class="fas fa-plus"></i> Добавить категорию меню
+                                            </button>
+                                            <input type="hidden" name="menu" id="menuInput" value="{}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Кнопки отправки -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-plus"></i> Добавить заведение
+                                    </button>
+                                    <a href="/admin/places" class="btn btn-secondary">Отмена</a>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
+let map, marker;
+let existingPlaces = {{ existing_places|tojson|safe }};
+let timeSlots = [];
+let menuCategories = [];
+
+// ========== ИНИЦИАЛИЗАЦИЯ ==========
+document.addEventListener('DOMContentLoaded', function() {
+    initMap();
+    initEventListeners();
+    addTimeSlot();
+    updateFinalCategoryPreview();
+});
+
+// ========== ИНИЦИАЛИЗАЦИЯ ВСЕХ ОБРАБОТЧИКОВ ==========
+function initEventListeners() {
+    // Геокодирование
+    const geocodeButton = document.getElementById('geocodeButton');
+    if (geocodeButton) {
+        geocodeButton.addEventListener('click', geocodeAddress);
+    }
+
+    // Автопоиск при нажатии Enter в поле адреса
+    const addressInput = document.getElementById('addressInput');
+    if (addressInput) {
+        addressInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                geocodeAddress();
+            }
+        });
+    }
+}
+
+// ========== ГЕОКОДИРОВАНИЕ ==========
+function geocodeAddress() {
+    const address = document.getElementById('addressInput').value;
+    if (!address) {
+        alert('Пожалуйста, введите адрес для поиска');
+        return;
+    }
+
+    const searchBtn = document.getElementById('geocodeButton');
+    const originalText = searchBtn.innerHTML;
+    searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Поиск...';
+    searchBtn.disabled = true;
+
+    // Добавляем город для более точного поиска
+    const query = `Великий Новгород, ${address}`;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                // Ищем самый точный результат (с номером дома)
+                let bestResult = data[0];
+
+                // Пытаемся найти результат с номером дома
+                for (let result of data) {
+                    if (result.address && result.address.house_number) {
+                        bestResult = result;
+                        break;
+                    }
+                }
+
+                const lat = parseFloat(bestResult.lat);
+                const lon = parseFloat(bestResult.lon);
+
+                setCoordinates(lat, lon);
+                map.setView([lat, lon], 18); // Увеличиваем zoom для точности
+
+                if (marker) {
+                    const addressDetails = bestResult.address || {};
+                    const houseNumber = addressDetails.house_number ? `, д. ${addressDetails.house_number}` : '';
+                    const street = addressDetails.road || addressDetails.street || '';
+
+                    marker.bindPopup(`
+                        <b>Найдено по адресу:</b><br>
+                        ${street}${houseNumber}<br>
+                        <small>Точность: ${getAccuracyText(bestResult)}</small>
+                    `).openPopup();
+                }
+
+                // Показываем уведомление о точности
+                showAccuracyNotification(bestResult);
+
+            } else {
+                alert('Адрес не найден. Проверьте правильность написания и попробуйте снова.');
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка геокодирования:', error);
+            alert('Ошибка при поиске адреса. Проверьте подключение к интернету.');
+        })
+        .finally(() => {
+            searchBtn.innerHTML = originalText;
+            searchBtn.disabled = false;
+        });
+}
+
+// Функция для определения точности результата
+function getAccuracyText(result) {
+    const address = result.address || {};
+
+    if (address.house_number) {
+        return 'Точный адрес (найден номер дома)';
+    } else if (address.road || address.street) {
+        return 'Улица (номер дома не найден)';
+    } else if (address.suburb || address.neighbourhood) {
+        return 'Район';
+    } else {
+        return result.type || 'Область';
+    }
+}
+
+// Показ уведомления о точности
+function showAccuracyNotification(result) {
+    const accuracy = getAccuracyText(result);
+    const address = result.address || {};
+
+    let message = '';
+    if (!address.house_number) {
+        message = `
+            <div class="alert alert-warning mt-2">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Внимание!</strong> Не удалось точно определить номер дома.<br>
+                <small>Рекомендуется проверить положение метки на карте и при необходимости переместить её вручную.</small>
+            </div>
+        `;
+    } else {
+        message = `
+            <div class="alert alert-success mt-2">
+                <i class="fas fa-check-circle"></i>
+                <strong>Успешно!</strong> Адрес найден с высокой точностью.
+            </div>
+        `;
+    }
+
+    // Удаляем предыдущие уведомления
+    const existingAlert = document.querySelector('.accuracy-notification');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+
+    // Добавляем новое уведомление
+    const notification = document.createElement('div');
+    notification.className = 'accuracy-notification';
+    notification.innerHTML = message;
+    document.getElementById('coordinatesDisplay').after(notification);
+}
+
+// ========== УСТАНОВКА КООРДИНАТ ==========
+function setCoordinates(lat, lng) {
+    const latFixed = lat.toFixed(6);
+    const lngFixed = lng.toFixed(6);
+
+    document.getElementById('latInput').value = latFixed;
+    document.getElementById('lonInput').value = lngFixed;
+
+    document.getElementById('currentCoords').textContent = `${latFixed}, ${lngFixed}`;
+    document.getElementById('coordinatesDisplay').style.display = 'block';
+
+    if (marker) {
+        map.removeLayer(marker);
+    }
+
+    marker = L.marker([lat, lng]).addTo(map)
+        .bindPopup(`
+            <b>Местоположение</b><br>
+            Широта: ${latFixed}<br>
+            Долгота: ${lngFixed}
+        `)
+        .openPopup();
+}
+
+// ========== КАРТА ==========
+function initMap() {
+    map = L.map('map').setView([58.5211, 31.2758], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    map.on('click', function(e) {
+        setCoordinates(e.latlng.lat, e.latlng.lng);
+    });
+}
+// ========== SLUG ГЕНЕРАЦИЯ ==========
+function generateSlug() {
+    const title = document.getElementById('title').value;
+    const street = document.getElementById('streetForSlug').value;
+    const house = document.getElementById('houseForSlug').value;
+
+    if (!title) {
+        document.getElementById('slug-preview').textContent = 'slug-будет-здесь';
+        document.getElementById('slug-warning').style.display = 'none';
+        return;
+    }
+
+    // Транслитерация кириллицы в латиницу (сохраняем регистр)
+    const translitDict = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
+        'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+        'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo',
+        'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
+        'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+        'Ф': 'F', 'Х': 'H', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Sch', 'Ъ': '',
+        'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya'
+    };
+
+    // Обрабатываем название
+    let titleSlug = title.split('').map(char => {
+        if (/[a-zA-Z0-9\-_\.]/.test(char)) {
+            return char;
+        }
+        else if (char === ' ') {
+            return '_';
+        }
+        else {
+            return translitDict[char] || '';
+        }
+    }).join('').replace(/_+/g, '_').replace(/^_|_$/g, '');
+
+    let slug = titleSlug;
+
+    // Добавляем улицу и дом если указаны
+    if (street) {
+        let streetSlug = street.split('').map(char => {
+            if (/[a-zA-Z0-9\-_\.]/.test(char)) {
+                return char;
+            }
+            else if (char === ' ') {
+                return '_';
+            }
+            else {
+                return translitDict[char] || '';
+            }
+        }).join('').replace(/_+/g, '_').replace(/^_|_$/g, '');
+
+        slug += '_' + streetSlug;
+    }
+
+    if (house) {
+        // Обрабатываем номер дома (разрешаем цифры, точки, дроби)
+        let houseSlug = house.split('').map(char => {
+            if (/[a-zA-Z0-9\-_\.\/]/.test(char)) {
+                return char;
+            }
+            else {
+                return '';
+            }
+        }).join('');
+
+        slug += '/' + houseSlug;
+    }
+
+    // Проверка на дубликаты
+    const isDuplicate = existingPlaces.some(place =>
+        place.slug && place.slug.toLowerCase() === slug.toLowerCase()
+    );
+
+    if (isDuplicate) {
+        document.getElementById('slug-warning').style.display = 'block';
+    } else {
+        document.getElementById('slug-warning').style.display = 'none';
+    }
+
+    document.getElementById('slug-preview').textContent = slug;
+    document.getElementById('slug').value = slug;
+}
+
+        // ========== КАТЕГОРИИ ==========
+        function generateCategoryEn() {
+            const category = document.getElementById('newCategory').value;
+            if (!category) {
+                document.getElementById('category-en-preview').textContent = 'будет сгенерировано';
+                return;
+            }
+
+            const categoryMapping = {
+                'Ресторан': 'restaurant', 'Кафе': 'cafe', 'Магазин': 'shop',
+                'Музей': 'museum', 'Театр': 'theatre', 'Библиотека': 'library',
+                'Парк': 'park', 'Кинотеатр': 'cinema', 'Спортплощадка': 'sports',
+                'Церковь': 'church', 'Гостиница': 'hotel', 'Иконка': 'icon'
+            };
+
+            let categoryEn = categoryMapping[category] || category.toLowerCase()
+                .split('').map(char => translitDict[char] || char).join('')
+                .replace(/[^a-z0-9]/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '');
+
+            document.getElementById('category-en-preview').textContent = categoryEn;
+            document.getElementById('categoryEn').value = categoryEn;
+            updateFinalCategoryPreview();
+        }
+
+        function onExistingCategoryChange() {
+            const selectedCategory = document.getElementById('existingCategory').value;
+            if (selectedCategory) {
+                document.getElementById('newCategory').value = '';
+                document.getElementById('categoryEn').value = '';
+                document.getElementById('category-en-preview').textContent = 'будет сгенерировано автоматически';
+            }
+            updateFinalCategoryPreview();
+        }
+
+        function updateFinalCategoryPreview() {
+            const existingCategory = document.getElementById('existingCategory').value;
+            const newCategory = document.getElementById('newCategory').value;
+            let finalCategory = existingCategory || newCategory || 'не выбрана';
+            document.getElementById('final-category-preview').textContent = finalCategory;
+        }
+
+        // ========== ВРЕМЯ РАБОТЫ ==========
+        function addTimeSlot() {
+            const container = document.getElementById('timeWorkingsContainer');
+            const slotId = timeSlots.length;
+            
+            const slotHTML = `
+                <div class="time-slot" id="timeSlot${slotId}">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">Дни недели</label>
+                            <input type="text" class="form-control days-input" placeholder="Пн-Пт, Сб-Вс" 
+                                   onchange="updateWorkingHours()">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Время открытия</label>
+                            <input type="time" class="form-control open-time" onchange="updateWorkingHours()">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Время закрытия</label>
+                            <input type="time" class="form-control close-time" onchange="updateWorkingHours()">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <button type="button" class="btn btn-outline-danger btn-sm w-100" 
+                                    onclick="removeTimeSlot(${slotId})">
+                                <i class="fas fa-trash"></i> Удалить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', slotHTML);
+            timeSlots.push(slotId);
+        }
+
+        function removeTimeSlot(slotId) {
+            const element = document.getElementById(`timeSlot${slotId}`);
+            if (element) element.remove();
+            timeSlots = timeSlots.filter(id => id !== slotId);
+            updateWorkingHours();
+        }
+
+        function updateWorkingHours() {
+            const workingHours = {};
+            
+            timeSlots.forEach(slotId => {
+                const slotElement = document.getElementById(`timeSlot${slotId}`);
+                if (slotElement) {
+                    const days = slotElement.querySelector('.days-input').value;
+                    const openTime = slotElement.querySelector('.open-time').value;
+                    const closeTime = slotElement.querySelector('.close-time').value;
+                    
+                    if (days && openTime && closeTime) {
+                        workingHours[days] = `${openTime}-${closeTime}`;
+                    }
+                }
+            });
+            
+            document.getElementById('workingHoursInput').value = JSON.stringify(workingHours);
+        }
+
+        // ========== МЕНЮ ==========
+        function toggleMenuBuilder() {
+            const menuBuilder = document.getElementById('menuBuilder');
+            const toggle = document.getElementById('hasMenuToggle');
+            menuBuilder.style.display = toggle.checked ? 'block' : 'none';
+        }
+
+        function addMenuCategory() {
+            const categoryId = menuCategories.length;
+            const container = document.getElementById('menuCategoriesContainer');
+            
+            const categoryHTML = `
+                <div class="menu-category" id="menuCategory${categoryId}">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control category-name" placeholder="Название категории" 
+                                   onchange="updateMenu()">
+                        </div>
+                        <div class="col-md-8">
+                            <button type="button" class="btn btn-outline-success btn-sm" 
+                                    onclick="addMenuItem(${categoryId})">
+                                <i class="fas fa-plus"></i> Добавить блюдо
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                    onclick="removeMenuCategory(${categoryId})">
+                                <i class="fas fa-trash"></i> Удалить категорию
+                            </button>
+                        </div>
+                    </div>
+                    <div class="menu-items-container" id="menuItems${categoryId}">
+                        <!-- Пункты меню будут добавляться здесь -->
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', categoryHTML);
+            menuCategories.push({ id: categoryId, items: [] });
+        }
+
+        function addMenuItem(categoryId) {
+            const container = document.getElementById(`menuItems${categoryId}`);
+            const itemId = menuCategories[categoryId].items.length;
+            
+            const itemHTML = `
+                <div class="menu-item" id="menuItem${categoryId}_${itemId}">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control item-name" placeholder="Название блюда" 
+                                   onchange="updateMenu()">
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control item-price" placeholder="Цена" 
+                                   onchange="updateMenu()">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control item-description" placeholder="Описание" 
+                                   onchange="updateMenu()">
+                        </div>
+                        <div class="col-md-1">
+                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                    onclick="removeMenuItem(${categoryId}, ${itemId})">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', itemHTML);
+            menuCategories[categoryId].items.push(itemId);
+        }
+
+        function removeMenuCategory(categoryId) {
+            const element = document.getElementById(`menuCategory${categoryId}`);
+            if (element) element.remove();
+            menuCategories = menuCategories.filter(cat => cat.id !== categoryId);
+            updateMenu();
+        }
+
+        function removeMenuItem(categoryId, itemId) {
+            const element = document.getElementById(`menuItem${categoryId}_${itemId}`);
+            if (element) element.remove();
+            menuCategories[categoryId].items = menuCategories[categoryId].items.filter(id => id !== itemId);
+            updateMenu();
+        }
+
+        function updateMenu() {
+            const menu = {};
+            
+            menuCategories.forEach(category => {
+                const categoryElement = document.getElementById(`menuCategory${category.id}`);
+                if (categoryElement) {
+                    const categoryName = categoryElement.querySelector('.category-name').value;
+                    if (categoryName) {
+                        menu[categoryName] = [];
+                        
+                        category.items.forEach(itemId => {
+                            const itemElement = document.getElementById(`menuItem${category.id}_${itemId}`);
+                            if (itemElement) {
+                                const name = itemElement.querySelector('.item-name').value;
+                                const price = itemElement.querySelector('.item-price').value;
+                                const description = itemElement.querySelector('.item-description').value;
+                                
+                                if (name) {
+                                    menu[categoryName].push({
+                                        name: name,
+                                        price: price,
+                                        description: description
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            });
+            
+            document.getElementById('menuInput').value = JSON.stringify(menu);
+        }
+
+        // ========== ВАЛИДАЦИЯ ФОРМЫ ==========
+        function validateForm() {
+            const existingCategory = document.getElementById('existingCategory').value;
+            const newCategory = document.getElementById('newCategory').value;
+            const address = document.querySelector('input[name="address"]').value;
+            const latitude = document.getElementById('latInput').value;
+            const longitude = document.getElementById('lonInput').value;
+
+            // Проверка категории
+            if (!existingCategory && !newCategory) {
+                alert('Пожалуйста, выберите существующую категорию или создайте новую');
+                return false;
+            }
+
+            if (existingCategory && newCategory) {
+                alert('Пожалуйста, выберите только один вариант: либо существующую категорию, либо создайте новую');
+                return false;
+            }
+
+            // Проверка адреса
+            if (!address) {
+                alert('Пожалуйста, укажите адрес заведения');
+                return false;
+            }
+
+            // Проверка координат
+            if (!latitude || !longitude) {
+                alert('Пожалуйста, укажите местоположение на карте');
+                return false;
+            }
+
+            // Обновляем скрытые поля перед отправкой
+            updateWorkingHours();
+            updateMenu();
+
+            return true;
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+    // ... существующий код ...
+
+    // Обработчик кнопки геокодирования
+    document.getElementById('geocodeButton').addEventListener('click', geocodeAddress);
+});
+    </script>
+</body>
+</html>

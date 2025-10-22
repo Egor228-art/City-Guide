@@ -232,7 +232,7 @@
                 <button id="loginButton" class="btn-login">Вход</button>
                 <button id="registerButton" class="btn-register">Регистрация</button>
                 <div id="userInfo" style="display: none;">
-                    <div class="box">
+                    <div class="btn-admin" id="adminButton" onclick="window.location.href='/admin'">
                         <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar">
                         <span id="welcomeUser"></span>
                     </div>
