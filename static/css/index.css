@@ -58,7 +58,7 @@ body {
 
 .nav-container {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     padding: 1rem 5%;
     max-width: 1400px;
@@ -232,7 +232,6 @@ body {
 
 .search-box {
     display: flex;
-    flex-grow: 1;
     min-width: 500px;
     margin: 0 2rem;
     height: 40px;
@@ -371,6 +370,7 @@ body {
 /*=============================================== Тело сайта =========================================================*/
 
 .hero {
+    top: 100px;
     position: relative;
     height: 80vh;
     display: flex;
@@ -497,7 +497,7 @@ body {
 .icon-wrapper {
     width: 150px;
     height: 150px;
-    margin: 0 auto 1rem;
+    margin: 5px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -506,8 +506,8 @@ body {
 }
 
 .icon-wrapper img {
-    max-width: 200px;
-    max-height: 200px;
+    max-width: 190px;
+    max-height: 190px;
 }
 
 .category-card span {
@@ -1068,4 +1068,487 @@ body.no-scroll {
 
 .category-card:hover .category-name {
     color: #007bff;
+}
+
+
+
+
+/* Анимации для появления/исчезновения кнопок */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Стиль для логотипа при взаимодействии */
+.footer-section.about img {
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.footer-section.about img:active {
+    transform: scale(0.95);
+}
+
+
+
+
+/* Стили для модального окна каталога */
+.catalog-modal {
+    max-width: 900px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.catalog-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    background: white;
+    margin: 1rem 0;
+}
+
+.catalog-category {
+    background-color: var(--white);
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+    text-decoration: none;
+    color: inherit;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.catalog-category:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    border-color: var(--black);
+}
+
+.catalog-category img {
+    max-width: 130px;
+    max-height: 130px;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+}
+
+.catalog-category span {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--black);
+}
+
+.catalog-modal h2 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    color: var(--black);
+    padding: 0 2rem;
+}
+
+.btn-random {
+    background-color: var(--black);
+    color: white;
+    border: none;
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-left: 1rem;
+}
+
+.btn-random:hover {
+    background-color: white;
+    color: var(--black);
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(40,167,69,0.3);
+}
+
+/* Адаптивность для модального окна */
+@media (max-width: 768px) {
+    .catalog-modal {
+        width: 95%;
+        margin: 1rem;
+    }
+
+    .catalog-grid {
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .catalog-category {
+        width: 120px;
+        height: 120px;
+        padding: 1rem;
+    }
+
+    .catalog-category img {
+        max-width: 60px;
+        max-height: 60px;
+    }
+}
+
+
+
+
+
+.popular-places-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+/* Стили для скроллера популярных заведений */
+.popular-places {
+    padding: 9rem 0 4rem 0;
+    background: rgba(255, 255, 255, 0.9);
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 2.5rem;
+    color: #333;
+    font-weight: 600;
+}
+
+.scroller-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+.scroller-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+}
+
+.popular-scroller {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.scroller-track {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem 2rem;
+    animation: scroll 40s linear infinite;
+    width: max-content;
+}
+
+.scroller-track.manual-control {
+    animation: none !important;
+    transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* Карточки в скроллере - горизонтальная компоновка */
+.popular-place-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    max-width: 900px;
+    flex-shrink: 0;
+    position: relative;
+    border: 1px solid #e0e0e0;
+    display: flex;
+    height: 250px;
+}
+
+.popular-place-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+}
+
+.category-badge {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Изображение слева */
+.place-image-container {
+    width: 250px;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.place-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.popular-place-card:hover .place-image {
+    transform: scale(1.05);
+}
+
+/* Информация справа */
+.place-info {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.place-info h3 {
+    margin: 0 0 0.8rem 0;
+    color: #333;
+    font-size: 1.3rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.place-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.8rem;
+    color: #f39c12;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.review-count {
+    color: #7f8c8d;
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
+}
+
+.place-description {
+    color: #666;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    overflow: hidden;
+    flex: 1;
+}
+
+.place-contacts {
+    margin-top: auto;
+}
+
+/* Кнопки навигации скроллера */
+.scroller-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #333;
+    z-index: 3;
+    opacity: 0;
+    visibility: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.scroller-nav.scroller-prev {
+    left: 20px;
+}
+
+.scroller-nav.scroller-next {
+    right: 20px;
+}
+
+.scroller-nav:hover {
+    background: #000000;
+    color: white;
+    border-color: #000000;
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* Показываем кнопки при наведении на контейнер */
+.scroller-container:hover .scroller-nav {
+    opacity: 1;
+    visibility: visible;
+}
+
+.scroller-container:hover .scroller-track {
+    animation-play-state: paused;
+}
+
+/* Состояния загрузки и ошибок */
+.scroller-loading, .scroller-error, .scroller-empty {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+    font-size: 1.1rem;
+    width: 100%;
+}
+
+.scroller-error {
+    color: #e74c3c;
+}
+
+.scroller-loading {
+    color: #3498db;
+}
+
+.scroller-empty {
+    color: #95a5a6;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .popular-place-card {
+        min-width: 300px;
+        height: auto;
+        flex-direction: column;
+    }
+
+    .place-image-container {
+        width: 100%;
+        height: 200px;
+    }
+
+    .section-title {
+        font-size: 1.6rem;
+        margin-bottom: 2rem;
+    }
+
+    .scroller-track {
+        gap: 1.5rem;
+        padding: 1rem;
+    }
+
+    .scroller-nav {
+        width: 40px;
+        height: 40px;
+    }
+
+    .scroller-nav.scroller-prev {
+        left: 10px;
+    }
+
+    .scroller-nav.scroller-next {
+        right: 10px;
+    }
+}
+
+/* Анимация появления карточек */
+@keyframes cardSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.popular-place-card {
+    animation: cardSlideIn 0.5s ease-out;
+}
+
+/* Анимация бесконечного скролла */
+@keyframes scroll {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(calc(-320px * 8 - 2rem * 8)); /* Учитываем ширину карточки и gap */
+    }
+}
+
+.place-address svg, .place-telephone svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Добавьте стили для плашки рейтинга */
+.rating-overlay {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    backdrop-filter: blur(5px);
+}
+
+.rating-badge {
+    font-weight: bold;
+}
+
+.rating-badge::before {
+    color: #ffd700; /* Золотой цвет для звезды */
+    content: "★";
+    margin-right: 3px;
+}
+
+/* Обновите позицию бейджа категории чтобы не перекрывались */
+.category-badge {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.4rem 1rem;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

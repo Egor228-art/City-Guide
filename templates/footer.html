@@ -1,0 +1,58 @@
+<!-- Городской силуэт перед футером -->
+<div class="skyscrapers"></div>
+
+<!-- Футер -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-section about">
+            <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" style="width: 120px;" alt="Логотип">
+            <p>Городской гид - ваш путеводитель по лучшим местам Великого Новгорода</p>
+            <div class="socials">
+                <a href="https://web.telegram.org/"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
+                <a href="https://www.youtube.com/"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" style="margin-bottom: 0; margin-top: 8px" alt="YouTube"></a>
+                <a href="https://vk.ru/"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
+                <a href="https://ok.ru/"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+            </div>
+        </div>
+
+        <div class="footer-section links">
+            <h3>Навигация</h3>
+            <ul>
+                <li><a href="#" id="homeLink">Главная</a></li>
+                <li><a href="#" id="aboutLink">О проекте</a></li>
+                <li><a href="#" id="contactsLink">Контакты</a></li>
+                <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
+                <li><a href="#" id="luckyButton">Случайное заведение</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-section contact">
+            <h3 id="contactsTitle">Контакты</h3>
+            <p><i class="phone-icon"></i> +7 (123) 456-78-90</p>
+            <p><i class="email-icon"></i> info@gorodskoygid.ru</p>
+            <p><i class="location-icon"></i> Великий Новгород</p>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        &copy; 2025 Городской Гид | Все права защищены
+    </div>
+</footer>
+
+<!-- Модальные окна -->
+<div class="modal" id="aboutModal">
+    <div class="modal-content">
+        <span class="close-modal" id="closeModal">&times;</span>
+        <h2>О проекте "Городской Гид"</h2>
+        <p>"Городской Гид" - это цифровой путеводитель по Великому Новгороду, созданный для жителей и его гостей. Наш проект объединяет в себе информацию о самых интересных местах, достопримечательностях, кафе, ресторанах и музеях.</p>
+        <p>Мы стремимся сделать пребывание в Великом Новгороде максимально комфортным и интересным, предоставляя актуальную информацию о городе в удобном формате.</p>
+        <p>Наш гид регулярно обновляется и пополняется новыми локациями, чтобы вы всегда могли найти что-то интересное для себя.</p>
+        <h3>Наши цели:</h3>
+        <ul>
+            <li>Популяризация культурного наследия Великого Новгорода</li>
+            <li>Упрощение навигации по городу для туристов</li>
+            <li>Поддержка местного бизнеса</li>
+            <li>Создание сообщества любителей города</li>
+        </ul>
+    </div>
+</div>

@@ -1,3 +1,4 @@
+<!--Код для сброса пользователя через консоль браузера: localStorage.removeItem('authButtonsVisible'); location.reload() -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -10,192 +11,47 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
-    <!-- Навигация с функционалом из HTML 1 и стилями из HTML 2 -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo">
-                <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Логотип">
-                <span>Городской Гид</span>
-            </div>
+    <!-- Вставляем шапку -->
+    {% include 'header.html' %}
 
-            <!-- Поиск из HTML 1 -->
-            <form class="search-box" action="/search" method="GET">
-                <input type="text" name="q" placeholder="Поиск заведений..." class="search-input">
-                <button type="submit" class="search-button">
-                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
-            </form>
-
-            <!-- Кнопка избранного из старого HTML -->
-            <div class="favorites-wrapper">
-                <div class="favorite-wrapper" id="header-favorites-btn" style="display: none;" onclick="window.location.href='/favorites'">
-                  <span class="particle particle-1">✦</span>
-                  <span class="particle particle-2">✦</span>
-                  <span class="particle particle-3">✦</span>
-                  <span class="particle particle-4">✦</span>
-                  <span class="particle particle-5">✦</span>
-                  <span class="particle particle-6">✦</span>
-                  <span class="particle particle-7">✦</span>
-                  <span class="heart-icon">❤</span>
-                  <span class="favorites-counter" id="favorites-count">0</span>
-                </div>
-            </div>
-
-            <!-- Кнопки входа/регистрации из HTML 1 -->
-            <div class="auth-buttons">
-                <button id="loginButton" class="btn-login">Вход</button>
-                <button id="registerButton" class="btn-register">Регистрация</button>
-                <div id="userInfo" style="display: none;">
-                    <div class="btn-admin" id="adminButton" onclick="window.location.href='/admin'">
-                        <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar">
-                        <span id="welcomeUser"></span>
-                    </div>
-                    <button class="btn-logout">Выход</button>
-                </div>
-            </div>
-        </div>
-        <div class="clouds"></div>
-    </nav>
-
-    <!-- Окна входа/регистрации из HTML 1 -->
-    <div id="overlay" style="display: none;"></div>
-
-    <div id="content_window" class="popup-window">
-        <form id="loginForm" method="POST" action="/login">
-            <h1>Вход</h1>
-            <span class="btnX" onclick="hideWindow()">×</span>
-            <div class="form-group">
-                <label for="username">Логин</label>
-                <input type="text" class="form-control" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label for="password">Пароль</label>
-                <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            <button type="submit" class="btnA">Войти</button>
-        </form>
-    </div>
-
-    <div id="content_window2" class="popup-window">
-        <form id="regForm" method="POST" action="/register">
-            <h1>Регистрация</h1>
-            <span class="btnX" onclick="hideWindow1()">×</span>
-            <div class="form-group">
-                <label for="username1">Логин</label>
-                <input type="text" id="username1" name="username" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="password1">Пароль</label>
-                <input type="password" id="password1" name="password" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="password2">Подтвердите пароль</label>
-                <input type="password" id="password2" name="confirm_password" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="secret_key">Секретный ключ</label>
-                <input type="password" id="secret_key" name="secret_key" class="form-control" required>
-            </div>
-            <button type="submit" class="btnB">Зарегистрироваться</button>
-        </form>
-    </div>
-
-    <!--Основное содержимое из HTML 2 -->
     <main>
         <!-- Герой-секция -->
         <section class="hero">
             <div class="hero-content">
                 <h1>Откройте для себя Великий Новгород</h1>
                 <p>Найдите лучшие места города в одном гиде</p>
-                <button class="btn-explore Menu">Начать исследовать</button>
+                <div class="hero-buttons">
+                    <button class="btn-explore" id="openCatalogModal">Начать исследовать</button>
+                    <button class="btn-random" id="randomPlaceBtn">Случайное заведение</button>
+                </div>
             </div>
             <img src="{{ url_for('static', filename='Фотки зданий/ВеликийНовгород.png') }}" alt="Великий Новгород" class="hero-image">
         </section>
 
-        <section class="popular-place" id="popularPlaceSection" style="display: none;">
-            <div class="container">
-                <h2>🔥 Самое популярное заведение</h2>
-                <div class="popular-card" id="popularPlaceCard" style="opacity: 0;">
-                    <!-- Контент будет загружен через JavaScript -->
-                </div>
-            </div>
-        </section>
+        <!-- Секция популярных заведений по категориям -->
+        <section class="popular-places" id="popularPlacesSection">
+            <div class="scrol-container">
+                <h2 class="section-title">Самые популярные заведения по категориям</h2>
 
-        <!-- Категории -->
-        <section class="categories">
-            <div class="container">
-                <h2>Выберите категорию</h2>
-                <div class="category-grid">
-                    <!-- Ряд 1 -->
-                    <div class="category-card" onclick="window.location.href='/restaurant'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаРесторана.png') }}" alt="Рестораны">
+                <div class="scroller-container">
+                    <div class="scroller-wrapper">
+                        <!-- Кнопки навигации -->
+                        <div class="scroller-nav scroller-prev" id="scrollerPrev">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                         </div>
-                    </div>
 
-                    <div class="category-card" onclick="window.location.href='/coffee'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаКофе.png') }}" alt="Кафе">
+                        <div class="popular-scroller" id="popularScroller">
+                            <div class="scroller-track" id="scrollerTrack">
+                                <!-- Карточки будут загружены динамически -->
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="category-card" onclick="window.location.href='/shop'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаМагазина.png') }}" alt="Магазины">
-                        </div>
-                    </div>
-
-                    <!-- Ряд 2 -->
-                    <div class="category-card" onclick="window.location.href='/museums'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаМузеи.png') }}" alt="Музеи">
-                        </div>
-                    </div>
-
-                    <div class="category-card" onclick="window.location.href='/theatre'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаТеатр.png') }}" alt="Театры">
-                        </div>
-                    </div>
-
-                    <div class="category-card" onclick="window.location.href='/library'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкиБиблиотеки.png') }}" alt="Библиотеки">
-                        </div>
-                    </div>
-
-                    <!-- Ряд 3 -->
-                    <div class="category-card" onclick="window.location.href='/park'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаПарка.png') }}" alt="Парки">
-                        </div>
-                    </div>
-
-                    <div class="category-card" onclick="window.location.href='/cinema'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаКинотеатр.png') }}" alt="Кинотеатры">
-                        </div>
-                    </div>
-
-                    <div class="category-card" onclick="window.location.href='/sports'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаСпортплощадка.png') }}" alt="Спорт">
-                        </div>
-                    </div>
-
-                    <!-- Дополнительные категории -->
-                    <div class="category-card" onclick="window.location.href='/church'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкаЦеркви.png') }}" alt="Церкви">
-                        </div>
-                    </div>
-
-                    <div class="category-card" onclick="window.location.href='/hotels'">
-                        <div class="icon-wrapper">
-                            <img src="{{ url_for('static', filename='Фотки зданий/ИконкиГостиницы.png') }}" alt="Гостиницы">
+                        <div class="scroller-nav scroller-next" id="scrollerNext">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                         </div>
                     </div>
                 </div>
@@ -203,74 +59,404 @@
         </section>
     </main>
 
-     <!-- Модальное окно "О проекте" -->
-    <div class="modal" id="aboutModal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeModal">&times;</span>
-            <h2>О проекте "Городской Гид"</h2>
-            <p>"Городской Гид" - это цифровой путеводитель по Великому Новгороду, созданный для жителей и его гостей. Наш проект объединяет в себе информацию о самых интересных местах, достопримечательностях, кафе, ресторанах и музеях.</p>
-            <p>Мы стремимся сделать пребывание в Великом Новгороде максимально комфортным и интересным, предоставляя актуальную информацию о городе в удобном формате.</p>
-            <p>Наш гид регулярно обновляется и пополняется новыми локациями, чтобы вы всегда могли найти что-то интересное для себя.</p>
-            <h3>Наши цели:</h3>
-            <ul>
-                <li>Популяризация культурного наследия Великого Новгорода</li>
-                <li>Упрощение навигации по городу для туристов</li>
-                <li>Поддержка местного бизнеса</li>
-                <li>Создание сообщества любителей города</li>
-            </ul>
+    <!-- Модальное окно каталога -->
+    <div class="modal" id="catalogModal">
+        <div class="modal-content catalog-modal">
+            <span class="close-modal" id="closeCatalogModal">&times;</span>
+            <h2>Каталог заведений</h2>
+            <div class="catalog-grid" id="catalogGrid">
+                <!-- Категории будут загружены динамически -->
+            </div>
         </div>
     </div>
 
-    <!-- Городской силуэт перед футером -->
-    <div class="skyscrapers"></div>
+    <!-- Вставляем подвал -->
+    {% include 'footer.html' %}
 
-    <!-- Футер -->
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-section about">
-                <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" style="width: 120px;" alt="Логотип">
-                <p>Городской гид - ваш путеводитель по лучшим местам Великого Новгорода</p>
-                <div class="socials">
-                    <a href="https://web.telegram.org/"><img src="{{ url_for('static', filename='Фотки зданий/TG.png') }}" alt="Telegram"></a>
-                    <a href="https://www.youtube.com/"><img src="{{ url_for('static', filename='Фотки зданий/YT.png') }}" style="margin-bottom: 0; margin-top: 8px" alt="YouTube"></a>
-                    <a href="https://vk.ru/"><img src="{{ url_for('static', filename='Фотки зданий/vk.png') }}" alt="VK"></a>
-                    <a href="https://ok.ru/"><img src="{{ url_for('static', filename='Фотки зданий/OK.png') }}" alt="OK"></a>
+    <!-- Подключаем общий JS -->
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    <script>
+
+        // Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    initCatalogModal();
+    loadPopularPlace();
+    loadPopularPlacesByCategory();
+});
+
+// Переменные для управления скроллером
+let scrollerInterval;
+let isScrollingPaused = false;
+let currentScrollPosition = 0;
+let scrollDirection = 1; // 1 для вперед, -1 для назад
+let cardWidth = 0;
+let maxScroll = 0;
+let autoScrollEnabled = true;
+
+function initSecretKeys() {
+    console.log('🔐 Initializing secret keys...');
+
+    document.addEventListener('keydown', (e) => {
+        konamiCode.push(e.code);
+        console.log('Key pressed:', e.code, 'Sequence:', konamiCode);
+
+        // Ограничиваем длину массива
+        if (konamiCode.length > secretCode.length) {
+            konamiCode.shift();
+        }
+
+        // Проверяем совпадение
+        if (JSON.stringify(konamiCode) === JSON.stringify(secretCode)) {
+            console.log('🎉 Secret code activated!');
+            showAuthButtons(true);
+            konamiCode = []; // Сбрасываем
+        }
+    });
+}
+
+// Модальное окно каталога
+function initCatalogModal() {
+    const modal = document.getElementById('catalogModal');
+    const openBtn = document.getElementById('openCatalogModal');
+    const closeBtn = document.getElementById('closeCatalogModal');
+    const randomBtn = document.getElementById('randomPlaceBtn');
+
+    if (!modal || !openBtn) {
+        console.error('❌ Catalog modal elements not found!');
+        return;
+    }
+
+    openBtn.addEventListener('click', function() {
+        loadCatalogCategories();
+        modal.style.display = 'flex';
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+    }
+
+    if (randomBtn) {
+        randomBtn.addEventListener('click', function() {
+            // Функционал кнопки "Случайное заведение"
+            randomBtn.innerHTML = '🌀 Ищем...';
+            randomBtn.style.pointerEvents = 'none';
+
+            fetch('/api/random-place')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.place_url) {
+                        window.location.href = data.place_url;
+                    } else {
+                        alert('Не удалось найти случайное заведение');
+                        randomBtn.innerHTML = 'Случайное заведение';
+                        randomBtn.style.pointerEvents = 'auto';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Произошла ошибка при поиске случайного заведения');
+                    randomBtn.innerHTML = 'Случайное заведение';
+                    randomBtn.style.pointerEvents = 'auto';
+                });
+        });
+    }
+
+    // Закрытие при клике вне окна
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+
+function loadCatalogCategories() {
+    const catalogGrid = document.getElementById('catalogGrid');
+
+    if (!catalogGrid) {
+        console.error('❌ Catalog grid element not found!');
+        return;
+    }
+
+    // Категории для модального окна
+    const categories = [
+        { name: 'Рестораны', icon: '/static/Фотки зданий/ИконкаРесторана.png', url: '/restaurant' },
+        { name: 'Кафе', icon: '/static/Фотки зданий/ИконкаКофе.png', url: '/coffee' },
+        { name: 'Магазины', icon: '/static/Фотки зданий/ИконкаМагазина.png', url: '/shop' },
+        { name: 'Музеи', icon: '/static/Фотки зданий/ИконкаМузеи.png', url: '/museums' },
+        { name: 'Театры', icon: '/static/Фотки зданий/ИконкаТеатр.png', url: '/theatre' },
+        { name: 'Библиотеки', icon: '/static/Фотки зданий/ИконкиБиблиотеки.png', url: '/library' },
+        { name: 'Парки', icon: '/static/Фотки зданий/ИконкаПарка.png', url: '/park' },
+        { name: 'Кинотеатры', icon: '/static/Фотки зданий/ИконкаКинотеатр.png', url: '/cinema' },
+        { name: 'Спорт', icon: '/static/Фотки зданий/ИконкаСпортплощадка.png', url: '/sports' },
+        { name: 'Церкви', icon: '/static/Фотки зданий/ИконкаЦеркви.png', url: '/church' },
+        { name: 'Гостиницы', icon: '/static/Фотки зданий/ИконкиГостиницы.png', url: '/hotels' }
+    ];
+
+    catalogGrid.innerHTML = categories.map(cat => `
+        <a href="${cat.url}" class="catalog-category">
+            <img src="${cat.icon}" alt="${cat.name}">
+        </a>
+    `).join('');
+}
+
+// Функция загрузки популярных заведений по категориям
+function loadPopularPlacesByCategory() {
+    const section = document.getElementById('popularPlacesSection');
+    const scrollerTrack = document.getElementById('scrollerTrack');
+
+    if (!section || !scrollerTrack) {
+        console.log('ℹ️ Popular places scroller not found, skipping...');
+        return;
+    }
+
+    console.log('🔥 Loading popular places by category...');
+
+    // Показываем индикатор загрузки
+    scrollerTrack.innerHTML = '<div class="scroller-loading">Загрузка популярных заведений...</div>';
+    section.style.display = 'block';
+
+    fetch('/api/popular-places-by-category')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('📊 API response:', data);
+
+            if (data.success && data.popular_places && data.popular_places.length > 0) {
+                console.log(`✅ Found ${data.popular_places.length} popular places`);
+                renderPopularPlacesScroller(data.popular_places);
+            } else {
+                console.log('ℹ️ No popular places found');
+                scrollerTrack.innerHTML = '<div class="scroller-empty">Популярные заведения появятся после добавления отзывов</div>';
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error loading popular places:', error);
+            scrollerTrack.innerHTML = '<div class="scroller-error">Ошибка загрузки популярных заведений</div>';
+        });
+}
+
+// Функция рендеринга карточек в скроллере
+function renderPopularPlacesScroller(popularPlaces) {
+    const scrollerTrack = document.getElementById('scrollerTrack');
+
+    // Очищаем контейнер
+    scrollerTrack.innerHTML = '';
+
+    // Создаем карточки
+    popularPlaces.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = 'popular-place-card';
+        card.style.animationDelay = `${index * 0.1}s`;
+
+        // Полное описание без обрезки
+        const fullDescription = item.place.description || 'Описание отсутствует';
+
+        // ФОРМАТИРУЕМ РЕЙТИНГ: 0.0 → 0 и меняем местами звезду и цифру
+        const rating = item.place.avg_rating || 0;
+        let formattedRating;
+        if (rating === 0 || rating === '0' || rating === '0.0') {
+            formattedRating = '0';
+        } else {
+            formattedRating = typeof rating === 'number' ? rating.toFixed(1) : rating;
+            // Убираем .0 если рейтинг целый
+            if (formattedRating.endsWith('.0')) {
+                formattedRating = formattedRating.replace('.0', '');
+            }
+        }
+
+        card.innerHTML = `
+            <div class="category-badge">${item.category}</div>
+            <div class="place-image-container">
+                <img src="${item.place.image_path ? '/static/' + item.place.image_path : '/static/Фотки зданий/default.png'}"
+                     alt="${item.place.title}"
+                     class="place-image"
+                     onerror="this.src='/static/Фотки зданий/default.png'">
+                <!-- ПЛАШКА С РЕЙТИНГОМ - ПОКАЗЫВАЕМ ДЛЯ ВСЕХ, ДАЖЕ С 0 -->
+                <div class="rating-overlay">
+                    <span class="rating-badge">${formattedRating}</span>
                 </div>
             </div>
-
-            <div class="footer-section links">
-                <h3>Навигация</h3>
-                <ul>
-                    <li><a href="#" id="homeLink">Главная</a></li>
-                    <li><a href="#" id="aboutLink">О проекте</a></li>
-                    <li><a href="#" id="contactsLink">Контакты</a></li>
-                    <li><a href="https://vk.com/egorsvistinov" target="_blank" id="helpLink">Помощь</a></li>
-                    <li><a href="#" id="luckyButton">Мне повезёт</a></li>
-                </ul>
+            <div class="place-info">
+                <div>
+                    <h3>${item.place.title}</h3>
+                    <p class="place-description">
+                        ${fullDescription}
+                    </p>
+                </div>
+                <div class="place-contacts">
+                    <div class="place-address">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                        </svg>
+                        ${item.place.address || 'Адрес не указан'}
+                    </div>
+                    <div class="place-telephone">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        ${item.place.telephone || 'Телефон не указан'}
+                    </div>
+                </div>
             </div>
+        `;
 
-            <div class="footer-section contact">
-                <h3 id="contactsTitle">Контакты</h3>
-                <p><i class="phone-icon"></i> +7 (123) 456-78-90</p>
-                <p><i class="email-icon"></i> info@gorodskoygid.ru</p>
-                <p><i class="location-icon"></i> Великий Новгород</p>
-            </div>
-        </div>
+        // Добавляем обработчик клика
+        card.addEventListener('click', () => {
+            window.location.href = item.place.url;
+        });
 
-        <div class="footer-bottom">
-            &copy; 2025 Городской Гид | Все права защищены
-        </div>
-    </footer>
-    <script>
+        scrollerTrack.appendChild(card);
+    });
+
+    // Дублируем карточки для бесшовной анимации
+    const cards = scrollerTrack.querySelectorAll('.popular-place-card');
+    cards.forEach(card => {
+        const clone = card.cloneNode(true);
+        scrollerTrack.appendChild(clone);
+    });
+
+    console.log('✅ Popular places scroller rendered');
+
+    // Инициализируем управление скроллером
+    initScrollerControls();
+}
+
+// Инициализация управления скроллером
+function initScrollerControls() {
+    const scrollerTrack = document.getElementById('scrollerTrack');
+    const prevBtn = document.getElementById('scrollerPrev');
+    const nextBtn = document.getElementById('scrollerNext');
+    const scrollerContainer = document.querySelector('.scroller-container');
+
+    if (!scrollerTrack || !prevBtn || !nextBtn || !scrollerContainer) {
+        console.error('❌ Scroller elements not found');
+        return;
+    }
+
+    let isManualMode = false;
+    let manualScrollPosition = 0;
+    const cardWidth = 500 + 32; // 500px (ширина карточки) + 32px (gap)
+
+    // Переключаем в ручной режим при использовании кнопок
+    function enableManualMode() {
+        if (!isManualMode) {
+            isManualMode = true;
+            scrollerTrack.classList.add('manual-control');
+            scrollerTrack.style.animationPlayState = 'paused';
+            manualScrollPosition = 0;
+            updateManualScrollPosition();
+        }
+    }
+
+    // Возвращаем в автоматический режим
+    function enableAutoMode() {
+        if (isManualMode) {
+            isManualMode = false;
+            scrollerTrack.classList.remove('manual-control');
+            scrollerTrack.style.animationPlayState = 'running';
+            scrollerTrack.style.transform = 'translateX(0)';
+        }
+    }
+
+    // Обновляем позицию в ручном режиме
+    function updateManualScrollPosition() {
+        scrollerTrack.style.transform = `translateX(-${manualScrollPosition}px)`;
+    }
+
+    // Кнопка "назад"
+    prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        console.log('⬅️ Previous button clicked');
+        enableManualMode();
+
+        const trackWidth = scrollerTrack.scrollWidth / 2; // Т.к. карточки дублированы
+        manualScrollPosition -= cardWidth;
+
+        // Если вышли за начало, переходим в конец
+        if (manualScrollPosition < 0) {
+            manualScrollPosition = trackWidth - cardWidth;
+        }
+
+        updateManualScrollPosition();
+    });
+
+    // Кнопка "вперед"
+    nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        console.log('➡️ Next button clicked');
+        enableManualMode();
+
+        const trackWidth = scrollerTrack.scrollWidth / 2;
+        manualScrollPosition += cardWidth;
+
+        // Если вышли за конец, переходим в начало
+        if (manualScrollPosition >= trackWidth) {
+            manualScrollPosition = 0;
+        }
+
+        updateManualScrollPosition();
+    });
+
+    // Возвращаем в автоматический режим через 5 секунд бездействия
+    let autoModeTimeout;
+    function resetAutoModeTimeout() {
+        clearTimeout(autoModeTimeout);
+        autoModeTimeout = setTimeout(() => {
+            if (isManualMode) {
+                enableAutoMode();
+                console.log('🔄 Returning to auto-scroll mode');
+            }
+        }, 5000);
+    }
+
+    // Сбрасываем таймер при любом взаимодействии
+    [prevBtn, nextBtn].forEach(btn => {
+        btn.addEventListener('click', resetAutoModeTimeout);
+    });
+
+    // Пауза при наведении (работает в обоих режимах)
+    scrollerContainer.addEventListener('mouseenter', () => {
+        scrollerTrack.style.animationPlayState = 'paused';
+    });
+
+    scrollerContainer.addEventListener('mouseleave', () => {
+        if (!isManualMode) {
+            scrollerTrack.style.animationPlayState = 'running';
+        }
+    });
+
+    console.log('✅ Scroller controls initialized - both auto and manual modes available');
+}
+
 // Функция для загрузки популярного заведения
 function loadPopularPlace() {
+    const section = document.getElementById('popularPlaceSection');
+    const card = document.getElementById('popularPlaceCard');
+
+    if (!section || !card) {
+        return;
+    }
+
     fetch('/api/popular-place')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success && data.place) {
-                const section = document.getElementById('popularPlaceSection');
-                const card = document.getElementById('popularPlaceCard');
-
                 // Форматируем описание (обрезаем если слишком длинное)
                 let description = data.place.description || 'Описание отсутствует';
                 if (description.length > 150) {
@@ -283,7 +469,7 @@ function loadPopularPlace() {
                              src="${data.place.image_path ? '/static/' + data.place.image_path : '/static/Фотки зданий/default.png'}"
                              alt="${data.place.title}">
                         <div class="rating-overlay">
-                            <span class="rating-badge">★ ${data.place.avg_rating.toFixed(1)}</span>
+                            <span class="rating-badge">${data.place.avg_rating.toFixed(1)}</span>
                         </div>
                     </div>
 
@@ -326,556 +512,9 @@ function loadPopularPlace() {
             }
         })
         .catch(error => {
-            console.error('Error loading popular place:', error);
+            console.error('❌ Error loading popular place:', error);
         });
 }
-
-// Загружаем популярное заведение при загрузке страницы
-document.addEventListener('DOMContentLoaded', function() {
-    loadPopularPlace();
-});
-
-    //Код кнопки избранного
-function initFavorites() {
-    console.log('Initializing favorites...');
-    updateFavoritesCount();
-    markExistingFavorites();
-
-    // Обработчик для кнопки избранного в шапке
-    const headerFavoritesBtn = document.getElementById('header-favorites-btn');
-    if (headerFavoritesBtn) {
-        headerFavoritesBtn.addEventListener('click', function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            // Переключаем активное состояние для анимации
-            headerFavoritesBtn.classList.toggle('active');
-            console.log('Header favorites button clicked, active:', this.classList.contains('active'));
-
-            // Переход на страницу избранного
-            window.location.href = '/favorites';
-        });
-    }
-
-    // Обработчики для кнопок избранного в карточках
-    document.querySelectorAll('.favorite-btn').forEach(btn => {
-        btn.addEventListener('click', function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const itemId = this.dataset.itemId;
-            const itemData = this.dataset.item ? JSON.parse(this.dataset.item) : null;
-            toggleFavorite(itemId, itemData, this);
-        });
-    });
-}
-
-function toggleFavorite(itemId, itemData, buttonElement) {
-    try {
-        const favorites = getFavorites();
-        const existingIndex = favorites.findIndex(fav => fav.id === itemId);
-
-        if (existingIndex === -1) {
-            // Добавляем в избранное
-            favorites.push(itemData);
-            if (buttonElement) {
-                buttonElement.classList.add('active');
-                console.log(`✅ "${itemData.name}" добавлен в избранное`);
-            }
-        } else {
-            // Удаляем из избранного
-            favorites.splice(existingIndex, 1);
-            if (buttonElement) {
-                buttonElement.classList.remove('active');
-                console.log(`❌ "${itemData.name}" удален из избранного`);
-            }
-        }
-
-        saveFavorites(favorites);
-        updateFavoritesCount();
-        markExistingFavorites();
-
-    } catch (error) {
-        console.error('Error toggling favorite:', error);
-    }
-}
-
-function getFavorites() {
-    try {
-        return JSON.parse(localStorage.getItem('favorites')) || [];
-    } catch (error) {
-        console.error('Error getting favorites:', error);
-        return [];
-    }
-}
-
-function saveFavorites(favorites) {
-    try {
-        localStorage.setItem('favorites', JSON.stringify(favorites));
-        window.dispatchEvent(new Event('storage'));
-    } catch (error) {
-        console.error('Error saving favorites:', error);
-    }
-}
-
-function updateFavoritesCount() {
-    try {
-        const favorites = getFavorites();
-        const count = favorites.length;
-        const counter = document.getElementById('favorites-count');
-        const headerBtn = document.getElementById('header-favorites-btn');
-
-        console.log(`Updating favorites count: ${count}`);
-
-        if (counter) {
-            counter.textContent = count;
-        }
-
-        if (headerBtn) {
-            if (count > 0) {
-                headerBtn.style.display = 'inline-block';
-                headerBtn.classList.add('visible');
-                setTimeout(() => {
-                    headerBtn.style.opacity = '1';
-                    headerBtn.style.transform = 'translateY(0)';
-                }, 10);
-                console.log('Header button shown');
-            } else {
-                headerBtn.style.opacity = '0';
-                headerBtn.style.transform = 'translateY(-10px)';
-                setTimeout(() => {
-                    headerBtn.style.display = 'none';
-                    headerBtn.classList.remove('visible');
-                }, 300);
-                console.log('Header button hidden');
-            }
-        }
-    } catch (error) {
-        console.error('Error updating favorites count:', error);
-    }
-}
-
-function markExistingFavorites() {
-    try {
-        const favorites = getFavorites();
-        console.log('Marking existing favorites:', favorites);
-
-        // Для кнопок в карточках
-        document.querySelectorAll('.favorite-btn').forEach(btn => {
-            try {
-                const itemId = btn.dataset.itemId;
-                if (itemId) {
-                    const isFavorite = favorites.some(fav => fav.id === itemId);
-                    if (isFavorite) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                }
-            } catch (error) {
-                console.error('Error marking favorite button:', error);
-            }
-        });
-    } catch (error) {
-        console.error('Error in markExistingFavorites:', error);
-    }
-}
-
-// Синхронизация между вкладках
-window.addEventListener('storage', function(event) {
-    if (event.key === 'favorites') {
-        updateFavoritesCount();
-        markExistingFavorites();
-    }
-});
-
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing favorites...');
-    initFavorites();
-});
-//Конец кода кнопки избранного
-
-    //Кнопки Футера - Начало
-
-    const homeLink = document.getElementById('homeLink');
-    const aboutLink = document.getElementById('aboutLink');
-    const contactsLink = document.getElementById('contactsLink');
-    const helpLink = document.getElementById('helpLink');
-    const aboutModal = document.getElementById('aboutModal');
-    const closeModal = document.getElementById('closeModal');
-    const arrowContainer = document.getElementById('arrowContainer');
-    const arrowLine = document.getElementById('arrowLine');
-    const arrowHead = document.getElementById('arrowHead');
-    const contactsTitle = document.getElementById('contactsTitle');
-
-    // Обработчик для кнопки "Главная"
-    homeLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        // В реальном приложении здесь будет переход на главную страницу
-        window.location.href = "/";
-    });
-
-    // Обработчик для кнопки "О проекте"
-    aboutLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        aboutModal.style.display = 'flex';
-    });
-
-    // Обработчик для закрытия модального окна
-    closeModal.addEventListener('click', function() {
-        aboutModal.style.display = 'none';
-    });
-
-    // Закрытие модального окна при клике вне его
-    window.addEventListener('click', function(e) {
-        if (e.target === aboutModal) {
-            aboutModal.style.display = 'none';
-        }
-    });
-
-    // Обработчик для кнопки "Контакты"
-    contactsLink.addEventListener('click', function(e) {
-        e.preventDefault();
-
-        // Получаем позиции элементов относительно документа
-        const contactsLinkRect = contactsLink.getBoundingClientRect();
-        const contactsTitle = document.querySelector('.footer-section.contact h3');
-        const contactsTitleRect = contactsTitle.getBoundingClientRect();
-
-        // Добавляем scroll offset к координатам
-        const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
-        const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-
-        const startX = contactsLinkRect.left + scrollX + contactsLinkRect.width + 10;
-        const startY = contactsLinkRect.top + scrollY + contactsLinkRect.height / 2;
-
-        const endX = contactsTitleRect.left + scrollX - 5;
-        const endY = contactsTitleRect.top + scrollY + contactsTitleRect.height;
-
-        // Удаляем предыдущую стрелку если есть
-        const existingArrow = document.querySelector('.arrow-to-contacts');
-        if (existingArrow) {
-            existingArrow.remove();
-        }
-
-        // Создаем контейнер для SVG стрелки
-        const arrowContainer = document.createElement('div');
-        arrowContainer.className = 'arrow-to-contacts';
-        document.body.appendChild(arrowContainer);
-
-        // Создаем SVG для стрелки с завитушкой
-        const svgNS = "http://www.w3.org/2000/svg";
-        const svg = document.createElementNS(svgNS, "svg");
-        svg.setAttribute("width", "100%");
-        svg.setAttribute("height", "100%");
-        svg.style.position = 'absolute';
-        svg.style.top = '0';
-        svg.style.left = '0';
-        svg.style.pointerEvents = 'none';
-
-        // Вычисляем границы для SVG
-        const minX = Math.min(startX, endX) - 50;
-        const minY = Math.min(startY, endY) - 50;
-        const maxX = Math.max(startX, endX) + 50;
-        const maxY = Math.max(startY, endY) + 50;
-        const width = maxX - minX;
-        const height = maxY - minY;
-
-        // Создаем путь с завитушкой
-        const path = document.createElementNS(svgNS, "path");
-        const curveIntensity = 80;
-
-        // Путь с красивой кривой
-        const pathData = `M ${startX - minX} ${startY - minY}
-                         C ${startX - minX + curveIntensity} ${startY - minY - curveIntensity},
-                           ${endX - minX - curveIntensity} ${endY - minY - curveIntensity},
-                           ${endX - minX} ${endY - minY}`;
-
-        path.setAttribute("d", pathData);
-        path.setAttribute("class", "arrow-path");
-        path.style.filter = 'drop-shadow(0 0 2px rgba(52, 152, 219, 0.5))';
-
-        // Создаем головку стрелки
-        const arrowHead = document.createElementNS(svgNS, "polygon");
-        arrowHead.setAttribute("points", "0,0 -10,-7 -10,7");
-        arrowHead.setAttribute("class", "arrow-head");
-        arrowHead.setAttribute("fill", "#3498db");
-
-        // Вычисляем угол для головки стрелки
-        const pathElement = document.createElementNS(svgNS, "path");
-        pathElement.setAttribute("d", pathData);
-        const pathLength = pathElement.getTotalLength();
-        const point = pathElement.getPointAtLength(Math.max(0, pathLength - 1));
-        const pointBefore = pathElement.getPointAtLength(Math.max(0, pathLength - 20));
-        const angle = Math.atan2(point.y - pointBefore.y, point.x - pointBefore.x) * 180 / Math.PI;
-
-        arrowHead.setAttribute("transform", `translate(${endX - minX},${endY - minY}) rotate(${angle})`);
-        arrowHead.style.filter = 'drop-shadow(0 0 2px rgba(52, 152, 219, 0.5))';
-
-        // Устанавливаем размеры SVG
-        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-        arrowContainer.style.width = width + 'px';
-        arrowContainer.style.height = height + 'px';
-        arrowContainer.style.left = minX + 'px';
-        arrowContainer.style.top = minY + 'px';
-        arrowContainer.style.position = 'absolute'; // Меняем fixed на absolute
-
-        svg.appendChild(path);
-        svg.appendChild(arrowHead);
-        arrowContainer.appendChild(svg);
-
-        // Показываем стрелку
-        arrowContainer.style.opacity = '1';
-        arrowContainer.style.transition = 'opacity 0.5s';
-
-        // Добавляем класс для подчёркивания
-        contactsTitle.classList.add('contacts-underline');
-
-        // Анимируем прорисовку пути
-        setTimeout(() => {
-            path.style.transition = 'stroke-dashoffset 1.2s ease-in-out';
-            path.style.strokeDashoffset = '0';
-            setTimeout(() => {contactsTitle.classList.add('animate');}, 450)
-        }, 100);
-
-        // Анимируем появление головки стрелки и подчёркивание
-        setTimeout(() => {
-            arrowHead.style.opacity = '1';
-            arrowHead.style.transition = 'opacity 0.3s ease-in-out';
-        }, 550);
-
-        // Удаляем стрелку через 3 секунды
-        setTimeout(() => {
-            arrowContainer.style.opacity = '0';
-            contactsTitle.classList.remove('animate');
-
-            setTimeout(() => {
-                if (arrowContainer.parentNode) {
-                    arrowContainer.parentNode.removeChild(arrowContainer);
-                }
-                contactsTitle.classList.remove('contacts-underline');
-            }, 500);
-        }, 2000);
-    });
-
-    // Добавляем после других обработчиков футера
-const luckyButton = document.getElementById('luckyButton');
-
-luckyButton.addEventListener('click', function(e) {
-    e.preventDefault();
-
-    // Показываем анимацию загрузки
-    luckyButton.innerHTML = '🌀 Ищем...';
-    luckyButton.style.pointerEvents = 'none';
-
-    fetch('/api/random-place')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.place_url) {
-                // Переходим на случайную страницу
-                window.location.href = data.place_url;
-            } else {
-                alert('Не удалось найти случайное заведение');
-                luckyButton.innerHTML = 'Мне повезёт';
-                luckyButton.style.pointerEvents = 'auto';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Произошла ошибка при поиске случайного заведения');
-            luckyButton.innerHTML = 'Мне повезёт';
-            luckyButton.style.pointerEvents = 'auto';
-        });
-});
-
-//Кнопки футера - КОНЕЦ
-
-        function showWindow() {
-            document.getElementById('overlay').style.display = 'block';
-            const windowElement = document.getElementById('content_window');
-            windowElement.classList.add('show');
-            windowElement.style.display = 'block';
-        }
-
-        function hideWindow() {
-            document.getElementById('overlay').style.display = 'none';
-            const windowElement = document.getElementById('content_window');
-            windowElement.classList.remove('show');
-            windowElement.style.display = 'none';
-            document.body.classList.remove('no-scroll');
-        }
-
-        function showWindow1() {
-            document.getElementById('overlay').style.display = 'block';
-            const windowElement = document.getElementById('content_window2');
-            windowElement.classList.add('show');
-            windowElement.style.display = 'block';
-        }
-
-        function hideWindow1() {
-            document.getElementById('overlay').style.display = 'none';
-            const windowElement = document.getElementById('content_window2');
-            windowElement.classList.remove('show');
-            windowElement.style.display = 'none';
-            document.body.classList.remove('no-scroll');
-        }
-
-        // Закрытие окна при клике вне его
-        document.getElementById('overlay').addEventListener('click', function() {
-            const window1 = document.getElementById('content_window');
-            const window2 = document.getElementById('content_window2');
-            if (window1.classList.contains('show')) {
-                hideWindow();
-            } else if (window2.classList.contains('show')) {
-                hideWindow1();
-            }
-        });
-
-        // Обработчики кнопок входа/регистрации
-        document.getElementById('loginButton').addEventListener('click', showWindow);
-        document.getElementById('registerButton').addEventListener('click', showWindow1);
-
-        // Обработчик для формы регистрации
-        document.getElementById('regForm').onsubmit = function(event) {
-            event.preventDefault();
-
-            const username = document.getElementById('username1').value;
-            const password = document.getElementById('password1').value;
-            const confirmPassword = document.getElementById('password2').value;
-            const secretKey = document.getElementById('secret_key').value;
-
-            if (password !== confirmPassword) {
-                alert('Пароли не совпадают');
-                return;
-            }
-
-            fetch('/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    'username': username,
-                    'password': password,
-                    'secret_key': secretKey
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('welcomeUser').innerText = data.username;
-                    document.getElementById('userInfo').style.display = 'flex';
-                    document.getElementById('overlay').style.display = 'none';
-                    document.getElementById('content_window2').classList.remove('show');
-                    document.getElementById('content_window2').style.display = 'none';
-                    document.getElementById('loginButton').style.display = 'none';
-                    document.getElementById('registerButton').style.display = 'none';
-                    localStorage.setItem('username', data.username);
-                } else {
-                    alert(data.message);
-                }
-            });
-        };
-
-        // Обработчик для формы входа
-document.getElementById('loginForm').onsubmit = function(event) {
-    event.preventDefault();
-
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-
-    fetch('/login', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-            'username': username,
-            'password': password
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById('welcomeUser').innerText = data.username;
-            document.getElementById('userInfo').style.display = 'flex';
-            document.getElementById('overlay').style.display = 'none';
-            document.getElementById('content_window').classList.remove('show');
-            document.getElementById('content_window').style.display = 'none';
-            document.getElementById('loginButton').style.display = 'none';
-            document.getElementById('registerButton').style.display = 'none';
-
-            // АВТОМАТИЧЕСКИ ПОКАЗЫВАЕМ АДМИНКУ ДЛЯ ВСЕХ ЗАРЕГИСТРИРОВАННЫХ
-            document.getElementById('adminButton').style.display = 'flex';
-
-            localStorage.setItem('username', data.username);
-            localStorage.setItem('is_admin', true);
-        } else {
-            alert(data.message);
-        }
-    });
-};
-
-        // Обработчик кнопки выхода
-        document.querySelector('.btn-logout').addEventListener('click', function() {
-            fetch('/logout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('userInfo').style.display = 'none';
-                    document.getElementById('loginButton').style.display = 'block';
-                    document.getElementById('registerButton').style.display = 'block';
-                    localStorage.removeItem('username');
-                } else {
-                    alert(data.message);
-                }
-            });
-        });
-
-        // Проверка состояния пользователя при загрузке страницы
-// Проверка состояния пользователя при загрузке страницы
-window.addEventListener('load', function() {
-    const username = localStorage.getItem('username');
-    const isAdmin = localStorage.getItem('is_admin') === 'true';
-
-    if (username) {
-        document.getElementById('welcomeUser').innerText = username;
-        document.getElementById('userInfo').style.display = 'flex';
-        document.getElementById('loginButton').style.display = 'none';
-        document.getElementById('registerButton').style.display = 'none';
-
-        // АВТОМАТИЧЕСКИ ПОКАЗЫВАЕМ АДМИНКУ
-        document.getElementById('adminButton').style.display = 'flex';
-    }
-});
-
-        // Синхронизация состояния пользователя между вкладками
-        window.addEventListener('storage', function(event) {
-            if (event.key === 'username') {
-                if (event.newValue) {
-                    document.getElementById('welcomeUser').innerText = event.newValue;
-                    document.getElementById('userInfo').style.display = 'flex';
-                    document.getElementById('loginButton').style.display = 'none';
-                    document.getElementById('registerButton').style.display = 'none';
-                } else {
-                    document.getElementById('userInfo').style.display = 'none';
-                    document.getElementById('loginButton').style.display = 'block';
-                    document.getElementById('registerButton').style.display = 'block';
-                }
-            }
-        });
-
-        // Прокрутка к категориям при клике на кнопку "Начать исследовать"
-        document.querySelector('.Menu').addEventListener('click', function() {
-            const categoriesSection = document.querySelector('.categories');
-            categoriesSection.scrollIntoView({ behavior: 'smooth' });
-        });
     </script>
 </body>
 </html>

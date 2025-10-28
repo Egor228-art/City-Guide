@@ -22,6 +22,17 @@
         .help-text { font-size: 12px; color: #6c757d; }
         .slug-warning { color: #dc3545; font-size: 12px; margin-top: 5px; }
 
+        .input-group-text {
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    min-width: 60px;
+    justify-content: center;
+}
+
+.menu-item .input-group {
+    margin-bottom: 5px;
+}
+
 .accuracy-notification {
     margin-top: 10px;
 }
@@ -296,7 +307,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=fc434fa5-588f-4572-b204-f43136f0a8c3&lang=ru_RU" type="text/javascript"></script>
     <script>
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let map, marker;
@@ -345,7 +356,7 @@ function geocodeAddress() {
     searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Поиск...';
     searchBtn.disabled = true;
 
-    // Добавляем город для более точного поиска
+    // Используем альтернативное геокодирование через Nominatim
     const query = `Великий Новгород, ${address}`;
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`;
 
@@ -355,11 +366,12 @@ function geocodeAddress() {
             if (data && data.length > 0) {
                 // Ищем самый точный результат (с номером дома)
                 let bestResult = data[0];
+                let hasHouseNumber = false;
 
-                // Пытаемся найти результат с номером дома
                 for (let result of data) {
                     if (result.address && result.address.house_number) {
                         bestResult = result;
+                        hasHouseNumber = true;
                         break;
                     }
                 }
@@ -367,23 +379,38 @@ function geocodeAddress() {
                 const lat = parseFloat(bestResult.lat);
                 const lon = parseFloat(bestResult.lon);
 
+                // Устанавливаем координаты
                 setCoordinates(lat, lon);
-                map.setView([lat, lon], 18); // Увеличиваем zoom для точности
 
-                if (marker) {
-                    const addressDetails = bestResult.address || {};
-                    const houseNumber = addressDetails.house_number ? `, д. ${addressDetails.house_number}` : '';
-                    const street = addressDetails.road || addressDetails.street || '';
+                // Небольшая задержка для гарантии инициализации карты
+                setTimeout(() => {
+                    if (map) {
+                        map.setCenter([lat, lon], 17);
+                    } else {
+                        // Если карта все еще не инициализирована, используем ymaps.ready
+                        ymaps.ready(function() {
+                            if (map) {
+                                map.setCenter([lat, lon], 17);
+                            }
+                        });
+                    }
+                }, 100);
 
-                    marker.bindPopup(`
-                        <b>Найдено по адресу:</b><br>
-                        ${street}${houseNumber}<br>
-                        <small>Точность: ${getAccuracyText(bestResult)}</small>
-                    `).openPopup();
+                // Ждем полной инициализации Яндекс.Карт
+                if (typeof ymaps !== 'undefined' && map) {
+                    // Если карта уже инициализирована, сразу устанавливаем центр
+                    map.setCenter([lat, lon], 17);
+                } else {
+                    // Если карта еще не готова, ждем инициализации
+                    ymaps.ready(function() {
+                        if (map) {
+                            map.setCenter([lat, lon], 17);
+                        }
+                    });
                 }
 
                 // Показываем уведомление о точности
-                showAccuracyNotification(bestResult);
+                showAlternativeAccuracyNotification(hasHouseNumber, bestResult);
 
             } else {
                 alert('Адрес не найден. Проверьте правильность написания и попробуйте снова.');
@@ -399,28 +426,10 @@ function geocodeAddress() {
         });
 }
 
-// Функция для определения точности результата
-function getAccuracyText(result) {
-    const address = result.address || {};
-
-    if (address.house_number) {
-        return 'Точный адрес (найден номер дома)';
-    } else if (address.road || address.street) {
-        return 'Улица (номер дома не найден)';
-    } else if (address.suburb || address.neighbourhood) {
-        return 'Район';
-    } else {
-        return result.type || 'Область';
-    }
-}
-
-// Показ уведомления о точности
-function showAccuracyNotification(result) {
-    const accuracy = getAccuracyText(result);
-    const address = result.address || {};
-
+// Уведомление для альтернативного геокодирования
+function showAlternativeAccuracyNotification(hasHouseNumber, result) {
     let message = '';
-    if (!address.house_number) {
+    if (!hasHouseNumber) {
         message = `
             <div class="alert alert-warning mt-2">
                 <i class="fas fa-exclamation-triangle"></i>
@@ -450,6 +459,128 @@ function showAccuracyNotification(result) {
     document.getElementById('coordinatesDisplay').after(notification);
 }
 
+// Альтернативное геокодирование через серверный эндпоинт
+function tryAlternativeGeocoding(query, searchBtn, originalText) {
+    console.log('Пробуем альтернативное геокодирование для:', query);
+
+    // Можно добавить здесь вызов к своему серверному эндпоинту
+    // или использовать другой сервис геокодирования
+
+    alert('Сервис геокодирования временно недоступен. Установите координаты вручную, кликнув на карту.');
+    searchBtn.innerHTML = originalText;
+    searchBtn.disabled = false;
+}
+
+// Функция для получения числового значения точности
+function getPrecisionValue(result) {
+    try {
+        const precision = result.properties.get('metaDataProperty').GeocoderMetaData.precision;
+
+        const precisionWeights = {
+            'exact': 100,      // Точный адрес
+            'number': 90,      // Номер дома
+            'range': 80,       // Диапазон домов
+            'street': 70,      // Улица
+            'near': 60,        // Приблизительно
+            'other': 50        // Область
+        };
+
+        return precisionWeights[precision] || 0;
+    } catch (error) {
+        return 0;
+    }
+}
+
+// Функция для определения точности результата Яндекс.Карт
+function getYandexAccuracyText(result) {
+    try {
+        var precision = result.properties.get('metaDataProperty').GeocoderMetaData.precision;
+        var kind = result.properties.get('metaDataProperty').GeocoderMetaData.kind;
+
+        if (precision === 'exact') {
+            return 'Точный адрес (найден номер дома)';
+        } else if (precision === 'number') {
+            return 'Номер дома';
+        } else if (precision === 'range') {
+            return 'Диапазон домов';
+        } else if (precision === 'street') {
+            return 'Улица (номер дома не найден)';
+        } else if (kind === 'house' || kind === 'street') {
+            return 'Улица или дом';
+        } else if (kind === 'district') {
+            return 'Район';
+        } else {
+            return 'Область';
+        }
+    } catch (error) {
+        return 'Неизвестная точность';
+    }
+}
+
+// Показ уведомления о точности для Яндекс.Карт
+function showAccuracyNotification(result) {
+    try {
+        const accuracy = getYandexAccuracyText(result);
+        const precision = result.properties.get('metaDataProperty').GeocoderMetaData.precision;
+
+        let message = '';
+        if (precision !== 'exact' && precision !== 'number') {
+            message = `
+                <div class="alert alert-warning mt-2">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Внимание!</strong> ${accuracy}<br>
+                    <small>Рекомендуется проверить положение метки на карте и при необходимости переместить её вручную.</small>
+                </div>
+            `;
+        } else {
+            message = `
+                <div class="alert alert-success mt-2">
+                    <i class="fas fa-check-circle"></i>
+                    <strong>Успешно!</strong> Адрес найден с высокой точностью.
+                </div>
+            `;
+        }
+
+        // Удаляем предыдущие уведомления
+        const existingAlert = document.querySelector('.accuracy-notification');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        // Добавляем новое уведомление
+        const notification = document.createElement('div');
+        notification.className = 'accuracy-notification';
+        notification.innerHTML = message;
+        document.getElementById('coordinatesDisplay').after(notification);
+    } catch (error) {
+        console.error('Ошибка показа уведомления:', error);
+    }
+}
+
+// ========== КАРТА ==========
+function initMap() {
+    // Инициализация Яндекс.Карт без ключа (ограниченный функционал)
+    ymaps.ready(function() {
+        try {
+            map = new ymaps.Map('map', {
+                center: [58.5211, 31.2758],
+                zoom: 13
+            });
+
+            // Обработчик клика по карте
+            map.events.add('click', function(e) {
+                var coords = e.get('coords');
+                setCoordinates(coords[0], coords[1]);
+            });
+
+            console.log('Яндекс.Карты успешно инициализированы');
+        } catch (error) {
+            console.error('Ошибка инициализации карты:', error);
+            alert('Ошибка загрузки карт. Проверьте подключение к интернету.');
+        }
+    });
+}
+
 // ========== УСТАНОВКА КООРДИНАТ ==========
 function setCoordinates(lat, lng) {
     const latFixed = lat.toFixed(6);
@@ -461,30 +592,47 @@ function setCoordinates(lat, lng) {
     document.getElementById('currentCoords').textContent = `${latFixed}, ${lngFixed}`;
     document.getElementById('coordinatesDisplay').style.display = 'block';
 
+    // Удаляем старую метку если есть
     if (marker) {
-        map.removeLayer(marker);
+        map.geoObjects.remove(marker);
     }
 
-    marker = L.marker([lat, lng]).addTo(map)
-        .bindPopup(`
+    // Создаем новую метку
+    marker = new ymaps.Placemark([lat, lng], {
+        balloonContent: `
             <b>Местоположение</b><br>
             Широта: ${latFixed}<br>
-            Долгота: ${lngFixed}
-        `)
-        .openPopup();
-}
-
-// ========== КАРТА ==========
-function initMap() {
-    map = L.map('map').setView([58.5211, 31.2758], 13);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    map.on('click', function(e) {
-        setCoordinates(e.latlng.lat, e.latlng.lng);
+            Долгота: ${lngFixed}<br>
+            <small>Перетащите метку для точной настройки</small>
+        `
+    }, {
+        preset: 'islands#blueDotIcon',
+        draggable: true
     });
+
+    // Добавляем метку на карту
+    map.geoObjects.add(marker);
+
+    // Обработчик перемещения метки
+    marker.events.add('dragend', function() {
+        var newCoords = marker.geometry.getCoordinates();
+        const newLat = newCoords[0].toFixed(6);
+        const newLng = newCoords[1].toFixed(6);
+
+        document.getElementById('latInput').value = newLat;
+        document.getElementById('lonInput').value = newLng;
+        document.getElementById('currentCoords').textContent = `${newLat}, ${newLng}`;
+
+        marker.properties.set('balloonContent', `
+            <b>Местоположение</b><br>
+            Широта: ${newLat}<br>
+            Долгота: ${newLng}<br>
+            <small>Перетащите метку для точной настройки</small>
+        `);
+    });
+
+    // Открываем балун
+    marker.balloon.open();
 }
 // ========== SLUG ГЕНЕРАЦИЯ ==========
 function generateSlug() {
@@ -497,20 +645,6 @@ function generateSlug() {
         document.getElementById('slug-warning').style.display = 'none';
         return;
     }
-
-    // Транслитерация кириллицы в латиницу (сохраняем регистр)
-    const translitDict = {
-        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
-        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
-        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
-        'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
-        'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo',
-        'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
-        'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
-        'Ф': 'F', 'Х': 'H', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Sch', 'Ъ': '',
-        'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya'
-    };
 
     // Обрабатываем название
     let titleSlug = title.split('').map(char => {
@@ -729,8 +863,11 @@ function generateSlug() {
                                    onchange="updateMenu()">
                         </div>
                         <div class="col-md-3">
-                            <input type="text" class="form-control item-price" placeholder="Цена" 
-                                   onchange="updateMenu()">
+                            <div class="input-group">
+                                <input type="text" class="form-control item-price" placeholder="Цена"
+                                       onchange="updateMenu()">
+                                <span class="input-group-text">руб</span>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <input type="text" class="form-control item-description" placeholder="Описание" 
@@ -764,38 +901,43 @@ function generateSlug() {
             updateMenu();
         }
 
-        function updateMenu() {
-            const menu = {};
-            
-            menuCategories.forEach(category => {
-                const categoryElement = document.getElementById(`menuCategory${category.id}`);
-                if (categoryElement) {
-                    const categoryName = categoryElement.querySelector('.category-name').value;
-                    if (categoryName) {
-                        menu[categoryName] = [];
-                        
-                        category.items.forEach(itemId => {
-                            const itemElement = document.getElementById(`menuItem${category.id}_${itemId}`);
-                            if (itemElement) {
-                                const name = itemElement.querySelector('.item-name').value;
-                                const price = itemElement.querySelector('.item-price').value;
-                                const description = itemElement.querySelector('.item-description').value;
-                                
-                                if (name) {
-                                    menu[categoryName].push({
-                                        name: name,
-                                        price: price,
-                                        description: description
-                                    });
-                                }
-                            }
-                        });
+function updateMenu() {
+    const menu = {};
+
+    menuCategories.forEach(category => {
+        const categoryElement = document.getElementById(`menuCategory${category.id}`);
+        if (categoryElement) {
+            const categoryName = categoryElement.querySelector('.category-name').value;
+            if (categoryName) {
+                menu[categoryName] = [];
+
+                category.items.forEach(itemId => {
+                    const itemElement = document.getElementById(`menuItem${category.id}_${itemId}`);
+                    if (itemElement) {
+                        const name = itemElement.querySelector('.item-name').value;
+                        let price = itemElement.querySelector('.item-price').value;
+                        const description = itemElement.querySelector('.item-description').value;
+
+                        // Автоматически добавляем "руб" если не указано
+                        if (price && !/\sруб$/.test(price) && !/\sр$/.test(price)) {
+                            price = price.trim() + ' руб';
+                        }
+
+                        if (name) {
+                            menu[categoryName].push({
+                                name: name,
+                                price: price,
+                                description: description
+                            });
+                        }
                     }
-                }
-            });
-            
-            document.getElementById('menuInput').value = JSON.stringify(menu);
+                });
+            }
         }
+    });
+
+    document.getElementById('menuInput').value = JSON.stringify(menu);
+}
 
         // ========== ВАЛИДАЦИЯ ФОРМЫ ==========
         function validateForm() {

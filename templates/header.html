@@ -1,0 +1,91 @@
+<nav class="navbar">
+    <div class="nav-container">
+        <div class="logo" onclick="window.location.href='/';">
+            <img src="{{ url_for('static', filename='Фотки зданий/лого.png') }}" alt="Логотип">
+            <span>Городской Гид</span>
+        </div>
+
+        <!-- Поиск -->
+        <form class="search-box" action="/search" method="GET">
+            <input type="text" name="q" placeholder="Поиск заведений..." class="search-input">
+            <button type="submit" class="search-button">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M21 21L16.65 16.65" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </form>
+
+        <!-- Кнопка избранного -->
+        <div class="favorites-wrapper">
+            <div class="favorite-wrapper" id="header-favorites-btn" style="display: none;" onclick="window.location.href='/favorites'">
+              <span class="particle particle-1">✦</span>
+              <span class="particle particle-2">✦</span>
+              <span class="particle particle-3">✦</span>
+              <span class="particle particle-4">✦</span>
+              <span class="particle particle-5">✦</span>
+              <span class="particle particle-6">✦</span>
+              <span class="particle particle-7">✦</span>
+              <span class="heart-icon">❤</span>
+              <span class="favorites-counter" id="favorites-count">0</span>
+            </div>
+        </div>
+
+        <!-- Кнопки входа/регистрации -->
+        <div class="auth-buttons">
+            <button id="loginButton" class="btn-login">Вход</button>
+            <button id="registerButton" class="btn-register">Регистрация</button>
+            <div id="userInfo" style="display: none;">
+                <div class="btn-admin" id="adminButton" onclick="window.location.href='/admin'">
+                    <img id="avatar" src="{{ url_for('static', filename='Фотки зданий/avatar.png') }}" alt="Avatar">
+                    <span id="welcomeUser"></span>
+                </div>
+                <button class="btn-logout">Выход</button>
+            </div>
+        </div>
+    </div>
+    <div class="clouds"></div>
+</nav>
+
+<!-- Окна входа/регистрации -->
+<div id="overlay" style="display: none;"></div>
+
+<div id="content_window" class="popup-window">
+    <form id="loginForm" method="POST" action="/login">
+        <h1>Вход</h1>
+        <span class="btnX" onclick="hideWindow()">×</span>
+        <div class="form-group">
+            <label for="username">Логин</label>
+            <input type="text" class="form-control" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Пароль</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btnA">Войти</button>
+    </form>
+</div>
+
+<div id="content_window2" class="popup-window">
+    <form id="regForm" method="POST" action="/register">
+        <h1>Регистрация</h1>
+        <span class="btnX" onclick="hideWindow1()">×</span>
+        <div class="form-group">
+            <label for="username1">Логин</label>
+            <input type="text" id="username1" name="username" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="password1">Пароль</label>
+            <input type="password" id="password1" name="password" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="password2">Подтвердите пароль</label>
+            <input type="password" id="password2" name="confirm_password" class="form-control" required>
+        </div>
+        <div class="form-group">
+            <label for="secret_key">Секретный ключ</label>
+            <input type="password" id="secret_key" name="secret_key" class="form-control" required>
+        </div>
+        <button type="submit" class="btnB">Зарегистрироваться</button>
+    </form>
+</div>

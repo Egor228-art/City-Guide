@@ -124,7 +124,7 @@ def permission_required(permission):
             # Проверяем конкретное право
             user_permissions = get_role_permissions(user.role)
             if permission not in user_permissions and 'all' not in user_permissions:
-                abort(403)
+                return render_template('Error.html', error_code=403), 403
 
             return f(*args, **kwargs)
 
@@ -150,7 +150,7 @@ def role_required(required_permission):
             # Проверяем права для роли (ИСПРАВЛЕННАЯ СТРОКА)
             user_permissions = get_role_permissions(user.role)
             if required_permission not in user_permissions and 'all' not in user_permissions:
-                abort(403)
+                return render_template('Error.html', error_code=403), 403
 
             return f(*args, **kwargs)
         return decorated_function
@@ -237,13 +237,44 @@ class Place(db.Model):
         return f'<Place {self.title}>'
 
     def get_menu_dict(self):
-        """Безопасное получение меню"""
+        """Безопасное получение меню с проверкой на пустоту"""
         try:
-            if self.menu:
-                return json.loads(self.menu)
+            if self.menu and self.menu.strip():
+                menu_data = json.loads(self.menu)
+                # 🔥 Проверяем, что меню не пустое
+                if menu_data and isinstance(menu_data, dict):
+                    # Убираем пустые категории
+                    filtered_menu = {}
+                    for category, items in menu_data.items():
+                        if items and isinstance(items, list) and len(items) > 0:
+                            # Убираем пустые items
+                            filtered_items = [item for item in items if item.get('name')]
+                            if filtered_items:
+                                filtered_menu[category] = filtered_items
+
+                    return filtered_menu if filtered_menu else {}
             return {}
-        except:
+        except (json.JSONDecodeError, TypeError, ValueError) as e:
+            print(f"Error parsing menu for place {self.id}: {e}")
             return {}
+
+    def has_menu(self):
+        """Проверяет, есть ли реальное меню (не пустое)"""
+        try:
+            if self.menu and self.menu.strip():
+                menu_data = json.loads(self.menu)
+                # Проверяем что меню не пустое
+                if menu_data and isinstance(menu_data, dict):
+                    # Проверяем есть ли хотя бы одна категория с items
+                    for category, items in menu_data.items():
+                        if items and isinstance(items, list) and len(items) > 0:
+                            # Проверяем что есть хотя бы один непустой item
+                            for item in items:
+                                if item.get('name') and item.get('name').strip():
+                                    return True
+            return False
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return False
 
     def get_menu_data(self):
         """Алиас для get_menu_dict"""
@@ -790,11 +821,12 @@ def admin_change_user_role(user_id):
 
         # Проверка прав
         if not current_user.can_manage_user(target_user):
-            return jsonify({'error': 'Недостаточно прав для изменения этого пользователя'}), 403
+            return render_template('Error.html', error_code=403, error_message="Недостаточно прав для изменения этого пользователя"), 403
 
         # Нельзя изменять главного админа
         if target_user.username == 'admin' and current_user.username != 'admin':
-            return jsonify({'error': 'Нельзя изменять главного администратора'}), 403
+            return render_template('Error.html', error_code=403, error_message="Нельзя изменять главного администратора"), 403
+
 
         # Нельзя понижать себя
         if target_user.id == current_user.id and new_role != current_user.role:
@@ -1522,30 +1554,9 @@ def update_review(review_id):
         return jsonify({'error': 'Internal server error'}), 500
 
 
-@app.route('/api/reviews', methods=['GET', 'POST'])
+@app.route('/api/reviews', methods=['POST'])
 def create_review():
-    if request.method == 'GET':
-        restaurant_id = request.args.get('restaurant_id')
-        if not restaurant_id:
-            return jsonify({'error': 'restaurant_id is required'}), 400
-
-        reviews = Review.query.filter_by(restaurant_id=restaurant_id).order_by(Review.created_at.desc()).all()
-        reviews_data = [{
-            'id': review.id,
-            'username': review.username,
-            'rating': review.rating,
-            'comment': review.comment,
-            'created_at': review.created_at.isoformat(),
-            'likes': review.likes or 0,
-            'dislikes': review.dislikes or 0,
-            'user_token': review.user_token,
-            'device_fingerprint': review.device_fingerprint,
-            'user_ratings': review.user_ratings or {}
-        } for review in reviews]
-
-        return jsonify(reviews_data)
-
-    elif request.method == 'POST':
+    if request.method == 'POST':
         try:
             data = request.get_json()
             print("=== СОЗДАНИЕ ОТЗЫВА ===")
@@ -1571,11 +1582,9 @@ def create_review():
             device_fingerprint = data.get('device_fingerprint')
             restaurant_id = data['restaurant_id']
 
-            # 🔥 Проверяем лимит для КОНКРЕТНОГО ресторана
+            # Проверяем лимит
             if not check_review_limit_per_restaurant(user_token, restaurant_id):
-                return jsonify({
-                    'error': f'Вы уже оставляли отзыв для этого заведения сегодня. Следующий отзыв можно будет оставить через 24 часа.'
-                }), 429
+                return jsonify({'error': 'Вы уже оставляли отзыв для этого заведения сегодня'}), 429
 
             # Создаем отзыв
             review = Review(
@@ -1597,14 +1606,12 @@ def create_review():
             # Сохраняем в БД
             db.session.add(review)
             db.session.commit()
-
-            # ОБНОВЛЯЕМ объект из БД
             db.session.refresh(review)
 
             # Обновляем статистику ресторана
             update_restaurant_stats(restaurant_id)
 
-            # ВАЖНО: Возвращаем ВСЕ поля
+            # ВАЖНО: Возвращаем JSON, а не HTML
             response_data = {
                 'success': True,
                 'message': 'Review added successfully',
@@ -1622,15 +1629,16 @@ def create_review():
                     'user_ratings': review.user_ratings
                 }
             }
-            print("✅ Отправляем ответ клиенту:", response_data)
-            return jsonify(response_data), 201
+
+            print("✅ Отправляем JSON ответ клиенту:", response_data)
+            return jsonify(response_data), 201  # ✅ ВАЖНО: возвращаем JSON
 
         except Exception as e:
             print(f"❌ Ошибка при создании отзыва: {str(e)}")
             import traceback
             traceback.print_exc()
             db.session.rollback()
-            return jsonify({'error': 'Internal server error'}), 500
+            return jsonify({'error': str(e)}), 500
 
 @app.route('/api/debug_current_endpoint', methods=['POST'])
 def debug_current_endpoint():
@@ -1679,8 +1687,7 @@ def fix_legacy_reviews():
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
-
+        return render_template('Error.html', error_code=500, error_message=e), 500
 
 @app.route('/api/migrate_legacy_reviews', methods=['POST'])
 def migrate_legacy_reviews():
@@ -1691,7 +1698,7 @@ def migrate_legacy_reviews():
         device_fingerprint = data.get('device_fingerprint')
 
         if not user_token or not device_fingerprint:
-            return jsonify({'error': 'User token and device fingerprint required'}), 400
+            return render_template('Error.html', error_code=400, error_message="пользовательской токен и устройство не совподают"), 400
 
         # Находим legacy отзывы для текущего пользователя
         user_ip = request.remote_addr
@@ -1719,7 +1726,7 @@ def migrate_legacy_reviews():
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+        return render_template('Error.html', error_code=500, error_message=e), 500
 
 @app.route('/api/debug/reviews')
 def debug_review(review_id):
@@ -1727,7 +1734,7 @@ def debug_review(review_id):
     try:
         review = Review.query.get(review_id)
         if not review:
-            return jsonify({'error': 'Review not found'}), 404
+            return render_template('Error.html', error_code=404), 404
 
         return jsonify({
             'id': review.id,
@@ -1738,7 +1745,7 @@ def debug_review(review_id):
             'ip_address': review.ip_address
         })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return render_template('Error.html', error_code=500, error_message=e), 500
 
 @app.route('/api/test_review_creation', methods=['POST'])
 def test_review_creation():
@@ -1791,7 +1798,7 @@ def test_review_creation():
 
     except Exception as e:
         print(f"Ошибка: {e}")
-        return jsonify({'error': str(e)}), 500
+        return render_template('Error.html', error_code=500, error_message=e), 500
 
 @app.route('/api/debug/review/<int:review_id>')
 def debug_review_endpoint(review_id):
@@ -1812,7 +1819,7 @@ def test_simple_update():
             'test': 'Это тестовый ответ'
         })
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        return render_template('Error.html', error_code=500, error_message=e), 500
 
 @app.route('/api/reviews/<int:review_id>', methods=['DELETE'])
 def delete_review(review_id):
@@ -1822,18 +1829,18 @@ def delete_review(review_id):
         print(f"Данные: {data}")
 
         if not data:
-            return jsonify({'error': 'No data provided'}), 400
+            return render_template('Error.html', error_code=400, error_message="Не предоставлено данных"), 400
 
         user_token = data.get('user_token')
         device_fingerprint = data.get('device_fingerprint')
 
         if not user_token or not device_fingerprint:
-            return jsonify({'error': 'User token and device fingerprint required'}), 400
+            return render_template('Error.html', error_code=400, error_message="Пользовательский токен и устройство не то"), 400
 
         # Находим отзыв
         review = Review.query.get(review_id)
         if not review:
-            return jsonify({'error': 'Review not found'}), 404
+            return render_template('Error.html', error_code=404), 404
 
         print(f"User token в отзыве: {review.user_token}")
         print(f"User token из запроса: {user_token}")
@@ -1841,7 +1848,7 @@ def delete_review(review_id):
         # Проверяем права на удаление
         if not review.user_token or review.user_token != user_token:
             print("Ошибка: несовпадение user_token")
-            return jsonify({'error': 'Permission denied - user token mismatch'}), 403
+            return render_template('Error.html', error_code=403, error_message="Пользовательский токен не совподает"), 403
 
         # Проверяем время удаления (6 часов)
         now_utc = datetime.utcnow()
@@ -1857,7 +1864,8 @@ def delete_review(review_id):
 
         if hours_diff > 6:
             print("Ошибка: время удаления истекло")
-            return jsonify({'error': 'Deletion time expired (6 hours limit)'}), 403
+            return render_template('Error.html', error_code=403, error_message="Время истекло"), 403
+
 
         # Сохраняем restaurant_id для обновления статистики
         restaurant_id = review.restaurant_id
@@ -1880,7 +1888,7 @@ def delete_review(review_id):
         print(f"Ошибка при удалении отзыва: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': 'Internal server error'}), 500
+        return render_template('Error.html', error_code=500), 500
 
 def fix_image_paths():
     """Исправление путей изображений на английские"""
@@ -1954,7 +1962,7 @@ def add_place():
 
     # Разрешаем доступ стажёрам, модераторам, редакторам и админам
     if user.role not in ['trainee', 'moderator', 'editor', 'admin']:
-        return "Доступ запрещён", 403
+        return render_template('Error.html', error_code=403, error_message="Доступ запрещён"), 403
 
     # Получаем существующие категории из базы
     categories = db.session.query(Place.category).distinct().all()
@@ -2770,6 +2778,122 @@ def api_category_places(category_slug):
         'has_prev': page > 1
     })
 
+@app.route('/api/popular-places-by-category')
+def api_popular_places_by_category():
+    """API для получения самых популярных заведений из каждой категории"""
+    try:
+        print("🔍 Starting popular places by category search...")
+
+        # Получаем все уникальные категории (кроме Иконок)
+        categories = db.session.query(Place.category).filter(
+            Place.category != 'Иконка',
+            Place.category.isnot(None)
+        ).distinct().all()
+
+        categories = [cat[0] for cat in categories if cat[0]]
+        print(f"📂 Found categories: {categories}")
+
+        popular_places = []
+
+        for category in categories:
+            print(f"🔎 Processing category: {category}")
+
+            # Находим все места в категории
+            places_in_category = Place.query.filter_by(category=category).all()
+            print(f"   Found {len(places_in_category)} places in category")
+
+            if not places_in_category:
+                continue
+
+            # Находим самое популярное место в категории
+            best_place = None
+            best_score = -1
+            best_restaurant = None
+
+            for place in places_in_category:
+                # Ищем ресторан в таблице Restaurant по разным идентификаторам
+                restaurant = None
+
+                # Пробуем найти по ID места
+                if place.id:
+                    restaurant = Restaurant.query.get(str(place.id))
+
+                # Если не нашли, пробуем по slug
+                if not restaurant and place.slug:
+                    restaurant = Restaurant.query.get(place.slug)
+
+                # Если не нашли, пробуем по названию
+                if not restaurant and place.title:
+                    restaurant = Restaurant.query.filter_by(name=place.title).first()
+
+                if restaurant and restaurant.total_rating is not None and restaurant.review_count:
+                    # Считаем "популярность" как рейтинг * количество отзывов
+                    score = restaurant.total_rating * restaurant.review_count
+
+                    if score > best_score:
+                        best_score = score
+                        best_place = place
+                        best_restaurant = restaurant
+                        print(f"   🏆 New best place: {place.title} with score {score}")
+
+            # Если не нашли через Restaurant, берем первое место в категории
+            if not best_place:
+                best_place = places_in_category[0]
+                print(f"   📝 Using first place: {best_place.title}")
+
+            if best_place:
+                # Формируем URL
+                if best_place.slug and best_place.category_en:
+                    place_url = url_for('place_page_by_slug',
+                                        category_en=best_place.category_en,
+                                        slug=best_place.slug,
+                                        _external=False)
+                else:
+                    place_url = url_for('restaurant_page', id=best_place.id, _external=False)
+
+                # Получаем рейтинг и количество отзывов
+                avg_rating = 0.0
+                review_count = 0
+
+                if best_restaurant:
+                    avg_rating = round(float(best_restaurant.total_rating), 1)
+                    review_count = best_restaurant.review_count
+                else:
+                    # Пробуем вычислить из отзывов
+                    reviews = Review.query.filter_by(restaurant_id=str(best_place.id)).all()
+                    if reviews:
+                        total_rating = sum(review.rating for review in reviews)
+                        avg_rating = round(total_rating / len(reviews), 1)
+                        review_count = len(reviews)
+
+                popular_places.append({
+                    'category': category,
+                    'place': {
+                        'id': best_place.id,
+                        'title': best_place.title or 'Без названия',
+                        'description': best_place.description or 'Описание отсутствует',
+                        'telephone': best_place.telephone or 'Телефон не указан',
+                        'address': best_place.address or 'Адрес не указан',
+                        'image_path': best_place.image_path,
+                        'avg_rating': avg_rating,
+                        'review_count': review_count,
+                        'url': place_url
+                    }
+                })
+                print(f"   ✅ Added {best_place.title} to popular places")
+
+        print(f"🎯 Total popular places found: {len(popular_places)}")
+
+        return jsonify({
+            'success': True,
+            'popular_places': popular_places
+        })
+
+    except Exception as e:
+        print(f"❌ Error in api_popular_places_by_category: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
 
 @app.route('/api/random-place')
 def api_random_place():
@@ -2978,7 +3102,7 @@ def admin_places():
 
     # Разрешаем доступ стажёрам, модераторам, редакторам и админам
     if user.role not in ['trainee', 'moderator', 'editor', 'admin']:
-        return "Доступ запрещён", 403
+        return render_template('Error.html', error_code=403, error_message="Доступ запрещён"), 403
 
     # Пагинация - 50 заведений на страницу
     page = request.args.get('page', 1, type=int)
@@ -3001,7 +3125,7 @@ def edit_place(place_id):
     """Страница редактирования заведения"""
     user = User.query.filter_by(username=session['username']).first()
     if user.role == 'trainee':
-        return "Доступ запрещён", 403
+        return render_template('Error.html', error_code=403, error_message="Доступ запрещён"), 403
 
     place = Place.query.get_or_404(place_id)
     categories = ['Ресторан', 'Кафе', 'Магазин', 'Музей', 'Театр', 'Библиотека',
@@ -3021,7 +3145,7 @@ def admin_delete_place(place_id):
         user = User.query.filter_by(username=session['username']).first()
         # Запрещаем стажёрам удалять заведения
         if user.role == 'trainee':
-            return jsonify({'error': 'Недостаточно прав'}), 403
+            return render_template('Error.html', error_code=403, error_message="Недостаточно прав"), 403
 
         place = Place.query.get_or_404(place_id)
         db.session.delete(place)
@@ -3041,7 +3165,7 @@ def admin_update_place(place_id):
         user = User.query.filter_by(username=session['username']).first()
         # Запрещаем стажёрам редактировать заведения
         if user.role == 'trainee':
-            return jsonify({'error': 'Недостаточно прав'}), 403
+            return render_template('Error.html', error_code=403, error_message="Доступ запрещён"), 403
 
         place = Place.query.get_or_404(place_id)
         data = request.get_json()
@@ -3084,7 +3208,7 @@ def admin_reviews_page():
     """Страница управления отзывами"""
     user = User.query.filter_by(username=session['username']).first()
     if user.role == 'trainee':
-        return "Доступ запрещён", 403
+        return render_template('Error.html', error_code=403, error_message="Доступ запрещён"), 403
 
     # Пагинация для отзывов
     page = request.args.get('page', 1, type=int)
