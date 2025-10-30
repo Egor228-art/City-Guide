@@ -296,6 +296,21 @@ body {
     <!-- Подключаем общий JS -->
     <script src="{{ url_for('static', filename='js/common.js') }}"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            console.log('📋 Favorites on page:', favorites);
+
+            // Проверьте, что у каждого элемента есть правильный page_url
+            favorites.forEach(fav => {
+                console.log('📍 Favorite item:', {
+                    id: fav.id,
+                    name: fav.name,
+                    page_url: fav.page_url
+                });
+            });
+        });
+    </script>
+    <script>
     // Создание сердечек на фоне
         function createHearts() {
     const heartsContainer = document.getElementById('heartsBackground');
@@ -497,6 +512,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                 try {
                                     localStorage.setItem('favorites', JSON.stringify(favorites));
                                     this.renderFavorites(); // Перерисовываем список
+
+                                    // 🔥 ДОБАВЬТЕ ЭТУ СТРОЧКУ:
+                                    if (window.updateFavoritesCount) {
+                                        window.updateFavoritesCount();
+                                    }
                                 } catch (error) {
                                     console.error('Error removing favorite:', error);
                                 }

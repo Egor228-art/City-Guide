@@ -1,60 +1,109 @@
 import sqlite3
+import os
 
 
-def fix_role_field():
+def migrate_menu_field():
+    """Миграция для замены поля menu на menu_pdf_path"""
+
     conn = sqlite3.connect('instance/database.db')
     cursor = conn.cursor()
 
-    print("🔧 Исправление поля role...")
+    print("🔧 Начинаем миграцию поля menu -> menu_pdf_path...")
 
     try:
-        # Проверяем текущий тип поля role
-        cursor.execute("PRAGMA table_info(user)")
+        # Проверяем текущую структуру таблицы place
+        cursor.execute("PRAGMA table_info(place)")
         columns = cursor.fetchall()
-        role_column = next((col for col in columns if col[1] == 'role'), None)
+        column_names = [col[1] for col in columns]
 
-        if role_column:
-            print(f"Текущий тип role: {role_column[2]}")
+        print(f"Текущие колонки в таблице place: {column_names}")
 
-            # Если тип неправильный, пересоздаем таблицу
-            if role_column[2] != 'VARCHAR(50)':
-                print("Пересоздаем таблицу user...")
+        # Проверяем существование поля menu
+        if 'menu' in column_names:
+            print("✅ Найдено поле menu")
 
-                # Создаем временную таблицу
-                cursor.execute("""
-                    CREATE TABLE user_temp (
-                        id INTEGER PRIMARY KEY,
-                        username VARCHAR(150) NOT NULL UNIQUE,
-                        password VARCHAR(150) NOT NULL,
-                        role VARCHAR(50) DEFAULT 'trainee',
-                        created_at TEXT,
-                        last_login TEXT
-                    )
-                """)
+            # Проверяем существует ли уже menu_pdf_path
+            if 'menu_pdf_path' not in column_names:
+                print("🔄 Добавляем новое поле menu_pdf_path...")
 
-                # Копируем данные
-                cursor.execute("""
-                    INSERT INTO user_temp (id, username, password, role, created_at, last_login)
-                    SELECT id, username, password, role, created_at, last_login FROM user
-                """)
+                # Добавляем новое поле
+                cursor.execute("ALTER TABLE place ADD COLUMN menu_pdf_path VARCHAR(255)")
+                print("✅ Поле menu_pdf_path добавлено")
 
-                # Удаляем старую таблицу
-                cursor.execute("DROP TABLE user")
+                # Очищаем старое поле menu (по вашему требованию)
+                print("🔄 Очищаем старое поле menu...")
+                cursor.execute("UPDATE place SET menu = '{}'")
+                print("✅ Поле menu очищено")
 
-                # Переименовываем временную таблицу
-                cursor.execute("ALTER TABLE user_temp RENAME TO user")
+            else:
+                print("ℹ️ Поле menu_pdf_path уже существует")
 
-                print("✅ Таблица user пересоздана")
+        else:
+            print("ℹ️ Поле menu не найдено в таблице")
+
+            # Если menu нет, но нужно добавить menu_pdf_path
+            if 'menu_pdf_path' not in column_names:
+                print("🔄 Добавляем поле menu_pdf_path...")
+                cursor.execute("ALTER TABLE place ADD COLUMN menu_pdf_path VARCHAR(255)")
+                print("✅ Поле menu_pdf_path добавлено")
+
+        # Проверяем результат
+        cursor.execute("PRAGMA table_info(place)")
+        final_columns = cursor.fetchall()
+        print("📊 Итоговая структура таблицы place:")
+        for col in final_columns:
+            print(f"  - {col[1]} ({col[2]})")
 
         conn.commit()
-        print("✅ Поле role исправлено")
+        print("✅ Миграция успешно завершена!")
 
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
+        print(f"❌ Ошибка при миграции: {e}")
         conn.rollback()
+        import traceback
+        traceback.print_exc()
+
+    finally:
+        conn.close()
+
+
+def verify_migration():
+    """Проверка результатов миграции"""
+
+    conn = sqlite3.connect('instance/database.db')
+    cursor = conn.cursor()
+
+    try:
+        print("\n🔍 Проверка результатов миграции...")
+
+        # Проверяем структуру
+        cursor.execute("PRAGMA table_info(place)")
+        columns = cursor.fetchall()
+        column_names = [col[1] for col in columns]
+
+        print("✅ Текущие колонки в таблице place:")
+        for col in columns:
+            print(f"  - {col[1]} ({col[2]})")
+
+        # Проверяем данные
+        cursor.execute("SELECT id, title, menu, menu_pdf_path FROM place LIMIT 5")
+        sample_data = cursor.fetchall()
+
+        print("\n📋 Пример данных:")
+        for row in sample_data:
+            print(f"  ID {row[0]}: {row[1]}")
+            print(f"    menu: {row[2][:50]}...")  # Показываем только начало
+            print(f"    menu_pdf_path: {row[3]}")
+            print()
+
+    except Exception as e:
+        print(f"❌ Ошибка при проверке: {e}")
     finally:
         conn.close()
 
 
 if __name__ == "__main__":
-    fix_role_field()
+    print("🚀 Запуск миграции поля menu...")
+    migrate_menu_field()
+    verify_migration()
+    print("🎉 Миграция завершена!")

@@ -179,8 +179,57 @@ function loadCatalogCategories() {
         return;
     }
 
-    // Категории для модального окна
-    const categories = [
+    // Показываем индикатор загрузки
+    catalogGrid.innerHTML = '<div class="loading-categories">Загрузка категорий...</div>';
+
+    // Загружаем категории из базы данных
+    fetch('/api/categories')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('📊 Categories API response:', data);
+
+            if (data.success && data.categories && data.categories.length > 0) {
+                console.log(`✅ Found ${data.categories.length} categories`);
+                renderCatalogCategories(data.categories);
+            } else {
+                console.log('ℹ️ No categories found, using fallback');
+                renderFallbackCategories();
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error loading categories:', error);
+            renderFallbackCategories();
+        });
+}
+
+// Рендеринг категорий из базы данных
+function renderCatalogCategories(categories) {
+    const catalogGrid = document.getElementById('catalogGrid');
+
+    catalogGrid.innerHTML = categories.map(cat => {
+        // Используем иконку из базы данных или fallback
+        const iconUrl = cat.icon_url || getFallbackIcon(cat.name);
+        const categoryUrl = cat.url || generateCategoryUrl(cat.name, cat.slug);
+
+        return `
+            <a href="${categoryUrl}" class="catalog-category" title="${cat.name}">
+                <img src="${iconUrl}" alt="${cat.name}"
+                     onerror="this.src='${getFallbackIcon(cat.name)}'">
+            </a>
+        `;
+    }).join('');
+}
+
+// Fallback категории (старый список)
+function renderFallbackCategories() {
+    const catalogGrid = document.getElementById('catalogGrid');
+
+    const fallbackCategories = [
         { name: 'Рестораны', icon: '/static/Фотки зданий/ИконкаРесторана.png', url: '/restaurant' },
         { name: 'Кафе', icon: '/static/Фотки зданий/ИконкаКофе.png', url: '/coffee' },
         { name: 'Магазины', icon: '/static/Фотки зданий/ИконкаМагазина.png', url: '/shop' },
@@ -194,11 +243,55 @@ function loadCatalogCategories() {
         { name: 'Гостиницы', icon: '/static/Фотки зданий/ИконкиГостиницы.png', url: '/hotels' }
     ];
 
-    catalogGrid.innerHTML = categories.map(cat => `
-        <a href="${cat.url}" class="catalog-category">
+    catalogGrid.innerHTML = fallbackCategories.map(cat => `
+        <a href="${cat.url}" class="catalog-category" title="${cat.name}">
             <img src="${cat.icon}" alt="${cat.name}">
+            <span class="category-name">${cat.name}</span>
         </a>
     `).join('');
+}
+
+// Генерация URL для категории
+function generateCategoryUrl(name, slug) {
+    if (slug) {
+        return `/${slug}`;
+    }
+
+    // Fallback mapping для старых категорий
+    const urlMapping = {
+        'Рестораны': '/restaurant',
+        'Кафе': '/coffee',
+        'Магазины': '/shop',
+        'Музеи': '/museums',
+        'Театры': '/theatre',
+        'Библиотеки': '/library',
+        'Парки': '/park',
+        'Кинотеатры': '/cinema',
+        'Спорт': '/sports',
+        'Церкви': '/church',
+        'Гостиницы': '/hotels'
+    };
+
+    return urlMapping[name] || `/${name.toLowerCase().replace(/\s+/g, '-')}`;
+}
+
+// Получение fallback иконки
+function getFallbackIcon(categoryName) {
+    const iconMapping = {
+        'Рестораны': '/static/Фотки зданий/ИконкаРесторана.png',
+        'Кафе': '/static/Фотки зданий/ИконкаКофе.png',
+        'Магазины': '/static/Фотки зданий/ИконкаМагазина.png',
+        'Музеи': '/static/Фотки зданий/ИконкаМузеи.png',
+        'Театры': '/static/Фотки зданий/ИконкаТеатр.png',
+        'Библиотеки': '/static/Фотки зданий/ИконкиБиблиотеки.png',
+        'Парки': '/static/Фотки зданий/ИконкаПарка.png',
+        'Кинотеатры': '/static/Фотки зданий/ИконкаКинотеатр.png',
+        'Спорт': '/static/Фотки зданий/ИконкаСпортплощадка.png',
+        'Церкви': '/static/Фотки зданий/ИконкаЦеркви.png',
+        'Гостиницы': '/static/Фотки зданий/ИконкиГостиницы.png'
+    };
+
+    return iconMapping[categoryName] || '/static/Фотки зданий/ИконкаМеста.png';
 }
 
 // Функция загрузки популярных заведений по категориям

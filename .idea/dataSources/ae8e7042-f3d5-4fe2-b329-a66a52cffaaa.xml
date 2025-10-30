@@ -499,7 +499,7 @@
     <routine id="190" parent="1" name="fts5"/>
     <schema id="191" parent="1" name="main">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2025-10-22.13:24:25</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2025-10-29.10:17:13</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="192" parent="16">
       <ArgumentDirection>R</ArgumentDirection>
@@ -1932,16 +1932,29 @@
       <Position>3</Position>
       <StoredType>VARCHAR(120)|0s</StoredType>
     </column>
-    <index id="639" parent="563" name="sqlite_autoindex_user_1">
+    <column id="639" parent="563" name="role">
+      <DefaultExpression>&apos;trainee&apos;</DefaultExpression>
+      <Position>4</Position>
+      <StoredType>VARCHAR(50)|0s</StoredType>
+    </column>
+    <column id="640" parent="563" name="created_at">
+      <Position>5</Position>
+      <StoredType>DATETIME|0s</StoredType>
+    </column>
+    <column id="641" parent="563" name="last_login">
+      <Position>6</Position>
+      <StoredType>DATETIME|0s</StoredType>
+    </column>
+    <index id="642" parent="563" name="sqlite_autoindex_user_1">
       <ColNames>username</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <key id="640" parent="563">
+    <key id="643" parent="563">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="641" parent="563">
+    <key id="644" parent="563">
       <ColNames>username</ColNames>
       <UnderlyingIndexName>sqlite_autoindex_user_1</UnderlyingIndexName>
     </key>

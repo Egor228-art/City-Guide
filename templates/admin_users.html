@@ -20,8 +20,6 @@
                     <tr>
                         <th>ID</th>
                         <th>Логин</th>
-                        <th>Имя</th>
-                        <th>Email</th>
                         <th>Роль</th>
                         <th>Дата регистрации</th>
                         <th>Последний вход</th>
@@ -38,10 +36,8 @@
                             <span class="badge bg-danger">Главный</span>
                             {% endif %}
                         </td>
-                        <td>{{ user.full_name or '—' }}</td>
-                        <td>{{ user.email or '—' }}</td>
                         <td>
-                             <span class="badge bg-{{ 'danger' if user.role == 'admin' else 'warning'}} if user.role == 'editor' else 'info' if user.role == 'moderator' else 'secondary' }}">
+                            <span class="badge bg-{% if user.role == 'admin' %}dark{% elif user.role == 'editor' %}warning{% elif user.role == 'moderator' %}primary{% else %}secondary{% endif %}">
                                 {{ user.role_display }}
                             </span>
                         </td>
@@ -52,16 +48,18 @@
                                 {% if current_user.can_manage_user(user) %}
                                 <select class="form-select form-select-sm role-select" data-user-id="{{ user.id }}" style="width: 140px;">
                                     <option value="trainee" {{ 'selected' if user.role == 'trainee' }}>Стажёр</option>
+                                    {% if current_user.role in ['editor', 'admin'] or current_user.role == 'moderator' %}
                                     <option value="moderator" {{ 'selected' if user.role == 'moderator' }}>Модератор</option>
                                     <option value="editor" {{ 'selected' if user.role == 'editor' }}>Редактор</option>
-                                    {% if current_user.role == 'admin' and user.username != 'admin' %}
+                                    {% endif %}
+                                    {% if current_user.role == 'admin' and user.role != 'admin' %}
                                     {% endif %}
                                 </select>
                                 <button class="btn btn-outline-danger delete-user" data-user-id="{{ user.id }}" data-username="{{ user.username }}">
                                     <i class="fas fa-trash"></i>
                                 </button>
                                 {% else %}
-                                <span class="text-muted">Все права</span>
+                                <span class="text-muted">Нет прав</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -95,13 +93,16 @@
                         <label class="form-label">Роль *</label>
                         <select class="form-select" name="role" required>
                             <option value="trainee">Стажёр</option>
-                            <option value="moderator">Модератор</option>
                             {% if current_user.role in ['editor', 'admin'] %}
-                            <option value="editor">Редактор</option>
+                            <option value="moderator">Модератор</option>
                             {% endif %}
                             {% if current_user.role == 'admin' %}
+                            <option value="editor">Редактор</option>
                             {% endif %}
                         </select>
+                        <div class="form-text">
+                            Вы можете создавать пользователей только с ролями ниже вашей
+                        </div>
                     </div>
                 </form>
             </div>
@@ -121,6 +122,17 @@ document.querySelectorAll('.role-select').forEach(select => {
     select.addEventListener('change', function() {
         const userId = this.dataset.userId;
         const newRole = this.value;
+
+        console.log('Changing role:', {
+            userId: userId,
+            newRole: newRole,
+            currentUserRole: '{{ current_user.role }}' // Добавьте это
+        });
+
+        if (!confirm(`Изменить роль пользователя на "${this.options[this.selectedIndex].text}"?`)) {
+            this.value = this.dataset.originalValue;
+            return;
+        }
 
         fetch(`/admin/api/users/${userId}/role`, {
             method: 'PUT',
@@ -144,6 +156,9 @@ document.querySelectorAll('.role-select').forEach(select => {
             location.reload();
         });
     });
+
+    // Сохраняем исходное значение для отмены
+    select.dataset.originalValue = select.value;
 });
 
 // Удаление пользователя
@@ -177,13 +192,18 @@ document.getElementById('createUserBtn').addEventListener('click', function() {
     const form = document.getElementById('createUserForm');
     const formData = new FormData(form);
 
+    // УБИРАЕМ full_name и email, так как их нет в модели User
     const userData = {
         username: formData.get('username'),
         password: formData.get('password'),
-        role: formData.get('role'),
-        full_name: formData.get('full_name'),
-        email: formData.get('email')
+        role: formData.get('role')
     };
+
+    // Валидация
+    if (!userData.username || !userData.password || !userData.role) {
+        alert('Заполните все обязательные поля');
+        return;
+    }
 
     fetch('/admin/api/users', {
         method: 'POST',
@@ -195,14 +215,14 @@ document.getElementById('createUserBtn').addEventListener('click', function() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Пользователь создан');
+            alert('Пользователь успешно создан');
             location.reload();
         } else {
             alert('Ошибка: ' + data.error);
         }
     })
     .catch(error => {
-        alert('Ошибка сети');
+        alert('Ошибка сети: ' + error);
     });
 });
 </script>

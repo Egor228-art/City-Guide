@@ -1,8 +1,8 @@
 // Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', function() {
+    initFavorites();
     checkAuthButtonsState();
     initSecretKeys();
-    initFavorites();
     initFooterButtons();
     initAuthForms();
 });
@@ -386,22 +386,28 @@ function initFavorites() {
     }
 
     // Обработчики для кнопок избранного в карточках
-    document.querySelectorAll('.favorite-btn').forEach(btn => {
-        btn.addEventListener('click', function(event) {
+    document.addEventListener('click', function(event) {
+        const favoriteBtn = event.target.closest('.favorite-btn');
+        if (favoriteBtn) {
             event.preventDefault();
             event.stopPropagation();
 
-            const itemId = this.dataset.itemId;
-            const itemData = this.dataset.item ? JSON.parse(this.dataset.item) : null;
-            toggleFavorite(itemId, itemData, this);
-        });
+            const itemId = favoriteBtn.dataset.itemId;
+            const itemData = favoriteBtn.dataset.item ? JSON.parse(favoriteBtn.dataset.item) : null;
+            toggleFavorite(itemId, itemData, favoriteBtn);
+        }
     });
 }
 
 function toggleFavorite(itemId, itemData, buttonElement) {
     try {
+        console.log('🔍 Toggle favorite:', { itemId, itemData, buttonElement });
+
         const favorites = getFavorites();
         const existingIndex = favorites.findIndex(fav => fav.id === itemId);
+
+        console.log('📋 Current favorites:', favorites);
+        console.log('🔍 Existing index:', existingIndex);
 
         if (existingIndex === -1) {
             // Добавляем в избранное
@@ -409,17 +415,21 @@ function toggleFavorite(itemId, itemData, buttonElement) {
             if (buttonElement) {
                 buttonElement.classList.add('active');
             }
+            console.log('✅ Added to favorites');
         } else {
             // Удаляем из избранного
             favorites.splice(existingIndex, 1);
             if (buttonElement) {
                 buttonElement.classList.remove('active');
             }
+            console.log('❌ Removed from favorites');
         }
 
         saveFavorites(favorites);
         updateFavoritesCount();
         markExistingFavorites();
+
+        console.log('📋 Updated favorites:', getFavorites());
 
     } catch (error) {
         console.error('Error toggling favorite:', error);
@@ -490,19 +500,27 @@ function markExistingFavorites() {
         const favorites = getFavorites();
 
         // Для кнопок в карточках
-        document.querySelectorAll('.favorite-btn').forEach(btn => {
-            try {
-                const itemId = btn.dataset.itemId;
-                if (itemId) {
-                    const isFavorite = favorites.some(fav => fav.id === itemId);
-                    if (isFavorite) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                }
-            } catch (error) {
-                console.error('Error marking favorite button:', error);
+        document.addEventListener('click', function(event) {
+            const favoriteBtn = event.target.closest('.favorite-btn, .js-favorite-btn');
+            if (favoriteBtn) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const itemId = favoriteBtn.dataset.itemId;
+                const itemData = favoriteBtn.dataset.item ? JSON.parse(favoriteBtn.dataset.item) : null;
+
+                // Визуальная обратная связь ДО выполнения
+                favoriteBtn.style.transform = 'scale(0.9)';
+
+                toggleFavorite(itemId, itemData, favoriteBtn);
+
+                // Возвращаем нормальный размер после анимации
+                setTimeout(() => {
+                    favoriteBtn.style.transform = 'scale(1)';
+                }, 150);
+
+                // Принудительно обновляем все кнопки
+                setTimeout(markExistingFavorites, 200);
             }
         });
     } catch (error) {

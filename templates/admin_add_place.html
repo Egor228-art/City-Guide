@@ -183,7 +183,12 @@
                                     <div class="mb-3">
                                         <label class="form-label">Изображение заведения</label>
                                         <input type="file" class="form-control" name="image" accept="image/*">
-                                        <div class="help-text">Рекомендуемый размер: 800x600px, форматы: JPG, PNG, GIF</div>
+                                        <div class="help-text">
+                                            Рекомендуемый размер: 800x600px, форматы: JPG, PNG, GIF<br>
+                                            <small style="color: #dc3545;">
+                                                ⚠️ Если имя файла содержит русские символы, оно будет автоматически изменено
+                                            </small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -228,26 +233,30 @@
                                 <div class="col-12">
                                     <div class="category-section">
                                         <h5>📁 Категория заведения</h5>
-                                        
+
                                         <div class="mb-3">
                                             <label class="form-label">Выбрать существующую категорию:</label>
                                             <select class="form-select" name="existing_category" id="existingCategory" onchange="onExistingCategoryChange()">
                                                 <option value="">-- Выберите категорию --</option>
                                                 {% for cat in categories %}
-                                                    <option value="{{ cat }}">{{ cat }}</option>
+                                                    {% if cat and cat not in ['Иконка', 'Фон'] %}
+                                                        <option value="{{ cat }}">{{ cat }}</option>
+                                                    {% endif %}
                                                 {% endfor %}
                                             </select>
                                         </div>
 
+                                        <!-- Проверка роли для создания новой категории -->
+                                        {% if current_user.role in ['moderator', 'editor', 'admin'] %}
                                         <div class="text-center my-3">
                                             <strong>ИЛИ</strong>
                                         </div>
 
                                         <div class="mb-3">
                                             <label class="form-label">Создать новую категорию:</label>
-                                            <input type="text" class="form-control" name="new_category" id="newCategory" 
+                                            <input type="text" class="form-control" name="new_category" id="newCategory"
                                                    placeholder="Введите название новой категории" oninput="generateCategoryEn()">
-                                            
+
                                             <div class="auto-generated mt-2">
                                                 <strong>Английское название:</strong>
                                                 <span id="category-en-preview" class="text-muted">будет сгенерировано</span>
@@ -259,6 +268,7 @@
                                                 <strong>Внимание!</strong> Для новой категории необходимо загрузить иконку размером 64x64px в формате PNG.
                                             </div>
                                         </div>
+                                        {% endif %}
 
                                         <div class="auto-generated">
                                             <strong>Итоговая категория:</strong>
@@ -275,17 +285,26 @@
                                         <h5>🍽️ Меню</h5>
                                         <div class="form-check form-switch mb-3">
                                             <input class="form-check-input" type="checkbox" id="hasMenuToggle" onchange="toggleMenuBuilder()">
-                                            <label class="form-check-label" for="hasMenuToggle">Добавить меню</label>
+                                            <label class="form-check-label" for="hasMenuToggle">Добавить меню (PDF файл)</label>
                                         </div>
 
                                         <div id="menuBuilder" style="display: none;">
-                                            <div id="menuCategoriesContainer">
-                                                <!-- Категории меню будут добавляться здесь -->
+                                            <!-- Загрузка файла меню -->
+                                            <div class="mb-3">
+                                                <label class="form-label">Загрузить PDF меню *</label>
+                                                <input type="file" class="form-control" name="menu_pdf" id="menuPdfInput" accept=".pdf" required>
+                                                <div class="help-text">
+                                                    Максимальный размер: 16MB. Только PDF файлы.
+                                                </div>
                                             </div>
-                                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="addMenuCategory()">
-                                                <i class="fas fa-plus"></i> Добавить категорию меню
-                                            </button>
-                                            <input type="hidden" name="menu" id="menuInput" value="{}">
+
+                                            <!-- Информация о загруженном файле -->
+                                            <div id="menuFileInfo" class="alert alert-info" style="display: none;">
+                                                <i class="fas fa-file-pdf text-danger"></i>
+                                                <strong>Файл готов к загрузке:</strong>
+                                                <span id="menuFileName" class="fw-bold"></span>
+                                                <span id="menuFileSize" class="text-muted ms-2"></span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -320,6 +339,21 @@ document.addEventListener('DOMContentLoaded', function() {
     initMap();
     initEventListeners();
     addTimeSlot();
+
+    // Проверяем доступность создания категорий
+    const newCategoryInput = document.getElementById('newCategory');
+    if (!newCategoryInput) {
+        newCategoryInput.addEventListener('input', toggleRequiredFields);
+        console.log('🔒 Пользователь не имеет прав для создания новых категорий');
+        // Делаем выбор категории обязательным для стажеров
+        document.getElementById('existingCategory').required = true;
+    }
+
+    const existingCategory = document.getElementById('existingCategory');
+    if (existingCategory) {
+        existingCategory.addEventListener('change', toggleRequiredFields);
+    }
+
     updateFinalCategoryPreview();
 });
 
@@ -707,48 +741,61 @@ function generateSlug() {
     document.getElementById('slug').value = slug;
 }
 
-        // ========== КАТЕГОРИИ ==========
-        function generateCategoryEn() {
-            const category = document.getElementById('newCategory').value;
-            if (!category) {
-                document.getElementById('category-en-preview').textContent = 'будет сгенерировано';
-                return;
-            }
+// ========== КАТЕГОРИИ ==========
+function generateCategoryEn() {
+    // Проверяем доступность создания новой категории
+    const newCategoryInput = document.getElementById('newCategory');
+    if (!newCategoryInput) {
+        console.log('Создание новых категорий недоступно для вашей роли');
+        return;
+    }
 
-            const categoryMapping = {
-                'Ресторан': 'restaurant', 'Кафе': 'cafe', 'Магазин': 'shop',
-                'Музей': 'museum', 'Театр': 'theatre', 'Библиотека': 'library',
-                'Парк': 'park', 'Кинотеатр': 'cinema', 'Спортплощадка': 'sports',
-                'Церковь': 'church', 'Гостиница': 'hotel', 'Иконка': 'icon'
-            };
+    const category = newCategoryInput.value;
+    if (!category) {
+        document.getElementById('category-en-preview').textContent = 'будет сгенерировано';
+        return;
+    }
 
-            let categoryEn = categoryMapping[category] || category.toLowerCase()
-                .split('').map(char => translitDict[char] || char).join('')
-                .replace(/[^a-z0-9]/g, '_')
-                .replace(/_+/g, '_')
-                .replace(/^_|_$/g, '');
+    const categoryMapping = {
+        'Ресторан': 'restaurant', 'Кафе': 'cafe', 'Магазин': 'shop',
+        'Музей': 'museum', 'Театр': 'theatre', 'Библиотека': 'library',
+        'Парк': 'park', 'Кинотеатр': 'cinema', 'Спортплощадка': 'sports',
+        'Церковь': 'church', 'Гостиница': 'hotel', 'Иконка': 'icon'
+    };
 
-            document.getElementById('category-en-preview').textContent = categoryEn;
-            document.getElementById('categoryEn').value = categoryEn;
-            updateFinalCategoryPreview();
+    let categoryEn = categoryMapping[category] || category.toLowerCase()
+        .split('').map(char => translitDict[char] || char).join('')
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+
+    document.getElementById('category-en-preview').textContent = categoryEn;
+    document.getElementById('categoryEn').value = categoryEn;
+    updateFinalCategoryPreview();
+}
+
+function onExistingCategoryChange() {
+    const selectedCategory = document.getElementById('existingCategory').value;
+    if (selectedCategory) {
+        // Сбрасываем поле новой категории только если оно доступно
+        const newCategoryInput = document.getElementById('newCategory');
+        if (newCategoryInput) {
+            newCategoryInput.value = '';
+            document.getElementById('categoryEn').value = '';
+            document.getElementById('category-en-preview').textContent = 'будет сгенерировано автоматически';
         }
+    }
+    updateFinalCategoryPreview();
+}
 
-        function onExistingCategoryChange() {
-            const selectedCategory = document.getElementById('existingCategory').value;
-            if (selectedCategory) {
-                document.getElementById('newCategory').value = '';
-                document.getElementById('categoryEn').value = '';
-                document.getElementById('category-en-preview').textContent = 'будет сгенерировано автоматически';
-            }
-            updateFinalCategoryPreview();
-        }
+function updateFinalCategoryPreview() {
+    const existingCategory = document.getElementById('existingCategory').value;
+    const newCategoryInput = document.getElementById('newCategory');
+    const newCategory = newCategoryInput ? newCategoryInput.value : '';
 
-        function updateFinalCategoryPreview() {
-            const existingCategory = document.getElementById('existingCategory').value;
-            const newCategory = document.getElementById('newCategory').value;
-            let finalCategory = existingCategory || newCategory || 'не выбрана';
-            document.getElementById('final-category-preview').textContent = finalCategory;
-        }
+    let finalCategory = existingCategory || newCategory || 'не выбрана';
+    document.getElementById('final-category-preview').textContent = finalCategory;
+}
 
         // ========== ВРЕМЯ РАБОТЫ ==========
         function addTimeSlot() {
@@ -814,175 +861,193 @@ function generateSlug() {
 
         // ========== МЕНЮ ==========
         function toggleMenuBuilder() {
-            const menuBuilder = document.getElementById('menuBuilder');
-            const toggle = document.getElementById('hasMenuToggle');
-            menuBuilder.style.display = toggle.checked ? 'block' : 'none';
-        }
+    const menuBuilder = document.getElementById('menuBuilder');
+    const toggle = document.getElementById('hasMenuToggle');
+    const menuPdfInput = document.getElementById('menuPdfInput');
 
-        function addMenuCategory() {
-            const categoryId = menuCategories.length;
-            const container = document.getElementById('menuCategoriesContainer');
-            
-            const categoryHTML = `
-                <div class="menu-category" id="menuCategory${categoryId}">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <input type="text" class="form-control category-name" placeholder="Название категории" 
-                                   onchange="updateMenu()">
-                        </div>
-                        <div class="col-md-8">
-                            <button type="button" class="btn btn-outline-success btn-sm" 
-                                    onclick="addMenuItem(${categoryId})">
-                                <i class="fas fa-plus"></i> Добавить блюдо
-                            </button>
-                            <button type="button" class="btn btn-outline-danger btn-sm" 
-                                    onclick="removeMenuCategory(${categoryId})">
-                                <i class="fas fa-trash"></i> Удалить категорию
-                            </button>
-                        </div>
-                    </div>
-                    <div class="menu-items-container" id="menuItems${categoryId}">
-                        <!-- Пункты меню будут добавляться здесь -->
-                    </div>
-                </div>
-            `;
-            
-            container.insertAdjacentHTML('beforeend', categoryHTML);
-            menuCategories.push({ id: categoryId, items: [] });
-        }
+    menuBuilder.style.display = toggle.checked ? 'block' : 'none';
 
-        function addMenuItem(categoryId) {
-            const container = document.getElementById(`menuItems${categoryId}`);
-            const itemId = menuCategories[categoryId].items.length;
-            
-            const itemHTML = `
-                <div class="menu-item" id="menuItem${categoryId}_${itemId}">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <input type="text" class="form-control item-name" placeholder="Название блюда" 
-                                   onchange="updateMenu()">
-                        </div>
-                        <div class="col-md-3">
-                            <div class="input-group">
-                                <input type="text" class="form-control item-price" placeholder="Цена"
-                                       onchange="updateMenu()">
-                                <span class="input-group-text">руб</span>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <input type="text" class="form-control item-description" placeholder="Описание" 
-                                   onchange="updateMenu()">
-                        </div>
-                        <div class="col-md-1">
-                            <button type="button" class="btn btn-outline-danger btn-sm" 
-                                    onclick="removeMenuItem(${categoryId}, ${itemId})">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            container.insertAdjacentHTML('beforeend', itemHTML);
-            menuCategories[categoryId].items.push(itemId);
-        }
+    // Управляем обязательностью поля
+    if (menuPdfInput) {
+        menuPdfInput.required = toggle.checked;
+    }
 
-        function removeMenuCategory(categoryId) {
-            const element = document.getElementById(`menuCategory${categoryId}`);
-            if (element) element.remove();
-            menuCategories = menuCategories.filter(cat => cat.id !== categoryId);
-            updateMenu();
-        }
-
-        function removeMenuItem(categoryId, itemId) {
-            const element = document.getElementById(`menuItem${categoryId}_${itemId}`);
-            if (element) element.remove();
-            menuCategories[categoryId].items = menuCategories[categoryId].items.filter(id => id !== itemId);
-            updateMenu();
-        }
-
-function updateMenu() {
-    const menu = {};
-
-    menuCategories.forEach(category => {
-        const categoryElement = document.getElementById(`menuCategory${category.id}`);
-        if (categoryElement) {
-            const categoryName = categoryElement.querySelector('.category-name').value;
-            if (categoryName) {
-                menu[categoryName] = [];
-
-                category.items.forEach(itemId => {
-                    const itemElement = document.getElementById(`menuItem${category.id}_${itemId}`);
-                    if (itemElement) {
-                        const name = itemElement.querySelector('.item-name').value;
-                        let price = itemElement.querySelector('.item-price').value;
-                        const description = itemElement.querySelector('.item-description').value;
-
-                        // Автоматически добавляем "руб" если не указано
-                        if (price && !/\sруб$/.test(price) && !/\sр$/.test(price)) {
-                            price = price.trim() + ' руб';
-                        }
-
-                        if (name) {
-                            menu[categoryName].push({
-                                name: name,
-                                price: price,
-                                description: description
-                            });
-                        }
-                    }
-                });
-            }
-        }
-    });
-
-    document.getElementById('menuInput').value = JSON.stringify(menu);
+    // Сбрасываем файл при скрытии
+    if (!toggle.checked) {
+        resetMenuFile();
+    }
 }
 
-        // ========== ВАЛИДАЦИЯ ФОРМЫ ==========
-        function validateForm() {
-            const existingCategory = document.getElementById('existingCategory').value;
-            const newCategory = document.getElementById('newCategory').value;
-            const address = document.querySelector('input[name="address"]').value;
-            const latitude = document.getElementById('latInput').value;
-            const longitude = document.getElementById('lonInput').value;
+// Обработчик выбора файла меню
+document.addEventListener('DOMContentLoaded', function() {
+    const menuPdfInput = document.getElementById('menuPdfInput');
+    if (menuPdfInput) {
+        menuPdfInput.addEventListener('change', function(e) {
+            handleMenuFileSelect(e);
+        });
+    }
 
-            // Проверка категории
-            if (!existingCategory && !newCategory) {
-                alert('Пожалуйста, выберите существующую категорию или создайте новую');
-                return false;
-            }
+    // Инициализируем обязательность поля
+    const toggle = document.getElementById('hasMenuToggle');
+    if (toggle && menuPdfInput) {
+        menuPdfInput.required = toggle.checked;
+    }
+});
 
-            if (existingCategory && newCategory) {
-                alert('Пожалуйста, выберите только один вариант: либо существующую категорию, либо создайте новую');
-                return false;
-            }
+// Обработка выбора файла меню
+function handleMenuFileSelect(event) {
+    const file = event.target.files[0];
+    const fileInfo = document.getElementById('menuFileInfo');
+    const fileName = document.getElementById('menuFileName');
+    const fileSize = document.getElementById('menuFileSize');
 
-            // Проверка адреса
-            if (!address) {
-                alert('Пожалуйста, укажите адрес заведения');
-                return false;
-            }
-
-            // Проверка координат
-            if (!latitude || !longitude) {
-                alert('Пожалуйста, укажите местоположение на карте');
-                return false;
-            }
-
-            // Обновляем скрытые поля перед отправкой
-            updateWorkingHours();
-            updateMenu();
-
-            return true;
+    if (file) {
+        // Проверка типа файла
+        if (file.type !== 'application/pdf') {
+            alert('❌ Пожалуйста, выберите файл в формате PDF');
+            resetMenuFile();
+            return;
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-    // ... существующий код ...
+        // Проверка размера файла (16MB)
+        const maxSize = 16 * 1024 * 1024; // 16MB в байтах
+        if (file.size > maxSize) {
+            alert('❌ Файл слишком большой. Максимальный размер: 16MB');
+            resetMenuFile();
+            return;
+        }
 
-    // Обработчик кнопки геокодирования
-    document.getElementById('geocodeButton').addEventListener('click', geocodeAddress);
-});
+        // Показываем информацию о файле
+        fileName.textContent = file.name;
+        fileSize.textContent = `(${formatFileSize(file.size)})`;
+        fileInfo.style.display = 'block';
+
+        console.log('✅ PDF меню выбран:', file.name, formatFileSize(file.size));
+    } else {
+        resetMenuFile();
+    }
+}
+
+// Сброс выбранного файла меню
+function resetMenuFile() {
+    const menuPdfInput = document.getElementById('menuPdfInput');
+    const fileInfo = document.getElementById('menuFileInfo');
+
+    if (menuPdfInput) {
+        menuPdfInput.value = '';
+    }
+    if (fileInfo) {
+        fileInfo.style.display = 'none';
+    }
+}
+
+// Форматирование размера файла
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// ========== ВАЛИДАЦИЯ ФОРМЫ ==========
+function validateForm() {
+    const existingCategory = document.getElementById('existingCategory').value;
+    const newCategoryInput = document.getElementById('newCategory');
+    const newCategory = newCategoryInput ? newCategoryInput.value : '';
+    const address = document.querySelector('input[name="address"]').value;
+    const latitude = document.getElementById('latInput').value;
+    const longitude = document.getElementById('lonInput').value;
+    const hasMenu = document.getElementById('hasMenuToggle').checked;
+    const menuFile = document.getElementById('menuPdfInput') ? document.getElementById('menuPdfInput').files[0] : null;
+
+    // Проверка категории
+    if (!existingCategory && !newCategory) {
+        // Сообщение адаптируется под права пользователя
+        if (newCategoryInput) {
+            alert('❌ Пожалуйста, выберите существующую категорию или создайте новую');
+        } else {
+            alert('❌ Пожалуйста, выберите категорию из списка');
+        }
+        return false;
+    }
+
+    if (existingCategory && newCategory) {
+        alert('❌ Пожалуйста, выберите только один вариант: либо существующую категорию' +
+              (newCategoryInput ? ', либо создайте новую' : ''));
+        return false;
+    }
+
+    // Проверка адреса
+    if (!address) {
+        alert('❌ Пожалуйста, укажите адрес заведения');
+        return false;
+    }
+
+    // Проверка координат
+    if (!latitude || !longitude) {
+        alert('❌ Пожалуйста, укажите местоположение на карте');
+        return false;
+    }
+
+    // Проверка меню (если включено и доступно)
+    if (hasMenu) {
+        if (!menuFile) {
+            alert('❌ Пожалуйста, выберите PDF файл меню');
+            return false;
+        }
+
+        // Проверка типа файла меню
+        if (menuFile.type !== 'application/pdf') {
+            alert('❌ Меню должно быть в формате PDF');
+            return false;
+        }
+
+        // Проверка размера файла
+        const maxSize = 16 * 1024 * 1024;
+        if (menuFile.size > maxSize) {
+            alert('❌ Файл меню слишком большой. Максимальный размер: 16MB');
+            return false;
+        }
+    }
+
+    // Обновляем скрытые поля перед отправкой
+    updateWorkingHours();
+
+    console.log('✅ Форма прошла валидацию');
+    return true;
+}
+
+function toggleRequiredFields() {
+    const existingCategory = document.getElementById('existingCategory').value;
+    const newCategoryInput = document.getElementById('newCategory');
+    const newCategory = newCategoryInput ? newCategoryInput.value : '';
+
+    const isCreatingCategory = !existingCategory && newCategory;
+
+    // Получаем поля
+    const addressInput = document.getElementById('addressInput');
+    const latInput = document.getElementById('latInput');
+    const lonInput = document.getElementById('lonInput');
+
+    if (isCreatingCategory) {
+        // Для категорий делаем необязательными
+        if (addressInput) addressInput.required = false;
+        if (latInput) latInput.required = false;
+        if (lonInput) lonInput.required = false;
+
+        console.log('🔧 Режим создания категории: адрес и карта не обязательны');
+    } else {
+        // Для обычных мест обязательны
+        if (addressInput) addressInput.required = true;
+        if (latInput) latInput.required = true;
+        if (lonInput) lonInput.required = true;
+
+        console.log('📍 Режим создания места: адрес и карта обязательны');
+    }
+}
     </script>
 </body>
 </html>

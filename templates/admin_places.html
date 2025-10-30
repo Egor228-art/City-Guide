@@ -71,6 +71,7 @@
                                     data-place-address="{{ place.address or '' }}"
                                     data-place-slug="{{ place.slug or '' }}"
                                     data-place-tags="{{ place.tags or '' }}"
+                                    data-place-menu="{{ place.menu_pdf_path or '' }}"
                                     title="Редактировать заведение">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -148,13 +149,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Название *</label>
+                                <label class="form-label">Название</label>
                                 <input type="text" class="form-control" id="editPlaceTitle" name="title" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Категория *</label>
+                                <label class="form-label">Категория</label>
                                 <select class="form-select" id="editPlaceCategory" name="category" required>
                                     <option value="Ресторан">Ресторан</option>
                                     <option value="Кафе">Кафе</option>
@@ -206,6 +207,22 @@
                                 <input type="text" class="form-control" id="editPlaceTags" name="tags">
                             </div>
                         </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Меню (PDF файл)</label>
+                            <div id="currentMenuInfo" class="alert alert-info d-none">
+                                <small>Текущий файл: <span id="currentMenuPath"></span></small>
+                                <br>
+                                <a href="#" target="_blank" class="btn btn-sm btn-outline-primary mt-1" id="viewMenuLink">
+                                    <i class="fas fa-eye"></i> Просмотреть текущее меню
+                                </a>
+                            </div>
+                            <textarea class="form-control" id="editPlaceMenu" name="menu" rows="2"
+                                      placeholder="Путь к PDF файлу меню (например: menus/restaurant_menu.pdf)"></textarea>
+                            <div class="form-text">
+                                Укажите путь к PDF файлу меню относительно папки static
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -232,6 +249,7 @@ document.querySelectorAll('.edit-place').forEach(btn => {
         const placeAddress = this.dataset.placeAddress;
         const placeSlug = this.dataset.placeSlug;
         const placeTags = this.dataset.placeTags;
+        const placeMenu = this.dataset.placeMenu;
 
         // Заполняем форму редактирования
         document.getElementById('editPlaceId').value = placeId;
@@ -242,6 +260,20 @@ document.querySelectorAll('.edit-place').forEach(btn => {
         document.getElementById('editPlaceAddress').value = placeAddress;
         document.getElementById('editPlaceSlug').value = placeSlug;
         document.getElementById('editPlaceTags').value = placeTags;
+        document.getElementById('editPlaceMenu').value = placeMenu || '';
+
+        // Показываем модальное окно
+        const currentMenuInfo = document.getElementById('currentMenuInfo');
+        const currentMenuPath = document.getElementById('currentMenuPath');
+        const viewMenuLink = document.getElementById('viewMenuLink');
+
+        if (placeMenu) {
+            currentMenuPath.textContent = placeMenu;
+            viewMenuLink.href = `/static/${placeMenu}`;
+            currentMenuInfo.classList.remove('d-none');
+        } else {
+            currentMenuInfo.classList.add('d-none');
+        }
 
         // Показываем модальное окно
         const modal = new bootstrap.Modal(document.getElementById('editPlaceModal'));
@@ -261,7 +293,8 @@ document.getElementById('savePlaceChanges').addEventListener('click', function()
         telephone: formData.get('telephone'),
         address: formData.get('address'),
         slug: formData.get('slug'),
-        tags: formData.get('tags')
+        tags: formData.get('tags'),
+        menu_pdf_path: formData.get('menu')
     };
 
     fetch(`/admin/api/places/${placeId}`, {
