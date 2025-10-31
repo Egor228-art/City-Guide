@@ -331,7 +331,7 @@ def get_client_hash(request):
 
 def allowed_file(filename):
     return '.' in filename and \
-        filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 # Функция для создания хэша пользователя
 def create_user_hash(request):
@@ -426,7 +426,7 @@ def advanced_search(query):
 def precise_search(query):
     """Точный поиск с учетом всех слов, ВКЛЮЧАЯ поиск по категориям"""
     search_words = query.strip().lower().split()
-    base_query = Place.query.filter(Place.category != 'Иконка')
+    base_query = Place.query.filter(Place.category != 'Иконка', Place.category != 'Категор', Place.category != 'Фон')
 
     if not search_words:
         return base_query
@@ -1047,24 +1047,236 @@ def delete_menu(place_id):
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/<category_en>')
-def category_page(category_en):
-    # Получаем заведения ТОЛЬКО текущей категории
-    places = Place.query.filter_by(category_en=category_en).filter(
-        Place.category.notin_(['Фон', 'Иконка'])
+
+@app.route('/fix-icons-category-properly')
+def fix_icons_category_properly():
+    """Переместить все иконки в правильную категорию"""
+    try:
+        # Находим все записи, которые являются иконками
+        icons = Place.query.filter(
+            Place.title.startswith('Иконка')
+        ).all()
+
+        fixed_count = 0
+        for icon in icons:
+            if icon.category != 'Иконка':
+                old_category = icon.category
+                icon.category = 'Иконка'
+                fixed_count += 1
+                print(f"✅ Исправлена иконка: {icon.title} ({old_category} -> Иконка)")
+
+        db.session.commit()
+        return jsonify({'success': True, 'fixed_count': fixed_count})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/debug-icons-structure')
+def debug_icons_structure():
+    """Проверка структуры иконок"""
+    # Все иконки
+    icons = Place.query.filter(
+        Place.title.startswith('Иконка')
     ).all()
 
-    # Получаем фон
-    background_place = Place.query.filter_by(
-        category='Фон',
+    icons_data = []
+    for icon in icons:
+        icons_data.append({
+            'id': icon.id,
+            'title': icon.title,
+            'category': icon.category,
+            'category_en': icon.category_en,
+            'image_path': icon.image_path
+        })
+
+    # Все категории в Категор
+    categories = Place.query.filter_by(category='Категор').all()
+    categories_data = []
+    for cat in categories:
+        categories_data.append({
+            'id': cat.id,
+            'title': cat.title,
+            'category_en': cat.category_en,
+            'is_icon': cat.title.startswith('Иконка')
+        })
+
+    return jsonify({
+        'icons': icons_data,
+        'categories': categories_data
+    })
+
+@app.route('/<category_en>')
+def category_page(category_en):
+    """Универсальный маршрут для категорий с правильным поиском фона"""
+    print(f"🎯 Запрошена категория: {category_en}")
+
+    # Поиск категории - ИСПРАВЛЕННЫЙ ПОИСК
+    category_place = Place.query.filter_by(
+        category='Категор',
         category_en=category_en
     ).first()
 
+    if category_place:
+        category_name = category_place.title
+        print(f"✅ Найдена статическая категория: {category_name}")
+    else:
+        # Ищем среди реальных категорий заведений
+        categories_from_places = db.session.query(Place.category).filter(
+            Place.category.isnot(None),
+            Place.category != '',
+            Place.category != 'Категор',
+            Place.category != 'Иконка',
+            Place.category != 'Фон'
+        ).distinct().all()
+
+        real_categories = [cat[0] for cat in categories_from_places if cat[0]]
+
+        category_mapping = {}
+        for cat_name in real_categories:
+            cat_en = generate_category_en(cat_name)
+            category_mapping[cat_en] = cat_name
+
+        if category_en in category_mapping:
+            category_name = category_mapping[category_en]
+            print(f"✅ Найдена динамическая категория: {category_name}")
+        else:
+            print(f"❌ Категория '{category_en}' не найдена")
+            return render_template('Error.html', error_code=404), 404
+
+    # Получаем заведения - ИСПРАВЛЕННЫЙ ПОИСК
+    places = Place.query.filter_by(category=category_name).filter(
+        Place.category.notin_(['Фон', 'Иконка', 'Категор'])
+    ).all()
+
+    print(f"📊 Найдено заведений в категории {category_name}: {len(places)}")
+
+    # Получаем рейтинги - ИСПРАВЛЕННЫЙ РАСЧЕТ
+    places_with_ratings = []
+    for place in places:
+        restaurant = find_restaurant_by_any_means(place.id)
+
+        avg_rating = round(float(restaurant.total_rating), 1) if restaurant and restaurant.total_rating else 0.0
+        review_count = restaurant.review_count if restaurant else 0
+
+        places_with_ratings.append({
+            'place': place,
+            'avg_rating': avg_rating,
+            'review_count': review_count,
+            'restaurant_found': bool(restaurant)
+        })
+
+    # Поиск фона
+    background_place = find_category_background(category_en, category_name)
+    background_image = background_place.image_path if background_place else None
+
     return render_template('category_template.html',
                            places=places,
-                           category_name=category_en,
-                           category_en=category_en,  # Добавляем это!
-                           background_image=background_place.image_path if background_place else None)
+                           places_with_ratings=places_with_ratings,
+                           category_name=category_name,
+                           category_en=category_en,
+                           background_image=background_image)
+
+def find_category_background(category_en, category_name):
+    """Улучшенный поиск фона для категории"""
+    print(f"🔍 Поиск фона для: {category_en} ({category_name})")
+
+    # Способ 1: Точный поиск по category_en
+    background = Place.query.filter_by(category='Фон', category_en=category_en).first()
+    if background:
+        print(f"✅ Найден фон по category_en: {background.image_path}")
+        return background
+
+    # Способ 2: Поиск по альтернативным category_en
+    alt_mappings = {
+        'hotels': 'hotel',  # если hotels не нашли, пробуем hotel
+        'museums': 'museum',
+        'libraries': 'library'
+    }
+    if category_en in alt_mappings:
+        background = Place.query.filter_by(category='Фон', category_en=alt_mappings[category_en]).first()
+        if background:
+            print(f"✅ Найден фон по альтернативному category_en: {background.image_path}")
+            return background
+
+    # Способ 3: Поиск по названию категории
+    background = Place.query.filter(
+        Place.category == 'Фон',
+        Place.title.ilike(f'%{category_name}%')
+    ).first()
+    if background:
+        print(f"✅ Найден фон по названию: {background.image_path}")
+        return background
+
+    # Способ 4: Поиск по частичному совпадению в названии
+    search_terms = [
+        category_name,
+        category_name.replace('ы', ''),  # Музеи -> Музей
+        category_name.replace('и', '')  # Гостиницы -> Гостиница
+    ]
+
+    for term in search_terms:
+        background = Place.query.filter(
+            Place.category == 'Фон',
+            Place.title.ilike(f'%{term}%')
+        ).first()
+        if background:
+            print(f"✅ Найден фон по частичному совпадению: {background.image_path}")
+            return background
+
+    # Способ 5: Дефолтный фон
+    background = Place.query.filter_by(category='Фон', category_en='default').first()
+    if background:
+        print(f"⚠️ Используем дефолтный фон: {background.image_path}")
+        return background
+
+    print("❌ Фон не найден")
+    return None
+
+
+def generate_filename(filename, prefix=""):
+    """Генерация читаемого имени файла"""
+    # Безопасное имя файла
+    safe_name = secure_filename(filename)
+
+    # Вариант 1: Только оригинальное имя (если безопасно)
+    if re.match(r'^[a-zA-Z0-9_\-\.]+$', safe_name):
+        return f"{prefix}_{safe_name}" if prefix else safe_name
+
+    # Вариант 2: Транслитерация русского названия
+    translit_name = transliterate_filename(safe_name)
+    return f"{prefix}_{translit_name}" if prefix else translit_name
+
+def transliterate_filename(filename):
+    """Транслитерация русского имени файла без случайных символов"""
+    translit_dict = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    }
+
+    result = []
+    for char in filename.lower():
+        if char in translit_dict:
+            result.append(translit_dict[char])
+        elif char.isalnum():
+            result.append(char)
+        elif char in [' ', '-', '_']:
+            result.append('_')
+        # Остальные символы игнорируем
+
+    transliterated = ''.join(result)
+    # Убираем множественные подчеркивания
+    transliterated = re.sub(r'_+', '_', transliterated).strip('_')
+
+    # Если после транслитерации ничего не осталось, используем случайное имя
+    if not transliterated:
+        transliterated = f"file_{uuid.uuid4().hex[:8]}"
+
+    return transliterated
 
 # Обновим endpoint проверки редактирования
 @app.route('/api/reviews/<int:review_id>/permissions', methods=['GET'])
@@ -1409,17 +1621,10 @@ def get_restaurant_stats(restaurant_id):
 def get_restaurant(restaurant_id):
     print(f"DEBUG: restaurant_id = {restaurant_id}, type = {type(restaurant_id)}")
 
-    # Добавьте эту проверку
-    if callable(restaurant_id):
-        print("ERROR: restaurant_id is a function! This shouldn't happen.")
-        # Попробуем получить ID из URL параметров
-        restaurant_id = request.args.get('restaurant_id', 'lambs')
-        print(f"Using fallback ID: {restaurant_id}")
-
-
     try:
         restaurant = db.session.get(Restaurant, restaurant_id)
         if not restaurant:
+            print(f"❌ Ресторан не найден: {restaurant_id}")
             return jsonify({'error': 'Ресторан не найден'}), 404
 
         return jsonify({
@@ -2051,24 +2256,26 @@ def create_category_icon(category_name):
 @app.route('/add_place', methods=['GET', 'POST'])
 @admin_required
 def add_place():
-    """Добавление нового заведения или категории"""
+    """Добавление нового заведения или фона"""
     user = User.query.filter_by(username=session['username']).first()
 
     if user.role not in ['trainee', 'moderator', 'editor', 'admin']:
         return render_template('Error.html', error_code=403, error_message="Доступ запрещён"), 403
 
-    # Получаем категории
-    categories_from_db = Place.query.filter_by(category='Категория').all()
-    categories = [cat.title for cat in categories_from_db if cat.title]
-
-    # Для обратной совместимости
-    old_categories_from_db = db.session.query(Place.category).filter(
-        Place.category.notin_(['Иконка', 'Фон', 'Категория']),
-        Place.category.isnot(None)
+    # ДИНАМИЧЕСКИЙ список категорий
+    categories_from_places = db.session.query(Place.category).filter(
+        Place.category.isnot(None),
+        Place.category != '',
+        Place.category != 'Категор',
+        Place.category != 'Иконка',
+        ~Place.title.startswith('Иконка')
     ).distinct().all()
 
-    old_categories = [cat[0] for cat in old_categories_from_db if cat[0]]
-    all_categories = list(set(categories + old_categories))
+    categories = [cat[0] for cat in categories_from_places if cat[0]]
+    categories_from_db = Place.query.filter_by(category='Категор').all()
+    db_categories = [cat.title for cat in categories_from_db if cat.title and not cat.title.startswith('Иконка')]
+
+    all_categories = list(set(categories + db_categories))
     all_categories.sort()
 
     existing_places = Place.query.with_entities(Place.slug).all()
@@ -2088,20 +2295,189 @@ def add_place():
             latitude = request.form.get('latitude', '').strip()
             longitude = request.form.get('longitude', '').strip()
             working_hours = request.form.get('working_hours', '{}')
+            category_en = request.form.get('category_en', '').strip()
+            category = existing_category or new_category
+            print(f"🔤 Принудительно сгенерирован category_en: '{category_en}'")
 
-            # ВАЖНО: Проверяем, создается ли новая КАТЕГОРИЯ
+            # Определяем category_en - ПРИНУДИТЕЛЬНО генерируем английскую версию
+            print(f"🔤 До генерации: category='{category}', category_en='{category_en}'")
+
+            if not category:
+                flash('Категория обязательна для заполнения', 'error')
+                return render_template('admin_add_place.html',
+                                       categories=all_categories,
+                                       existing_places=existing_places,
+                                       current_user=user)
+
+                # ✅ ПОТОМ определяем category_en
+            print(f"🔤 До генерации: category='{category}', category_en='{category_en}'")
+
+            if not category_en:
+                category_en = generate_category_en(category)
+                print(f"🔤 Сгенерирован category_en: '{category_en}'")
+            else:
+                # Если category_en пришел из формы, проверяем что он на английском
+                if not re.match(r'^[a-z0-9_]+$', category_en):
+                    print(f"⚠️ category_en содержит неанглийские символы: '{category_en}'")
+                    category_en = generate_category_en(category)
+                    print(f"✅ Исправлен category_en: '{category_en}'")
+
+            # ✅ ОБЯЗАТЕЛЬНАЯ ОЧИСТКА: Убираем лишние символы
+            category_en = re.sub(r'_+', '_', category_en)  # Множественные _
+            category_en = category_en.strip('_')  # _ с краев
+            category_en = re.sub(r'^category_', '', category_en)  # Префикс category_
+
+            print(f"🔤 Финальный category_en: '{category_en}'")
+
+            # === ОБРАБОТКА ВСЕХ ФАЙЛОВ ===
+            main_image_path = None
+            background_image_path = None
+            menu_pdf_path = None
+
+            # 1. Основное изображение заведения
+            if 'image' in request.files:
+                file = request.files['image']
+                if file and file.filename != '' and allowed_file(file.filename):
+                    original_name = secure_filename(file.filename)
+                    name, ext = os.path.splitext(original_name)
+                    translit_name = transliterate_filename(name)
+                    filename = f"{translit_name}{ext}"
+                    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    file.save(save_path)
+                    main_image_path = f"Фотки зданий/{filename}"
+                    print(f"✅ Основное изображение сохранено: {main_image_path}")
+
+            # 2. Фон категории
+            if 'category_background' in request.files:
+                bg_file = request.files['category_background']
+                if bg_file and bg_file.filename != '' and allowed_file(bg_file.filename):
+                    original_name = secure_filename(bg_file.filename)
+                    name, ext = os.path.splitext(original_name)
+                    filename = f"background_{category_en}{ext}"
+                    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    bg_file.save(save_path)
+                    background_image_path = f"Фотки зданий/{filename}"
+                    print(f"✅ Фон сохранен: {background_image_path}")
+
+            # 3. PDF меню
+            if 'menu_pdf' in request.files:
+                menu_file = request.files['menu_pdf']
+                if menu_file and menu_file.filename != '' and allowed_file(menu_file.filename):
+                    filename = secure_filename(menu_file.filename)
+                    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                    file_path = os.path.join('static/menus', unique_filename)
+                    menu_file.save(file_path)
+                    menu_pdf_path = f"menus/{unique_filename}"
+
+            # === ОСНОВНАЯ ЛОГИКА: Определяем что создаем ===
+            is_creating_background = background_image_path is not None
             is_creating_category = bool(new_category and not existing_category)
+            is_creating_place = not is_creating_background and not is_creating_category
 
-            # Для категорий делаем только название обязательным
-            if is_creating_category:
+            print(f"🔍 Режим создания:")
+            print(f"  - Фон: {is_creating_background}")
+            print(f"  - Категория: {is_creating_category}")
+            print(f"  - Место: {is_creating_place}")
+
+            # === ЛОГИКА СОЗДАНИЯ ФОНА ===
+            if is_creating_background:
+                # Создаем запись ФОНА
+                background_place = Place(
+                    title=f"Фон {category}",
+                    description=None,
+                    category='Фон',
+                    category_en=category_en,
+                    image_path=background_image_path,
+                    slug=f"background_{category_en}",
+                    telephone=None,
+                    address=None,
+                    latitude=None,
+                    longitude=None
+                )
+
+                db.session.add(background_place)
+                db.session.commit()
+
+                flash(f'Фон для категории "{category}" успешно добавлен!', 'success')
+                return redirect(url_for('admin_dashboard'))
+
+            # === ЛОГИКА СОЗДАНИЯ КАТЕГОРИИ ===
+            elif is_creating_category:
                 if not title:
                     flash('Название категории обязательно для заполнения', 'error')
                     return render_template('admin_add_place.html',
                                            categories=all_categories,
                                            existing_places=existing_places,
                                            current_user=user)
+
+                print(f"🔍 Создается категория:")
+                print(f"  - Title: '{title}'")
+                print(f"  - Category: '{category}'")
+                print(f"  - Category_en: '{category_en}'")
+
+                # ✅ ЗАЩИТА: Гарантируем что category_en корректен
+                if not category_en or category_en == '_' or not re.match(r'^[a-z][a-z0-9_]*[a-z0-9]$', category_en):
+                    print(f"❌ Невалидный category_en: '{category_en}', перегенерируем...")
+                    category_en = generate_category_en(category)
+                    print(f"✅ Новый category_en: '{category_en}'")
+
+                # ✅ СОЗДАЕМ ВАЛИДНЫЕ SLUG
+                category_slug = f"category_{category_en}"
+                icon_slug = f"icon_{category_en}"
+
+                # Проверяем что slug не пустые
+                if category_slug in ['category_', 'category__']:
+                    category_slug = f"category_{category_en}_{uuid.uuid4().hex[:6]}"
+                if icon_slug in ['icon_', 'icon__']:
+                    icon_slug = f"icon_{category_en}_{uuid.uuid4().hex[:6]}"
+
+                print(f"✅ Slug категории: '{category_slug}'")
+                print(f"✅ Slug иконки: '{icon_slug}'")
+
+                # ✅ СОЗДАЕМ КАТЕГОРИЮ
+                new_category = Place(
+                    title=category,
+                    category='Категор',
+                    category_en=category_en,
+                    image_path=None,
+                    description=description if description else None,
+                    slug=category_slug,
+                    telephone=None,
+                    address=None,
+                    latitude=None,
+                    longitude=None,
+                    working_hours=None,
+                    menu_pdf_path=None,
+                    tags=None
+                )
+
+                db.session.add(new_category)
+
+                # ✅ СОЗДАЕМ ИКОНКУ (если загружено изображение)
+                if main_image_path:
+                    new_icon = Place(
+                        title=category,
+                        category='Иконка',
+                        category_en='icon',
+                        image_path=main_image_path,
+                        slug=icon_slug,
+                        description=None,  # ✅ Оставляем пустым - не нужно!
+                        telephone=None,
+                        address=None,
+                        latitude=None,
+                        longitude=None
+                    )
+                    db.session.add(new_icon)
+                    print(f"✅ Создана иконка: {main_image_path}")
+
+                db.session.commit()
+
+                print(f"✅ Успешно создана категория: '{category}'")
+                flash(f'Категория "{category}" успешно создана!', 'success')
+                return redirect(url_for('admin_dashboard'))
+
+            # === ЛОГИКА СОЗДАНИЯ ОБЫЧНОГО МЕСТА ===
             else:
-                # Для обычных мест проверяем все обязательные поля
                 if not title:
                     flash('Название заведения обязательно для заполнения', 'error')
                     return render_template('admin_add_place.html',
@@ -2109,167 +2485,63 @@ def add_place():
                                            existing_places=existing_places,
                                            current_user=user)
 
-                if not address:
-                    flash('Адрес обязателен для заполнения', 'error')
-                    return render_template('admin_add_place.html',
-                                           categories=all_categories,
-                                           existing_places=existing_places,
-                                           current_user=user)
+                # Генерируем slug если не указан
+                if not slug:
+                    slug = generate_slug(title)
+                    print(f"🔤 Сгенерирован slug: '{slug}'")
+                else:
+                    # Если slug пришел из формы, убедимся что он валидный
+                    slug = re.sub(r'[^a-zA-Z0-9_\-\.\/]', '', slug)
+                    print(f"🔤 Использован slug из формы: '{slug}'")
 
-                if not latitude or not longitude:
-                    flash('Укажите местоположение на карте', 'error')
-                    return render_template('admin_add_place.html',
-                                           categories=all_categories,
-                                           existing_places=existing_places,
-                                           current_user=user)
+                # Проверяем что slug не пустой
+                if not slug:
+                    slug = generate_slug(title)
+                    print(f"⚠️ Slug был пустым, сгенерирован: '{slug}'")
 
-            # Проверяем категорию
-            if existing_category and new_category:
-                flash('Выберите только один вариант: существующую категорию ИЛИ новую категорию', 'error')
-                return render_template('admin_add_place.html',
-                                       categories=all_categories,
-                                       existing_places=existing_places,
-                                       current_user=user)
+                print(f"🔍 Создается место: '{title}'")
+                print(f"  - Категория: '{category}'")
+                print(f"  - Category_en: '{category_en}'")
+                print(f"  - Slug: '{slug}'")
 
-            if not existing_category and not new_category:
-                flash('Категория обязательна для заполнения', 'error')
-                return render_template('admin_add_place.html',
-                                       categories=all_categories,
-                                       existing_places=existing_places,
-                                       current_user=user)
+                # Проверяем существует ли категория как 'Категор'
+                category_exists = Place.query.filter_by(category='Категор', category_en=category_en).first()
+                if not category_exists:
+                    print(f"⚠️ Категория {category_en} не существует как 'Категор', создаем...")
+                    # Создаем категорию автоматически
+                    new_category_place = Place(
+                        title=category,
+                        category='Категор',
+                        category_en=category_en,
+                        description=f"Категория {category}",
+                        slug=f"category_{category_en}"
+                    )
+                    db.session.add(new_category_place)
+                    print(f"✅ Создана категория: {category} ({category_en})")
 
-            # Определяем финальную категорию
-            category = existing_category or new_category
-
-            # ОПРЕДЕЛЯЕМ category_en ДЛЯ НОВОЙ КАТЕГОРИИ
-            category_en = None
-            if is_creating_category:
-                # Для новой категории генерируем правильный category_en
-                category_en = generate_category_en(new_category)
-                print(f"🎯 Создается новая категория: {new_category} -> {category_en}")
-            elif existing_category:
-                # Для существующей категории ищем category_en
-                category_place = Place.query.filter_by(
-                    category='Категория',
-                    title=existing_category
-                ).first()
-                if category_place:
-                    category_en = category_place.category_en
-
-            # Если не нашли, используем маппинг
-            if not category_en:
-                category_mapping = {
-                    'Ресторан': 'restaurant', 'Рестораны': 'restaurant',
-                    'Кафе': 'cafe',
-                    'Магазин': 'shop', 'Магазины': 'shop',
-                    'Музей': 'museum', 'Музеи': 'museums',
-                    'Театр': 'theatre', 'Театры': 'theatre',
-                    'Библиотека': 'library', 'Библиотеки': 'library',
-                    'Парк': 'park', 'Парки': 'park',
-                    'Кинотеатр': 'cinema', 'Кинотеатры': 'cinema',
-                    'Спортплощадка': 'sports', 'Спорт': 'sports',
-                    'Церковь': 'church', 'Церкви': 'church',
-                    'Гостиница': 'hotel', 'Гостиницы': 'hotels'
-                }
-                category_en = category_mapping.get(category, category.lower().replace(' ', '_'))
-
-            # Генерируем slug если не указан
-            if not slug and title:
-                slug = generate_slug(title)
-
-            # Обработка файла изображения с исправлением русских имен
-            image_path = None
-            if 'image' in request.files:
-                file = request.files['image']
-                if file.filename != '':
-                    if not allowed_file(file.filename):
-                        flash('Недопустимый тип файла. Разрешены: PNG, JPG, JPEG, GIF', 'error')
-                        return render_template('admin_add_place.html',
-                                               categories=all_categories,
-                                               existing_places=existing_places,
-                                               current_user=user)
-
-                    # ИСПРАВЛЕНИЕ: Генерируем безопасное имя файла
-                    original_filename = secure_filename(file.filename)
-
-                    # Если имя файла пустое после secure_filename (русские символы)
-                    if not original_filename:
-                        # Генерируем уникальное имя с расширением
-                        file_extension = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'png'
-                        unique_name = f"{uuid.uuid4().hex}.{file_extension}"
-                        filename = unique_name
-                        print(f"🔄 Русское имя файла, сгенерировано: {filename}")
-                    else:
-                        # Добавляем уникальный префикс к оригинальному имени
-                        unique_prefix = uuid.uuid4().hex[:8]
-                        filename = f"{unique_prefix}_{original_filename}"
-                        print(f"✅ Файл будет сохранен как: {filename}")
-
-                    save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    try:
-                        file.save(save_path)
-                        image_path = 'Фотки зданий/' + filename
-                        print(f"✅ Файл сохранен: {image_path}")
-                    except Exception as e:
-                        app.logger.error(f'Ошибка сохранения файла: {str(e)}')
-                        flash('Ошибка при сохранении файла. Попробуйте переименовать файл.', 'error')
-                        return render_template('admin_add_place.html',
-                                               categories=all_categories,
-                                               existing_places=existing_places,
-                                               current_user=user)
-
-            # Обработка PDF меню (только для обычных мест, не для категорий)
-            menu_pdf_path = None
-            if not is_creating_category and 'menu_pdf' in request.files:
-                menu_file = request.files['menu_pdf']
-                if menu_file and menu_file.filename != '':
-                    if menu_file and allowed_file(menu_file.filename):
-                        filename = secure_filename(menu_file.filename)
-                        unique_filename = f"{uuid.uuid4().hex}_{filename}"
-                        file_path = os.path.join('static/menus', unique_filename)
-                        menu_file.save(file_path)
-                        menu_pdf_path = f"menus/{unique_filename}"
-
-            # СОЗДАЕМ ЗАПИСЬ
-            if is_creating_category:
-                # Создаем запись КАТЕГОРИИ
-                new_place = Place(
-                    title=category,  # Название категории
-                    category='Категория',  # Тип - категория
-                    category_en=category_en,  # Английское название
-                    image_path=image_path,  # Иконка категории
-                    description=description or f"Категория {category}",
-                    slug=f"category_{category_en}"  # Уникальный slug для категории
-                )
-                print(f"✅ Создана новая категория: {category} ({category_en})")
-            else:
                 # Создаем запись ОБЫЧНОГО МЕСТА
                 new_place = Place(
-                    title=title or None,
-                    description=description or None,
-                    telephone=telephone or None,
-                    address=address or None,
-                    image_path=image_path,
+                    title=title,
+                    description=description if description else None,
+                    telephone=telephone if telephone else None,
+                    address=address if address else None,
+                    image_path=main_image_path,
                     category=category,
                     category_en=category_en,
                     latitude=float(latitude) if latitude else None,
                     longitude=float(longitude) if longitude else None,
                     working_hours=working_hours,
                     menu_pdf_path=menu_pdf_path,
-                    tags=tags or None,
+                    tags=tags if tags else None,
                     slug=slug
                 )
-                print(f"✅ Создано новое место: {title} в категории {category}")
 
-            db.session.add(new_place)
-            db.session.commit()
+                db.session.add(new_place)
+                db.session.commit()
 
-            if is_creating_category:
-                flash(f'Категория "{category}" успешно создана!', 'success')
-            else:
+                print(f"✅ Успешно создано место: {title} -> /{category_en}/{slug}")
                 flash('Место успешно добавлено!', 'success')
-
-            return redirect(url_for('admin_places'))
+                return redirect(url_for('admin_dashboard'))
 
         except Exception as e:
             db.session.rollback()
@@ -2284,47 +2556,103 @@ def add_place():
                            categories=all_categories,
                            existing_places=existing_places,
                            current_user=user,
-                           can_create_categories=user.role in ['moderator', 'editor', 'admin'])
+                           can_create_categories=user.role in ['editor', 'admin'])
 
 def generate_category_en(category_name_ru):
-    """Генерация английского названия категории с транслитерацией"""
+    """Генерация английского названия категории с правильной транслитерацией"""
+    print(f"🔄 Генерация category_en для: '{category_name_ru}'")
 
     # Специальные случаи
     special_cases = {
-        'Рестораны': 'restaurant',
-        'Кафе': 'cafe',
-        'Магазины': 'shop',
-        'Музеи': 'museums',
-        'Театры': 'theatre',
-        'Библиотеки': 'library',
-        'Парки': 'park',
-        'Кинотеатры': 'cinema',
-        'Спорт': 'sports',
-        'Церкви': 'church',
-        'Гостиницы': 'hotels',
-        'Культура': 'culture'
+        'Ресторан': 'restaurant', 'Рестораны': 'restaurant',
+        'Кафе': 'cafe', 'Кофейня': 'cafe',
+        'Магазин': 'shop', 'Магазины': 'shop',
+        'Музей': 'museum', 'Музеи': 'museums',
+        'Театр': 'theatre', 'Театры': 'theatre',
+        'Библиотека': 'library', 'Библиотеки': 'library',
+        'Парк': 'park', 'Парки': 'park',
+        'Кинотеатр': 'cinema', 'Кинотеатры': 'cinema',
+        'Спортплощадка': 'sports', 'Спорт': 'sports',
+        'Церковь': 'church', 'Церкви': 'church',
+        'Гостиница': 'hotel', 'Гостиницы': 'hotels',
+        'Категория': 'category',
     }
 
+    # Сначала проверяем специальные случаи
     if category_name_ru in special_cases:
-        return special_cases[category_name_ru]
+        result = special_cases[category_name_ru]
+        print(f"✅ Использован специальный случай: '{category_name_ru}' -> '{result}'")
+        return result
 
-    # Транслитерация для новых категорий
+    # Транслитерация
     translit_dict = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
         'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
         'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
-        'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
     }
 
-    # Транслитерируем
-    category_en = ''.join(translit_dict.get(c.lower(), c.lower()) for c in category_name_ru)
+    # Транслитерируем каждый символ
+    result_chars = []
+    for char in category_name_ru:
+        char_lower = char.lower()
+        if char_lower in translit_dict:
+            translated = translit_dict[char_lower]
+            if translated:  # ✅ Игнорируем пустые символы (ъ, ь)
+                result_chars.append(translated)
+        elif char_lower.isalnum():  # Английские буквы и цифры
+            result_chars.append(char_lower)
+        elif char_lower in [' ', '-']:  # Пробелы и дефисы заменяем на _
+            result_chars.append('_')
+        # Все остальные символы игнорируем
 
-    # Заменяем пробелы и не-ASCII символы
-    category_en = re.sub(r'[^a-z0-9]', '_', category_en)
-    category_en = re.sub(r'_+', '_', category_en).strip('_')
+    category_en = ''.join(result_chars)
+
+    # Убираем множественные _ и обрезаем с краев
+    category_en = re.sub(r'_+', '_', category_en)
+    category_en = category_en.strip('_')
+
+    # ✅ ВАЖНОЕ ИСПРАВЛЕНИЕ: Гарантируем что результат не пустой
+    if not category_en:
+        # Создаем осмысленное имя из первых букв
+        first_letters = ''.join(
+            [translit_dict.get(c.lower(), '') for c in category_name_ru[:3] if translit_dict.get(c.lower())])
+        if first_letters:
+            category_en = first_letters
+        else:
+            # Если все еще пусто, используем осмысленный fallback
+            category_en = 'category'
+
+        print(f"⚠️ Пустой результат, использован fallback: '{category_en}'")
+    else:
+        print(f"✅ Транслитерирован: '{category_name_ru}' -> '{category_en}'")
 
     return category_en
+
+
+def create_valid_slug(base, category_en):
+    """Создание валидного slug"""
+    if not category_en or category_en == '_':
+        # Если category_en некорректен, создаем осмысленный slug
+        return f"{base}_{uuid.uuid4().hex[:8]}"
+
+    slug = f"{base}_{category_en}"
+
+    # Проверяем что slug не содержит только префикс
+    if slug == f"{base}_" or slug == f"{base}__":
+        return f"{base}_{category_en}_{uuid.uuid4().hex[:6]}"
+
+    return slug
+
+@app.context_processor
+def utility_processor():
+    def generate_category_en_for_template(category_name):
+        """Генерация английского названия категории для шаблонов"""
+        # Просто вызываем основную функцию
+        return generate_category_en(category_name)
+
+    return {'generate_category_en_for_template': generate_category_en_for_template}
 
 @app.route('/create-categories')
 def create_categories_route():
@@ -2332,30 +2660,195 @@ def create_categories_route():
     count = create_standard_categories()
     return jsonify({'success': True, 'created_count': count})
 
+
+def find_category_icon(category_name):
+    """Улучшенный поиск иконки для категории"""
+    # Сначала ищем точное совпадение
+    icon_place = Place.query.filter_by(
+        category='Иконка',
+        title=category_name
+    ).first()
+
+    if icon_place:
+        return icon_place
+
+    # Если не нашли, ищем по альтернативным названиям
+    alternative_names = {
+        'Ресторан': ['Иконка Ресторана', 'Ресторан'],
+        'Кафе': ['Иконка Кафе', 'Кофе', 'Кафе'],
+        'Магазин': ['Иконка Магазина', 'Магазин'],
+        'Музей': ['Иконка Музея', 'Музей'],
+        'Театр': ['Иконка Театра', 'Театр'],
+        'Библиотека': ['Иконка Библиотеки', 'Библиотека'],
+        'Парк': ['Иконка Парка', 'Парк'],
+        'Кинотеатр': ['Иконка Кинотеатра', 'Кинотеатр'],
+        'Спортплощадка': ['Иконка Спортплощадки', 'Спорт'],
+        'Церковь': ['Иконка Церкви', 'Церковь'],
+        'Гостиница': ['Иконка Гостиницы', 'Гостиница'],
+        'Культура': ['Иконка Культуры', 'Культура'],
+        'НеКультура': ['Иконка НеКультуры', 'Культура'],
+    }
+
+    if category_name in alternative_names:
+        for alt_name in alternative_names[category_name]:
+            icon_place = Place.query.filter_by(
+                category='Иконка',
+                title=alt_name
+            ).first()
+            if icon_place:
+                return icon_place
+
+    # Если все еще не нашли, ищем любую иконку с похожим названием
+    icon_place = Place.query.filter(
+        Place.category == 'Иконка',
+        Place.title.ilike(f'%{category_name}%')
+    ).first()
+
+    return icon_place
+
 @app.route('/api/categories')
 def api_categories():
-    """API для получения всех категорий из категории 'Категория'"""
+    """API для получения категорий с правильным поиском иконок"""
     try:
-        # Получаем записи из категории 'Категория'
-        categories_from_db = Place.query.filter_by(
-            category='Категория'
+        categories_data = []
+
+        # 1. Категории из базы категорий (Категор)
+        categories_from_db = Place.query.filter_by(category='Категор').filter(
+            ~Place.title.startswith('Иконка')
         ).all()
 
-        categories_data = []
         for place in categories_from_db:
             if place.title and place.category_en:
+                # ✅ УЛУЧШЕННЫЙ ПОИСК ИКОНКИ
+                icon_place = find_category_icon(place.title)
+
+                # Формируем URL иконки
+                if icon_place and icon_place.image_path:
+                    icon_url = url_for('static', filename=icon_place.image_path)
+                    print(f"✅ Найдена иконка для {place.title}: {icon_place.image_path}")
+                else:
+                    # Fallback иконка
+                    fallback_path = get_fallback_icon(place.title)
+                    icon_url = url_for('static', filename=fallback_path)
+                    print(f"⚠️ Используем fallback иконку для {place.title}: {fallback_path}")
+
                 categories_data.append({
-                    'name': place.title,  # Название категории
-                    'slug': place.category_en,  # Английское название для URL
+                    'name': place.title,
+                    'slug': place.category_en,
                     'url': f'/{place.category_en}',
-                    'icon_url': url_for('static', filename=place.image_path) if place.image_path else None
+                    'icon_url': icon_url
                 })
 
-        print(f"✅ Found {len(categories_data)} categories in 'Категория' category")
+                # Если не нашли, пробуем альтернативные названия
+                if not icon_place:
+                    # Для "Кафе" ищем "Иконка Кафе" или "Кофе"
+                    alternative_names = {
+                        'Ресторан': ['Иконка Ресторана', 'Ресторан'],
+                        'Кафе': ['Иконка Кафе', 'Кофе', 'Кафе'],
+                        'Магазин': ['Иконка Магазина', 'Магазин'],
+                        'Музей': ['Иконка Музея', 'Музей'],
+                        'Театр': ['Иконка Театра', 'Театр'],
+                        'Библиотека': ['Иконка Библиотеки', 'Библиотека'],
+                        'Парк': ['Иконка Парка', 'Парк'],
+                        'Кинотеатр': ['Иконка Кинотеатра', 'Кинотеатр'],
+                        'Спортплощадка': ['Иконка Спортплощадки', 'Спорт'],
+                        'Церковь': ['Иконка Церкви', 'Церковь'],
+                        'Гостиница': ['Иконка Гостиницы', 'Гостиница'],
+                        'Культура': ['Иконка Культуры', 'Культура'],
+                        'НеКультура': ['Иконка НеКультуры', 'Культура']
+                    }
 
-        # Если нет категорий в новой системе, используем fallback
-        if not categories_data:
-            return get_categories_fallback()
+                    if place.title in alternative_names:
+                        for alt_name in alternative_names[place.title]:
+                            icon_place = Place.query.filter_by(
+                                category='Иконка',
+                                title=alt_name
+                            ).first()
+                            if icon_place:
+                                break
+
+                # Формируем URL иконки
+                if icon_place and icon_place.image_path:
+                    icon_url = url_for('static', filename=icon_place.image_path)
+                    print(f"✅ Найдена иконка для {place.title}: {icon_place.image_path}")
+                else:
+                    # Fallback иконка
+                    fallback_path = get_fallback_icon(place.title)
+                    icon_url = url_for('static', filename=fallback_path)
+                    print(f"⚠️ Используем fallback иконку для {place.title}: {fallback_path}")
+
+                categories_data.append({
+                    'name': place.title,
+                    'slug': place.category_en,
+                    'url': f'/{place.category_en}',
+                    'icon_url': icon_url
+                })
+
+        # 2. Динамические категории из реальных заведений
+        categories_from_places = db.session.query(Place.category).filter(
+            Place.category.isnot(None),
+            Place.category != '',
+            Place.category != 'Категор',
+            Place.category != 'Иконка',
+            Place.category != 'Фон',
+            ~Place.title.startswith('Иконка')
+        ).distinct().all()
+
+        real_categories = [cat[0] for cat in categories_from_places if cat[0]]
+
+        for cat_name in real_categories:
+            # Проверяем, нет ли уже такой категории в статических
+            if not any(cat['name'] == cat_name for cat in categories_data):
+                cat_en = generate_category_en(cat_name)
+
+                # Поиск иконки для динамической категории
+                icon_place = Place.query.filter_by(
+                    category='Иконка',
+                    title=cat_name
+                ).first()
+
+                # Альтернативный поиск
+                if not icon_place:
+                    alternative_names = {
+                        'Ресторан': ['Иконка Ресторана'],
+                        'Кафе': ['Иконка Кафе', 'Кофе'],
+                        'Магазин': ['Иконка Магазина'],
+                        'Музей': ['Иконка Музея'],
+                        'Театр': ['Иконка Театра'],
+                        'Библиотека': ['Иконка Библиотеки'],
+                        'Парк': ['Иконка Парка'],
+                        'Кинотеатр': ['Иконка Кинотеатра'],
+                        'Спортплощадка': ['Иконка Спортплощадки', 'Спорт'],
+                        'Церковь': ['Иконка Церкви'],
+                        'Гостиница': ['Иконка Гостиницы', 'Отель'],
+                        'Культура': ['Иконка Культуры'],
+                        'НеКультура': ['Иконка НеКультуры']
+                    }
+
+                    if cat_name in alternative_names:
+                        for alt_name in alternative_names[cat_name]:
+                            icon_place = Place.query.filter_by(
+                                category='Иконка',
+                                title=alt_name
+                            ).first()
+                            if icon_place:
+                                break
+
+                if icon_place and icon_place.image_path:
+                    icon_url = url_for('static', filename=icon_place.image_path)
+                else:
+                    fallback_path = get_fallback_icon(cat_name)
+                    icon_url = url_for('static', filename=fallback_path)
+
+                categories_data.append({
+                    'name': cat_name,
+                    'slug': cat_en,
+                    'url': f'/{cat_en}',
+                    'icon_url': icon_url,
+                    'type': 'dynamic'
+                })
+
+        print(f"✅ Найдено {len(categories_data)} категорий с иконками")
 
         return jsonify({
             'success': True,
@@ -2364,8 +2857,31 @@ def api_categories():
 
     except Exception as e:
         print(f"❌ Error in api_categories: {e}")
-        return get_categories_fallback()
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'categories': []
+        })
 
+def get_fallback_icon(category_name):
+    """Получение fallback иконки для категории"""
+    icon_mapping = {
+        'Ресторан': 'Фотки зданий/ИконкаРесторана.png',
+        'Кафе': 'Фотки зданий/ИконкаКофе.png',
+        'Магазин': 'Фотки зданий/ИконкаМагазина.png',
+        'Музей': 'Фотки зданий/ИконкаМузеи.png',
+        'Театр': 'Фотки зданий/ИконкаТеатр.png',
+        'Библиотека': 'Фотки зданий/ИконкиБиблиотеки.png',
+        'Парк': 'Фотки зданий/ИконкаПарка.png',
+        'Кинотеатр': 'Фотки зданий/ИконкаКинотеатр.png',
+        'Спортплощадка': 'Фотки зданий/ИконкаСпортплощадка.png',
+        'Церковь': 'Фотки зданий/ИконкаЦеркви.png',
+        'Гостиница': 'Фотки зданий/ИконкиГостиницы.png',
+        'Культура': 'Фотки зданий/ИконкаМеста.png',
+        'НеКультура': 'Фотки зданий/ИконкаМеста.png'
+    }
+
+    return icon_mapping.get(category_name, 'Фотки зданий/ИконкаМеста.png')
 
 def create_standard_categories():
     """Создание стандартных категорий в категории 'Категория'"""
@@ -2389,14 +2905,14 @@ def create_standard_categories():
             for cat_data in standard_categories:
                 # Проверяем, существует ли уже такая категория
                 existing = Place.query.filter_by(
-                    category='Категория',
+                    category='Категор',
                     title=cat_data['title']
                 ).first()
 
                 if not existing:
                     new_category = Place(
                         title=cat_data['title'],
-                        category='Категория',
+                        category='Категор',
                         category_en=cat_data['category_en'],
                         image_path=f"Фотки зданий/{cat_data['icon']}",
                         slug=f"category_{cat_data['category_en']}"
@@ -2422,7 +2938,7 @@ def get_categories_fallback():
             Place.category,
             Place.category_en
         ).filter(
-            Place.category.notin_(['Иконка', 'Фон', 'Категория']),  # Исключаем служебные
+            Place.category.notin_(['Иконка', 'Фон', 'Категор']),  # Исключаем служебные
             Place.category.isnot(None)
         ).distinct().all()
 
@@ -2480,26 +2996,64 @@ def cleanup_duplicate_categories():
             return []
 
 def generate_slug(title):
-    """Генерация slug из русского названия"""
+    """Генерация slug без лишних символов"""
+    if not title:
+        return "place"
+
+    print(f"🔄 Генерация slug для: '{title}'")
+
     # Транслитерация кириллицы в латиницу
     translit_dict = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
         'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
         'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
-        'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
     }
 
-    # Приводим к нижнему регистру и транслитерируем
-    slug = ''.join(translit_dict.get(c, c) for c in title if c.isalnum() or c.isspace())
+    result = []
+    for char in title:
+        char_lower = char.lower()
+        if char_lower in translit_dict:
+            # Русские буквы - транслитерируем
+            result.append(translit_dict[char_lower])
+        elif char.isalnum():
+            # Английские буквы и цифры - оставляем как есть
+            result.append(char_lower)
+        elif char in ['-', '_']:
+            # Дефисы и подчеркивания - оставляем
+            result.append(char)
+        elif char.isspace():
+            # Пробелы заменяем на дефисы
+            result.append('-')
+        # Все остальные символы игнорируем
 
-    # Заменяем пробелы на дефисы и удаляем лишние символы
-    slug = re.sub(r'[^\w\s-]', '', slug)
-    slug = re.sub(r'[-\s]+', '-', slug).strip('-')
-    slug = ''.join(translit_dict.get(c, c) for c in title)
-    slug = re.sub(r'[^a-z0-9-]', '-', slug)  # Заменяем не-буквы на дефисы
-    slug = re.sub(r'-+', '-', slug).strip('-')  # Убираем лишние дефисы
-    return slug
+    slug = ''.join(result)
+
+    # Убираем лишние дефисы в начале и конце
+    slug = slug.strip('-')
+
+    # Убираем множественные дефисы
+    slug = re.sub(r'-+', '-', slug)
+
+    # Если slug пустой, создаем простой
+    if not slug:
+        slug = 'place'
+        print(f"⚠️ Slug пустой, использован: '{slug}'")
+    else:
+        print(f"✅ Сгенерирован slug: '{slug}'")
+
+    # Проверяем на дубликаты и добавляем номер если нужно
+    counter = 1
+    final_slug = slug
+    while Place.query.filter_by(slug=final_slug).first():
+        final_slug = f"{slug}-{counter}"
+        counter += 1
+
+    if final_slug != slug:
+        print(f"⚠️ Slug '{slug}' уже существует, использован: '{final_slug}'")
+
+    return final_slug
 
 @app.route('/api/reviews/<int:review_id>/migrate', methods=['POST'])
 def migrate_review(review_id):
@@ -2902,23 +3456,37 @@ def restaurant_page(id):
 @app.route('/<category_en>/<slug>')
 def place_page_by_slug(category_en, slug):
     """Универсальный маршрут для всех мест по slug"""
-    place = Place.query.filter_by(category_en=category_en, slug=slug).first_or_404()
+    print(f"🎯 ЗАПРОС ЛИЧНОЙ СТРАНИЦЫ: category_en='{category_en}', slug='{slug}'")
+
+    # Регистронезависимый поиск места
+    place = Place.query.filter(
+        db.func.lower(Place.category_en) == db.func.lower(category_en),
+        Place.slug == slug
+    ).first_or_404()
+
+    print(f"✅ МЕСТО НАЙДЕНО: {place.title} (ID: {place.id})")
+
+    # 🔥 ДОБАВЛЯЕМ ПОИСК ФОНА ДЛЯ КАТЕГОРИИ
+    background_place = find_category_background(category_en, place.category)
+    background_image = background_place.image_path if background_place else None
+
+    print(f"🎨 Фон для категории {category_en}: {background_image}")
 
     # Пробуем найти индивидуальный шаблон
     template_name = f'ЛичныеСтраницы/{place.title}.html'
     import os
     template_path = os.path.join(app.root_path, 'templates', template_name)
 
-    # Получаем фон для категории
-    background_place = Place.query.filter_by(
-        category='Фон',
-        category_en=category_en
-    ).first()
-
     if os.path.exists(template_path):
-        return render_template(template_name, place=place)
+        return render_template(template_name,
+                               place=place,
+                               background_image=background_image,
+                               category_name=place.category)
     else:
-        return render_template('place_template.html', place=place, background_image=background_place.image_path if background_place else None, category_name=category_en)
+        return render_template('place_template.html',
+                               place=place,
+                               background_image=background_image,
+                               category_name=place.category)
 
 # ПОТОМ маршрут с ОДНИМ параметром
 @app.route('/<category_type>')
@@ -3070,21 +3638,21 @@ def api_filtered_places():
         return jsonify({'error': 'Internal server error'}), 500
 
 def get_average_rating(place_id):
-    """Получение средней оценки заведения из таблицы restaurants"""
+    """Получение средней оценки заведения"""
     try:
-        # Пробуем найти ресторан по ID
+        # Сначала пробуем найти в таблице Restaurant
         restaurant = Restaurant.query.get(str(place_id))
-        if restaurant and restaurant.total_rating:
-            return round(restaurant.total_rating, 1)
+        if restaurant and restaurant.total_rating is not None:
+            return round(float(restaurant.total_rating), 1)
 
-        # Если нет в таблице restaurants, вычисляем из отзывов
+        # Если нет в Restaurant, вычисляем из отзывов
         reviews = Review.query.filter_by(restaurant_id=str(place_id)).all()
-        if not reviews:
-            return 0
+        if reviews:
+            total_rating = sum(review.rating for review in reviews)
+            average_rating = total_rating / len(reviews)
+            return round(average_rating, 1)
 
-        total_rating = sum(review.rating for review in reviews)
-        average_rating = total_rating / len(reviews)
-        return round(average_rating, 1)
+        return 0  # Если нет отзывов
 
     except Exception as e:
         print(f"Error calculating average rating for place {place_id}: {e}")
@@ -3094,78 +3662,169 @@ def get_average_rating(place_id):
 @app.route('/api/categories/<category_slug>')
 def api_category_places(category_slug):
     """API для получения мест по категории"""
-    CATEGORY_MAPPING = {
-        'restaurant': 'Ресторан',
-        'coffee': 'Кафе',
-        'shop': 'Магазин',
-        'museums': 'Музей',
-        'theatre': 'Театр',
-        'library': 'Библиотека',
-        'park': 'Парк',
-        'cinema': 'Кинотеатр',
-        'sports': 'Спортплощадка',
-        'church': 'Церковь',
-        'hotels': 'Гостиница'
-    }
+    try:
+        print(f"🔍 API запрос категории: {category_slug}")
 
-    if category_slug not in CATEGORY_MAPPING:
-        return jsonify({'error': 'Category not found'}), 404
+        # Ищем категорию так же как в основном маршруте
+        category_place = Place.query.filter_by(
+            category='Категор',
+            category_en=category_slug
+        ).filter(
+            ~Place.title.startswith('Иконка')
+        ).first()
 
-    category_ru = CATEGORY_MAPPING[category_slug]
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-
-    places_query = Place.query.filter_by(category=category_ru)
-    total_places = places_query.count()
-    total_pages = math.ceil(total_places / per_page)
-
-    places = places_query.offset((page - 1) * per_page).limit(per_page).all()
-
-    places_data = []
-    for place in places:
-        # Тот же алгоритм поиска что и в основной функции
-        restaurant = None
-
-        if place.slug:
-            restaurant = Restaurant.query.get(place.slug)
-
-        if not restaurant and place.category_en:
-            restaurant = Restaurant.query.get(place.category_en)
-
-        # Специальные случаи
-        if not restaurant:
-            special_cases = {
-                'Brewmen': 'Brewmen',
-            }
-            if place.title in special_cases:
-                restaurant = Restaurant.query.get(special_cases[place.title])
-
-        if restaurant and restaurant.total_rating is not None:
-            avg_rating = round(restaurant.total_rating, 1)
+        if category_place:
+            category_name = category_place.title
+            print(f"✅ Статическая категория: {category_name}")
         else:
-            avg_rating = 0.0
+            # Ищем среди динамических категорий
+            categories_from_places = db.session.query(Place.category).filter(
+                Place.category.isnot(None),
+                Place.category != '',
+                Place.category != 'Категор',
+                Place.category != 'Иконка',
+                Place.category != 'Фон',
+                ~Place.title.startswith('Иконка')
+            ).distinct().all()
 
-        places_data.append({
-            'id': place.id,
-            'title': place.title,
-            'description': place.description,
-            'telephone': place.telephone,
-            'address': place.address,
-            'image_path': place.image_path,
-            'category_en': place.category_en,
-            'slug': place.slug,
-            'avg_rating': avg_rating,
-            'latitude': place.latitude,  # Добавляем координаты
-            'longitude': place.longitude
+            real_categories = [cat[0] for cat in categories_from_places if cat[0]]
+
+            category_mapping = {}
+            for cat_name in real_categories:
+                cat_en = generate_category_en(cat_name)
+                category_mapping[cat_en] = cat_name
+
+            if category_slug in category_mapping:
+                category_name = category_mapping[category_slug]
+                print(f"✅ Динамическая категория: {category_name}")
+            else:
+                print(f"❌ Категория не найдена: {category_slug}")
+                return jsonify({'error': 'Category not found'}), 404
+
+        # Получаем места
+        places = Place.query.filter_by(category=category_name).filter(
+            Place.category.notin_(['Фон', 'Иконка', 'Категор'])
+        ).all()
+
+        print(f"📊 Найдено мест: {len(places)}")
+
+        # Формируем данные
+        places_data = []
+        for place in places:
+            restaurant = Restaurant.query.get(str(place.id))
+            avg_rating = round(float(restaurant.total_rating), 1) if restaurant and restaurant.total_rating else 0.0
+
+            places_data.append({
+                'id': place.id,
+                'title': place.title,
+                'description': place.description,
+                'telephone': place.telephone,
+                'address': place.address,
+                'image_path': place.image_path,
+                'slug': place.slug,
+                'avg_rating': avg_rating,
+                'latitude': place.latitude,
+                'longitude': place.longitude
+            })
+
+        return jsonify({
+            'places': places_data,
+            'category_name': category_name,
+            'total_pages': 1,  # Пока без пагинации
+            'current_page': 1
         })
 
-    return jsonify({
-        'places': places_data,
-        'current_page': page,
-        'total_pages': total_pages,
-        'has_next': page < total_pages,
-        'has_prev': page > 1
-    })
+    except Exception as e:
+        print(f"❌ Ошибка API категории: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/create-missing-icons')
+def create_missing_icons():
+    """Создание недостающих иконок"""
+    try:
+        missing_icons = [
+            {'title': 'Библиотека', 'image_path': 'Фотки зданий/ИконкиБиблиотеки.png'},
+            {'title': 'Гостиница', 'image_path': 'Фотки зданий/ИконкиГостиницы.png'},
+            {'title': 'Культура', 'image_path': 'Фотки зданий/ИконкаМеста.png'},
+            {'title': 'НеКультура', 'image_path': 'Фотки зданий/ИконкаМеста.png'}
+        ]
+
+        created_count = 0
+        for icon_data in missing_icons:
+            existing = Place.query.filter_by(
+                category='Иконка',
+                title=icon_data['title']
+            ).first()
+
+            if not existing:
+                icon = Place(
+                    title=icon_data['title'],
+                    category='Иконка',
+                    category_en='icon',
+                    image_path=icon_data['image_path']
+                )
+                db.session.add(icon)
+                created_count += 1
+                print(f"✅ Создана иконка: {icon_data['title']}")
+
+        db.session.commit()
+        return jsonify({'success': True, 'created_count': created_count})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/create-default-backgrounds')
+def create_default_backgrounds():
+    """Создание дефолтных фонов для всех категорий"""
+    try:
+        # Все существующие категории
+        categories_from_db = Place.query.filter_by(category='Категор').filter(
+            ~Place.title.startswith('Иконка')
+        ).all()
+
+        categories_from_places = db.session.query(Place.category).filter(
+            Place.category.isnot(None),
+            Place.category != '',
+            Place.category != 'Категор',
+            Place.category != 'Иконка',
+            Place.category != 'Фон',
+            ~Place.title.startswith('Иконка')
+        ).distinct().all()
+
+        all_categories = set()
+
+        # Категории из базы
+        for cat in categories_from_db:
+            all_categories.add(cat.category_en)
+
+        # Динамические категории
+        for cat in categories_from_places:
+            cat_en = generate_category_en(cat[0])
+            all_categories.add(cat_en)
+
+        created_count = 0
+        for cat_en in all_categories:
+            existing = Place.query.filter_by(category='Фон', category_en=cat_en).first()
+            if not existing:
+                background = Place(
+                    title=f'Фон {cat_en}',
+                    category='Фон',
+                    category_en=cat_en,
+                    image_path='Фотки зданий/default_background.png'  # Загрузите этот файл
+                )
+                db.session.add(background)
+                created_count += 1
+                print(f"✅ Создан фон для: {cat_en}")
+
+        db.session.commit()
+        return jsonify({'success': True, 'created_count': created_count})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/popular-places-by-category')
 def api_popular_places_by_category():
@@ -3177,6 +3836,7 @@ def api_popular_places_by_category():
         categories = db.session.query(Place.category).filter(
             Place.category != 'Иконка',
             Place.category != 'Фон',
+            Place.category != 'Категор',
             Place.category != 'Категория',
             Place.category.isnot(None)
         ).distinct().all()
@@ -3800,35 +4460,44 @@ def fix_ratings():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/cleanup-categories')
-def cleanup_categories_route():
-    """Временный маршрут для очистки дубликатов категорий"""
-    categories = cleanup_duplicate_categories()
-    return jsonify({
-        'success': True,
-        'categories': categories,
-        'count': len(categories)
-    })
 
-@app.route('/debug-categories-new')
-def debug_categories_new():
-    """Отладочная информация о категориях"""
-    # Категории из категории 'Категория'
-    category_places = Place.query.filter_by(category='Категория').all()
-    categories_data = []
+def find_restaurant_by_any_means(place_id):
+    """Ищет ресторан любыми способами"""
+    # Способ 1: По ID места (правильный способ)
+    restaurant = Restaurant.query.get(str(place_id))
+    if restaurant:
+        return restaurant
 
-    for place in category_places:
-        categories_data.append({
-            'title': place.title,
-            'category_en': place.category_en,
-            'image_path': place.image_path,
-            'slug': place.slug
+    # Способ 2: Найти место по ID и получить его slug
+    place = Place.query.get(place_id)
+    if place and place.slug:
+        restaurant = Restaurant.query.get(place.slug)
+        if restaurant:
+            return restaurant
+
+    # Способ 3: Найти по названию места
+    if place:
+        restaurant = Restaurant.query.filter_by(name=place.title).first()
+        if restaurant:
+            return restaurant
+
+    return None
+
+@app.route('/debug-restaurant-table')
+def debug_restaurant_table():
+    """Показывает все записи в таблице Restaurant"""
+    restaurants = Restaurant.query.all()
+
+    result = []
+    for rest in restaurants:
+        result.append({
+            'id': rest.id,
+            'name': rest.name,
+            'total_rating': rest.total_rating,
+            'review_count': rest.review_count
         })
 
-    return jsonify({
-        'category_places': categories_data,
-        'count': len(categories_data)
-    })
+    return jsonify(result)
 
 if __name__ == '__main__':
     with app.app_context():

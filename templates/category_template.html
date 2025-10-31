@@ -193,15 +193,38 @@
 </style>
 </head>
 <body>
+<script>
+console.log('=== ДАННЫЕ ШАБЛОНА ===');
+console.log('Категория:', '{{ category_name }}');
+console.log('Всего мест:', {{ places|length }});
+console.log('Места с рейтингами:', {{ places_with_ratings|length }});
+
+{% for place_data in places_with_ratings %}
+console.log('Место:', {
+    title: '{{ place_data.place.title }}',
+    avg_rating: {{ place_data.avg_rating }},
+    review_count: {{ place_data.review_count }},
+    restaurant_found: {{ place_data.restaurant_found|lower }}
+});
+{% endfor %}
+</script>
     <!-- Вставляем шапку -->
     {% include 'header.html' %}
 
     <!-- Параллакс фон из первого HTML -->
+    {% if background_image %}
     <div class="parallax-background">
-        {% if background_image %}
-            <img src="{{ url_for('static', filename=background_image) }}" alt="Фон {{ category_name }}">
-        {% endif %}
+        <img src="{{ url_for('static', filename=background_image) }}" alt="Фон {{ category_name }}">
     </div>
+    {% else %}
+    <!-- Если фона нет, используем градиент или просто оставляем пустым -->
+    <div class="parallax-background" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div style="text-align: center; padding: 100px 20px; color: white;">
+            <h1>{{ category_name }}</h1>
+            <p>Лучшие места в категории</p>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Умная пагинация -->
     <div class="smart-pagination" id="smartPagination">
@@ -670,7 +693,7 @@ function createRestaurantCard(place, index) {
 
     const imagePath = place.image_path ?
         `/static/${place.image_path}` :
-        '/static/Фотки зданий/default.png';
+        '/static/Фотки зданий/ИконкаМеста.png';
 
     // ВАЖНОЕ ИЗМЕНЕНИЕ: Показываем расстояние если оно есть И мы в режиме distance
     const hasDistance = currentSort === 'distance' && place.distance !== undefined && place.distance < 9999;
@@ -977,6 +1000,32 @@ function applySortingToAll() {
         console.log(`✅ Применена сортировка: ${currentSort}`);
         console.log(`📍 Показаны расстояния: ${currentSort === 'distance'}`);
     }, 300);
+}
+
+// ==================== Распределить ====================
+
+function onExistingCategoryChange() {
+    const selectedCategory = document.getElementById('existingCategory').value;
+    const backgroundSection = document.getElementById('categoryBackgroundSection');
+    const backgroundInput = document.getElementById('categoryBackgroundInput');
+
+    // Показываем секцию фона только если выбрана категория "Фон"
+    if (selectedCategory === 'Фон') {
+        backgroundSection.style.display = 'block';
+        if (backgroundInput) backgroundInput.required = true;
+    } else {
+        backgroundSection.style.display = 'none';
+        if (backgroundInput) backgroundInput.required = false;
+    }
+
+    // Остальная логика...
+    if (selectedCategory) {
+        const newCategoryInput = document.getElementById('newCategory');
+        if (newCategoryInput) {
+            newCategoryInput.value = '';
+        }
+    }
+    updateFinalCategoryPreview();
 }
     </script>
 </body>

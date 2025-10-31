@@ -113,7 +113,7 @@
                                     <div class="mb-3">
                                         <label class="form-label">Название заведения *</label>
                                         <input type="text" class="form-control" name="title" id="title"
-                                               oninput="generateSlug()" required placeholder="Например: Кофейня 'Уютная'">
+                                               oninput="generateSlug()" placeholder="Например: Кофейня 'Уютная'">
                                         <div class="help-text">Только название заведения без адреса</div>
                                     </div>
 
@@ -146,9 +146,9 @@
                                     </div>
 
                                     <div class="mb-3">
-                                        <label class="form-label">Адрес *</label>
+                                        <label class="form-label">Адрес</label>
                                         <div class="input-group">
-                                            <input type="text" class="form-control" name="address" required
+                                            <input type="text" class="form-control" name="address"
                                                    placeholder="ул. Примерная, д. 10" id="addressInput">
                                             <button type="button" class="btn btn-outline-primary" id="geocodeButton">
                                                 <i class="fas fa-search-location"></i> Найти на карте
@@ -164,7 +164,7 @@
                                         <label class="form-label">URL адрес (автоматически)</label>
                                         <div class="auto-generated">
                                             <strong>site.com/</strong><span id="slug-preview" class="text-muted">slug-будет-здесь</span>
-                                            <input type="hidden" name="slug" id="slug">
+                                            <input type="text" name="slug" id="slug" style="display: none;">
                                         </div>
                                         <div id="slug-warning" class="slug-warning" style="display: none;">
                                             ⚠️ Заведение с похожим названием уже существует.
@@ -240,16 +240,24 @@
                                                 <option value="">-- Выберите категорию --</option>
                                                 {% for cat in categories %}
                                                     {% if cat and cat not in ['Иконка', 'Фон'] %}
-                                                        <option value="{{ cat }}">{{ cat }}</option>
+                                                        <option value="{{ cat }}" data-category-en="{{ generate_category_en_for_template(cat) }}">
+                                                            {{ cat }}
+                                                        </option>
                                                     {% endif %}
                                                 {% endfor %}
                                             </select>
                                         </div>
 
-                                        <!-- Проверка роли для создания новой категории -->
-                                        {% if current_user.role in ['moderator', 'editor', 'admin'] %}
-                                        <div class="text-center my-3">
-                                            <strong>ИЛИ</strong>
+                                        <!-- Секция для загрузки фона (всегда показываем, но поле не обязательно) -->
+                                        {% if current_user.role in ['editor', 'admin'] %}
+                                        <div id="categoryBackgroundSection">
+                                            <div class="mb-3">
+                                                <label class="form-label">Фон для категории (опционально)</label>
+                                                <input type="file" class="form-control" name="category_background" accept="image/*" id="categoryBackgroundInput">
+                                                <div class="help-text">
+                                                    Рекомендуемый размер: 1920x1080px. Будет использоваться как фон страницы категории.
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div class="mb-3">
@@ -327,6 +335,13 @@
     </div>
 
     <script src="https://api-maps.yandex.ru/2.1/?apikey=fc434fa5-588f-4572-b204-f43136f0a8c3&lang=ru_RU" type="text/javascript"></script>
+    <!-- ВРЕМЕННЫЙ ОТЛАДОЧНЫЙ ВЫВОД -->
+    <script>
+        console.log('📋 Категории для выпадающего списка:');
+        {% for cat in categories %}
+            console.log('  - {{ cat }} -> {{ generate_category_en_for_template(cat) }}');
+        {% endfor %}
+    </script>
     <script>
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
 let map, marker;
@@ -374,6 +389,14 @@ function initEventListeners() {
                 geocodeAddress();
             }
         });
+    }
+
+    // ✅ ДОБАВЬТЕ ЭТО: Генерируем slug при загрузке если есть название
+    const titleInput = document.getElementById('title');
+    if (titleInput && titleInput.value) {
+        setTimeout(() => {
+            generateSlug();
+        }, 100);
     }
 }
 
@@ -676,54 +699,40 @@ function generateSlug() {
 
     if (!title) {
         document.getElementById('slug-preview').textContent = 'slug-будет-здесь';
+        document.getElementById('slug').value = '';
         document.getElementById('slug-warning').style.display = 'none';
         return;
     }
 
-    // Обрабатываем название
-    let titleSlug = title.split('').map(char => {
-        if (/[a-zA-Z0-9\-_\.]/.test(char)) {
-            return char;
-        }
-        else if (char === ' ') {
-            return '_';
-        }
-        else {
-            return translitDict[char] || '';
-        }
-    }).join('').replace(/_+/g, '_').replace(/^_|_$/g, '');
+    // Простая транслитерация
+    const translitDict = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+
+    // Транслитерируем название
+    let titleSlug = title.toLowerCase().split('').map(char => {
+        return translitDict[char] || (char.match(/[a-z0-9]/) ? char : '-');
+    }).join('').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
     let slug = titleSlug;
 
     // Добавляем улицу и дом если указаны
     if (street) {
-        let streetSlug = street.split('').map(char => {
-            if (/[a-zA-Z0-9\-_\.]/.test(char)) {
-                return char;
-            }
-            else if (char === ' ') {
-                return '_';
-            }
-            else {
-                return translitDict[char] || '';
-            }
-        }).join('').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        let streetSlug = street.toLowerCase().split('').map(char => {
+            return translitDict[char] || (char.match(/[a-z0-9]/) ? char : '-');
+        }).join('').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
-        slug += '_' + streetSlug;
+        if (streetSlug) {
+            slug += '_' + streetSlug;
+        }
     }
 
     if (house) {
-        // Обрабатываем номер дома (разрешаем цифры, точки, дроби)
-        let houseSlug = house.split('').map(char => {
-            if (/[a-zA-Z0-9\-_\.\/]/.test(char)) {
-                return char;
-            }
-            else {
-                return '';
-            }
-        }).join('');
-
-        slug += '/' + houseSlug;
+        slug += '/' + house.replace(/[^a-zA-Z0-9\-_\.\/]/g, '');
     }
 
     // Проверка на дубликаты
@@ -733,22 +742,29 @@ function generateSlug() {
 
     if (isDuplicate) {
         document.getElementById('slug-warning').style.display = 'block';
+        // Добавляем номер если дубликат
+        let counter = 1;
+        let finalSlug = slug + '-' + counter;
+        while (existingPlaces.some(place =>
+            place.slug && place.slug.toLowerCase() === finalSlug.toLowerCase()
+        )) {
+            counter++;
+            finalSlug = slug + '-' + counter;
+        }
+        slug = finalSlug;
     } else {
         document.getElementById('slug-warning').style.display = 'none';
     }
 
     document.getElementById('slug-preview').textContent = slug;
     document.getElementById('slug').value = slug;
+    console.log('✅ Сгенерирован slug:', slug);
 }
 
 // ========== КАТЕГОРИИ ==========
 function generateCategoryEn() {
-    // Проверяем доступность создания новой категории
     const newCategoryInput = document.getElementById('newCategory');
-    if (!newCategoryInput) {
-        console.log('Создание новых категорий недоступно для вашей роли');
-        return;
-    }
+    if (!newCategoryInput) return;
 
     const category = newCategoryInput.value;
     if (!category) {
@@ -756,45 +772,78 @@ function generateCategoryEn() {
         return;
     }
 
-    const categoryMapping = {
-        'Ресторан': 'restaurant', 'Кафе': 'cafe', 'Магазин': 'shop',
-        'Музей': 'museum', 'Театр': 'theatre', 'Библиотека': 'library',
-        'Парк': 'park', 'Кинотеатр': 'cinema', 'Спортплощадка': 'sports',
-        'Церковь': 'church', 'Гостиница': 'hotel', 'Иконка': 'icon'
-    };
-
-    let categoryEn = categoryMapping[category] || category.toLowerCase()
-        .split('').map(char => translitDict[char] || char).join('')
-        .replace(/[^a-z0-9]/g, '_')
-        .replace(/_+/g, '_')
-        .replace(/^_|_$/g, '');
-
-    document.getElementById('category-en-preview').textContent = categoryEn;
-    document.getElementById('categoryEn').value = categoryEn;
-    updateFinalCategoryPreview();
+    // Отправляем запрос на сервер для генерации правильного category_en
+    fetch('/api/generate_category_en', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ category: category })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('category-en-preview').textContent = data.category_en;
+            document.getElementById('categoryEn').value = data.category_en;
+            updateFinalCategoryPreview();
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка генерации category_en:', error);
+        // Fallback на клиентскую генерацию
+        const categoryEn = category.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
+        document.getElementById('category-en-preview').textContent = categoryEn;
+        document.getElementById('categoryEn').value = categoryEn;
+        updateFinalCategoryPreview();
+    });
 }
 
 function onExistingCategoryChange() {
-    const selectedCategory = document.getElementById('existingCategory').value;
+    const select = document.getElementById('existingCategory');
+    const selectedOption = select.options[select.selectedIndex];
+    const selectedCategory = select.value;
+
     if (selectedCategory) {
-        // Сбрасываем поле новой категории только если оно доступно
+        const categoryEn = selectedOption.getAttribute('data-category-en');
+
+        // ✅ ПРОВЕРКА: category_en должен быть на английском
+        if (categoryEn && !/^[a-z0-9_]+$/.test(categoryEn)) {
+            console.warn('⚠️ category_en содержит неанглийские символы:', categoryEn);
+            // Генерируем правильный category_en
+            generateCategoryEnForExisting(selectedCategory);
+            return;
+        }
+
+        document.getElementById('final-category-preview').textContent = selectedCategory;
+        document.getElementById('category-en-preview').textContent = categoryEn;
+        document.getElementById('categoryEn').value = categoryEn;
+
+        // Сбрасываем поле новой категории
         const newCategoryInput = document.getElementById('newCategory');
         if (newCategoryInput) {
             newCategoryInput.value = '';
-            document.getElementById('categoryEn').value = '';
-            document.getElementById('category-en-preview').textContent = 'будет сгенерировано автоматически';
         }
+
+        updateFinalCategoryPreview();
     }
-    updateFinalCategoryPreview();
 }
 
-function updateFinalCategoryPreview() {
-    const existingCategory = document.getElementById('existingCategory').value;
-    const newCategoryInput = document.getElementById('newCategory');
-    const newCategory = newCategoryInput ? newCategoryInput.value : '';
-
-    let finalCategory = existingCategory || newCategory || 'не выбрана';
-    document.getElementById('final-category-preview').textContent = finalCategory;
+function generateCategoryEnForExisting(category) {
+    fetch('/api/generate_category_en', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ category: category })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('category-en-preview').textContent = data.category_en;
+            document.getElementById('categoryEn').value = data.category_en;
+            updateFinalCategoryPreview();
+        }
+    });
 }
 
         // ========== ВРЕМЯ РАБОТЫ ==========
@@ -954,18 +1003,33 @@ function formatFileSize(bytes) {
 
 // ========== ВАЛИДАЦИЯ ФОРМЫ ==========
 function validateForm() {
+    const title = document.getElementById('title').value;
     const existingCategory = document.getElementById('existingCategory').value;
     const newCategoryInput = document.getElementById('newCategory');
     const newCategory = newCategoryInput ? newCategoryInput.value : '';
-    const address = document.querySelector('input[name="address"]').value;
-    const latitude = document.getElementById('latInput').value;
-    const longitude = document.getElementById('lonInput').value;
-    const hasMenu = document.getElementById('hasMenuToggle').checked;
-    const menuFile = document.getElementById('menuPdfInput') ? document.getElementById('menuPdfInput').files[0] : null;
+    const bgFile = document.getElementById('categoryBackgroundInput')?.files[0];
 
-    // Проверка категории
+    // Проверяем что загружается фон
+    const isCreatingBackground = bgFile && bgFile.name !== '';
+
+    // Если загружается фон, проверяем только категорию
+    if (isCreatingBackground) {
+        if (!existingCategory && !newCategory) {
+            alert('❌ Для фона необходимо выбрать категорию');
+            return false;
+        }
+        console.log('✅ Создается фон для категории');
+        return true;
+    }
+
+    // Для обычных мест и категорий проверяем название
+    if (!title) {
+        alert('❌ Название обязательно для заполнения');
+        return false;
+    }
+
+    // Проверка категории для обычных мест
     if (!existingCategory && !newCategory) {
-        // Сообщение адаптируется под права пользователя
         if (newCategoryInput) {
             alert('❌ Пожалуйста, выберите существующую категорию или создайте новую');
         } else {
@@ -974,79 +1038,8 @@ function validateForm() {
         return false;
     }
 
-    if (existingCategory && newCategory) {
-        alert('❌ Пожалуйста, выберите только один вариант: либо существующую категорию' +
-              (newCategoryInput ? ', либо создайте новую' : ''));
-        return false;
-    }
-
-    // Проверка адреса
-    if (!address) {
-        alert('❌ Пожалуйста, укажите адрес заведения');
-        return false;
-    }
-
-    // Проверка координат
-    if (!latitude || !longitude) {
-        alert('❌ Пожалуйста, укажите местоположение на карте');
-        return false;
-    }
-
-    // Проверка меню (если включено и доступно)
-    if (hasMenu) {
-        if (!menuFile) {
-            alert('❌ Пожалуйста, выберите PDF файл меню');
-            return false;
-        }
-
-        // Проверка типа файла меню
-        if (menuFile.type !== 'application/pdf') {
-            alert('❌ Меню должно быть в формате PDF');
-            return false;
-        }
-
-        // Проверка размера файла
-        const maxSize = 16 * 1024 * 1024;
-        if (menuFile.size > maxSize) {
-            alert('❌ Файл меню слишком большой. Максимальный размер: 16MB');
-            return false;
-        }
-    }
-
-    // Обновляем скрытые поля перед отправкой
-    updateWorkingHours();
-
     console.log('✅ Форма прошла валидацию');
     return true;
-}
-
-function toggleRequiredFields() {
-    const existingCategory = document.getElementById('existingCategory').value;
-    const newCategoryInput = document.getElementById('newCategory');
-    const newCategory = newCategoryInput ? newCategoryInput.value : '';
-
-    const isCreatingCategory = !existingCategory && newCategory;
-
-    // Получаем поля
-    const addressInput = document.getElementById('addressInput');
-    const latInput = document.getElementById('latInput');
-    const lonInput = document.getElementById('lonInput');
-
-    if (isCreatingCategory) {
-        // Для категорий делаем необязательными
-        if (addressInput) addressInput.required = false;
-        if (latInput) latInput.required = false;
-        if (lonInput) lonInput.required = false;
-
-        console.log('🔧 Режим создания категории: адрес и карта не обязательны');
-    } else {
-        // Для обычных мест обязательны
-        if (addressInput) addressInput.required = true;
-        if (latInput) latInput.required = true;
-        if (lonInput) lonInput.required = true;
-
-        console.log('📍 Режим создания места: адрес и карта обязательны');
-    }
 }
     </script>
 </body>

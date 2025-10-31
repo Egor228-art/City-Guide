@@ -211,18 +211,39 @@ function loadCatalogCategories() {
 function renderCatalogCategories(categories) {
     const catalogGrid = document.getElementById('catalogGrid');
 
-    catalogGrid.innerHTML = categories.map(cat => {
-        // Используем иконку из базы данных или fallback
+    // Фильтруем дубликаты
+    const uniqueCategories = categories.filter((category, index, self) =>
+        index === self.findIndex(c => c.name === category.name)
+    );
+
+    // СОРТИРОВКА: от А до Я
+    uniqueCategories.sort((a, b) => {
+        const nameA = a.name.toLowerCase();
+        const nameB = b.name.toLowerCase();
+        if (nameA < nameB) return -1;
+        if (nameA > nameB) return 1;
+        return 0;
+    });
+
+    console.log(`🎯 Отображаем ${uniqueCategories.length} отсортированных категорий`);
+
+    catalogGrid.innerHTML = uniqueCategories.map(cat => {
         const iconUrl = cat.icon_url || getFallbackIcon(cat.name);
         const categoryUrl = cat.url || generateCategoryUrl(cat.name, cat.slug);
 
+        // 🔴 ВЕРСИЯ БЕЗ ТЕКСТА - только иконка с title
         return `
             <a href="${categoryUrl}" class="catalog-category" title="${cat.name}">
                 <img src="${iconUrl}" alt="${cat.name}"
                      onerror="this.src='${getFallbackIcon(cat.name)}'">
+                <!-- Убрали <span class="category-name"> для чистого вида -->
             </a>
         `;
     }).join('');
+
+    if (uniqueCategories.length === 0) {
+        catalogGrid.innerHTML = '<div class="no-categories">Категории не найдены</div>';
+    }
 }
 
 // Fallback категории (старый список)
@@ -246,7 +267,6 @@ function renderFallbackCategories() {
     catalogGrid.innerHTML = fallbackCategories.map(cat => `
         <a href="${cat.url}" class="catalog-category" title="${cat.name}">
             <img src="${cat.icon}" alt="${cat.name}">
-            <span class="category-name">${cat.name}</span>
         </a>
     `).join('');
 }
