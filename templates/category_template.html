@@ -193,21 +193,6 @@
 </style>
 </head>
 <body>
-<script>
-console.log('=== ДАННЫЕ ШАБЛОНА ===');
-console.log('Категория:', '{{ category_name }}');
-console.log('Всего мест:', {{ places|length }});
-console.log('Места с рейтингами:', {{ places_with_ratings|length }});
-
-{% for place_data in places_with_ratings %}
-console.log('Место:', {
-    title: '{{ place_data.place.title }}',
-    avg_rating: {{ place_data.avg_rating }},
-    review_count: {{ place_data.review_count }},
-    restaurant_found: {{ place_data.restaurant_found|lower }}
-});
-{% endfor %}
-</script>
     <!-- Вставляем шапку -->
     {% include 'header.html' %}
 
@@ -400,6 +385,7 @@ async function loadAllPlaces() {
         }
 
         const firstPageData = await firstPageResponse.json();
+        console.log('📊 Первая страница данных:', firstPageData);
 
         // Получаем реальное количество страниц из ответа
         const actualTotalPages = firstPageData.total_pages || 1;
@@ -412,6 +398,7 @@ async function loadAllPlaces() {
                 if (firstPageData.places) {
                     console.log(`Страница 1: загружено ${firstPageData.places.length} заведений`);
                     firstPageData.places.forEach(place => {
+                        console.log(`📍 ${place.title}: рейтинг=${place.avg_rating}, отзывов=${place.review_count}`);
                         allPlacesData.push({
                             id: place.id,
                             title: place.title,
@@ -420,7 +407,8 @@ async function loadAllPlaces() {
                             address: place.address,
                             image_path: place.image_path,
                             slug: place.slug,
-                            avg_rating: place.avg_rating || 0,
+                            avg_rating: place.avg_rating || 0,  // ✅ Используем рейтинг из API
+                            review_count: place.review_count || 0,  // ✅ Используем количество отзывов из API
                             name: (place.title || '').toLowerCase(),
                             latitude: place.latitude,
                             longitude: place.longitude
@@ -441,6 +429,7 @@ async function loadAllPlaces() {
                 if (data.places && data.places.length > 0) {
                     console.log(`Страница ${page}: загружено ${data.places.length} заведений`);
                     data.places.forEach(place => {
+                        console.log(`📍 ${place.title}: рейтинг=${place.avg_rating}, отзывов=${place.review_count}`);
                         allPlacesData.push({
                             id: place.id,
                             title: place.title,
@@ -449,7 +438,8 @@ async function loadAllPlaces() {
                             address: place.address,
                             image_path: place.image_path,
                             slug: place.slug,
-                            avg_rating: place.avg_rating || 0,
+                            avg_rating: place.avg_rating || 0,  // ✅ Используем рейтинг из API
+                            review_count: place.review_count || 0,  // ✅ Используем количество отзывов из API
                             name: (place.title || '').toLowerCase(),
                             latitude: place.latitude,
                             longitude: place.longitude
@@ -460,10 +450,12 @@ async function loadAllPlaces() {
         }
 
         allPlaces = allPlacesData;
-        totalPages = actualTotalPages; // Обновляем totalPages на реальное значение
+        const perPage = 10;
+        totalPages = Math.ceil(allPlaces.length / perPage);
+        console.log(`📄 Всего страниц рассчитано: ${totalPages} (${allPlaces.length} мест / ${perPage} на страницу)`);
 
         console.log(`✅ Всего загружено: ${allPlaces.length} заведений`);
-        console.log(`✅ Реальное количество страниц: ${totalPages}`);
+        console.log('📊 Пример данных:', allPlaces.slice(0, 3));
 
         renderCurrentPage();
         initPagination(totalPages, currentPage);
@@ -473,19 +465,38 @@ async function loadAllPlaces() {
         console.error('❌ Ошибка загрузки:', error);
         hideLoading();
 
-        // Более информативное сообщение об ошибке
-        let errorMessage = 'Ошибка загрузки данных. ';
-
-        if (error.message.includes('404')) {
-            errorMessage += 'Категория не найдена.';
-        } else if (error.message.includes('500')) {
-            errorMessage += 'Ошибка сервера.';
-        } else {
-            errorMessage += 'Пожалуйста, обновите страницу.';
-        }
-
-        alert(errorMessage);
+        // Если API не работает, используем данные из шаблона как fallback
+        console.log('🔄 Используем данные из шаблона как fallback');
+        useTemplateDataAsFallback();
     }
+}
+
+// Fallback функция для использования данных из шаблона
+function useTemplateDataAsFallback() {
+    const container = document.getElementById('restaurantsContainer');
+    if (!container) return;
+
+    // Сохраняем исходный HTML контейнера
+    const originalHTML = container.innerHTML;
+
+    // Инициализируем allPlaces из данных в DOM
+    allPlaces = [];
+    const cards = container.querySelectorAll('.restaurant-card');
+
+    cards.forEach(card => {
+        const place = {
+            id: card.getAttribute('data-id'),
+            title: card.querySelector('.restaurant-name').textContent,
+            description: card.querySelector('.restaurant-description').textContent,
+            avg_rating: parseFloat(card.getAttribute('data-rating')) || 0,
+            // ... другие поля
+        };
+        allPlaces.push(place);
+    });
+
+    totalPages = 1;
+    currentPage = 1;
+    initPagination(totalPages, currentPage);
 }
 
 // ==================== ПАГИНАЦИЯ ====================
@@ -677,6 +688,13 @@ function renderCurrentPage() {
 }
 
 function createRestaurantCard(place, index) {
+    console.log(`🎯 Создание карточки для: ${place.title}`, {
+        id: place.id,
+        avg_rating: place.avg_rating,
+        review_count: place.review_count,
+        has_rating: !!place.avg_rating
+    });
+
     const card = document.createElement('div');
     card.className = 'restaurant-card';
     card.style.animationDelay = (index * 0.1) + 's';
@@ -695,7 +713,14 @@ function createRestaurantCard(place, index) {
         `/static/${place.image_path}` :
         '/static/Фотки зданий/ИконкаМеста.png';
 
-    // ВАЖНОЕ ИЗМЕНЕНИЕ: Показываем расстояние если оно есть И мы в режиме distance
+    // Форматируем рейтинг
+    const ratingDisplay = place.avg_rating ? place.avg_rating.toFixed(1) : '0.0';
+    console.log(`⭐ Рейтинг для отображения: ${ratingDisplay}`);
+
+    // Отображаем количество отзывов если есть
+    const reviewInfo = place.review_count > 0 ?
+        `<br><small>Отзывов: ${place.review_count}</small>` : '';
+
     const hasDistance = currentSort === 'distance' && place.distance !== undefined && place.distance < 9999;
     const distanceInfo = hasDistance ?
         `<div class="distance-info">
@@ -706,18 +731,19 @@ function createRestaurantCard(place, index) {
             <span>${place.distance.toFixed(1)} км</span>
         </div>` : '';
 
-    console.log(`📍 ${place.title}: distance=${place.distance}, hasDistance=${hasDistance}, currentSort=${currentSort}`);
-
     card.innerHTML = `
         <div class="image-wrapper">
             <img class="restaurant-image" src="${imagePath}" alt="${place.title || 'Название не указано'}">
             <div class="rating-overlay">
-                <span class="rating-badge">${place.avg_rating.toFixed(1)}</span>
+                <span class="rating-badge">${ratingDisplay}</span>
             </div>
         </div>
         <div class="restaurant-info">
             <h3 class="restaurant-name">${place.title || 'Название не указано'}</h3>
-            <p class="restaurant-description">${place.description || 'Описание отсутствует'}</p>
+            <p class="restaurant-description">
+                ${place.description || 'Описание отсутствует'}
+                ${reviewInfo}
+            </p>
             ${distanceInfo}
             <div class="restaurant-contacts">
                 <div>
@@ -736,6 +762,12 @@ function createRestaurantCard(place, index) {
             </div>
         </div>
     `;
+
+    // Проверяем что рейтинг добавился в DOM
+    setTimeout(() => {
+        const badge = card.querySelector('.rating-badge');
+        console.log(`✅ Проверка DOM: ${place.title} - badge:`, badge?.textContent);
+    }, 100);
 
     return card;
 }

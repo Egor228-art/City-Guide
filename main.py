@@ -217,6 +217,7 @@ class Place(db.Model):
     telephone = db.Column(db.String(20), nullable=True)
     address = db.Column(db.String(200), nullable=True)
     image_path = db.Column(db.String(200), nullable=True)
+    additional_images = db.Column(db.JSON, default=list)
     category = db.Column(db.String(50), nullable=False, default='Restaurant')
     category_en = db.Column(db.String(50), nullable=False, default='Restaurant')
     latitude = db.Column(db.Float)  # широта для карт
@@ -300,6 +301,18 @@ class Place(db.Model):
         except:
             return {}
 
+    def get_additional_images(self):
+        """Получение списка дополнительных изображений"""
+        return self.additional_images or []
+
+    def get_all_images(self):
+        """Получение всех изображений (основное + дополнительные)"""
+        all_images = []
+        if self.image_path:
+            all_images.append(self.image_path)
+        all_images.extend(self.get_additional_images())
+        return all_images
+
 # Модели базы данных
 class Restaurant(db.Model):
     __tablename__ = 'restaurants'
@@ -350,7 +363,7 @@ def update_restaurant_stats(restaurant_id):
         # Если нет отзывов, устанавливаем значения по умолчанию
         restaurant = Restaurant.query.get(restaurant_id)
         if restaurant:
-            restaurant.total_rating = 0.0
+            restaurant.total_rating = 0
             restaurant.review_count = 0
             restaurant.last_updated = datetime.utcnow()
             db.session.commit()
@@ -636,7 +649,7 @@ def admin_stats():
 
         # Средний рейтинг
         avg_rating_result = db.session.query(db.func.avg(Review.rating)).scalar()
-        avg_rating = round(avg_rating_result, 2) if avg_rating_result else 0.0
+        avg_rating = round(avg_rating_result, 2) if avg_rating_result else 0
 
         # Последние отзывы
         recent_reviews = Review.query.order_by(Review.created_at.desc()).limit(10).all()
@@ -1109,56 +1122,97 @@ def debug_icons_structure():
 
 @app.route('/<category_en>')
 def category_page(category_en):
-    """Универсальный маршрут для категорий с правильным поиском фона"""
+    """Универсальный маршрут для категорий с правильным поиском - ИСПРАВЛЕННЫЙ"""
     print(f"🎯 Запрошена категория: {category_en}")
 
-    # Поиск категории - ИСПРАВЛЕННЫЙ ПОИСК
-    category_place = Place.query.filter_by(
-        category='Категор',
-        category_en=category_en
-    ).first()
+    # СПЕЦИАЛЬНЫЕ КАТЕГОРИИ - ПРЯМОЙ ПОИСК
+    special_categories = {
+        'restaurant': 'Ресторан',
+        'cafe': 'Кафе',
+        'coffee': 'Кафе',  # Добавляем альтернативное название
+        'shop': 'Магазин',
+        'museum': 'Музей',
+        'theatre': 'Театр',
+        'library': 'Библиотека',
+        'park': 'Парк',
+        'cinema': 'Кинотеатр',
+        'sports': 'Спортплощадка',
+        'church': 'Церковь',
+        'hotel': 'Гостиница',
+        'hotels': 'Гостиница'  # Добавляем множественную форму
+    }
 
-    if category_place:
-        category_name = category_place.title
-        print(f"✅ Найдена статическая категория: {category_name}")
+    if category_en in special_categories:
+        category_name = special_categories[category_en]
+        print(f"✅ Специальная категория: {category_name}")
     else:
-        # Ищем среди реальных категорий заведений
-        categories_from_places = db.session.query(Place.category).filter(
-            Place.category.isnot(None),
-            Place.category != '',
-            Place.category != 'Категор',
-            Place.category != 'Иконка',
-            Place.category != 'Фон'
-        ).distinct().all()
+        # Поиск категории в базе - ИСКЛЮЧАЕМ ИКОНКИ
+        category_place = Place.query.filter_by(
+            category='Категор',
+            category_en=category_en
+        ).filter(
+            ~Place.title.startswith('Иконка')
+        ).first()
 
-        real_categories = [cat[0] for cat in categories_from_places if cat[0]]
-
-        category_mapping = {}
-        for cat_name in real_categories:
-            cat_en = generate_category_en(cat_name)
-            category_mapping[cat_en] = cat_name
-
-        if category_en in category_mapping:
-            category_name = category_mapping[category_en]
-            print(f"✅ Найдена динамическая категория: {category_name}")
+        if category_place:
+            category_name = category_place.title
+            print(f"✅ Найдена статическая категория: {category_name}")
         else:
-            print(f"❌ Категория '{category_en}' не найдена")
-            return render_template('Error.html', error_code=404), 404
+            # Ищем среди реальных категорий заведений
+            categories_from_places = db.session.query(Place.category).filter(
+                Place.category.isnot(None),
+                Place.category != '',
+                Place.category != 'Категор',
+                Place.category != 'Иконка',
+                Place.category != 'Фон',
+                ~Place.title.startswith('Иконка')
+            ).distinct().all()
 
-    # Получаем заведения - ИСПРАВЛЕННЫЙ ПОИСК
-    places = Place.query.filter_by(category=category_name).filter(
-        Place.category.notin_(['Фон', 'Иконка', 'Категор'])
+            real_categories = [cat[0] for cat in categories_from_places if cat[0]]
+
+            category_mapping = {}
+            for cat_name in real_categories:
+                cat_en = generate_category_en(cat_name)
+                category_mapping[cat_en] = cat_name
+
+            if category_en in category_mapping:
+                category_name = category_mapping[category_en]
+                print(f"✅ Найдена динамическая категория: {category_name}")
+            else:
+                print(f"❌ Категория '{category_en}' не найдена")
+                return render_template('Error.html', error_code=404), 404
+
+    # Получаем заведения
+    places = Place.query.filter(
+        Place.category == category_name
+    ).filter(
+        Place.category.notin_(['Фон', 'Иконка', 'Категор']),
+        ~Place.title.startswith('Иконка')
     ).all()
 
     print(f"📊 Найдено заведений в категории {category_name}: {len(places)}")
 
-    # Получаем рейтинги - ИСПРАВЛЕННЫЙ РАСЧЕТ
+    # УПРОЩЕННЫЙ РАСЧЕТ РЕЙТИНГОВ
     places_with_ratings = []
     for place in places:
-        restaurant = find_restaurant_by_any_means(place.id)
+        restaurant = None
 
-        avg_rating = round(float(restaurant.total_rating), 1) if restaurant and restaurant.total_rating else 0.0
-        review_count = restaurant.review_count if restaurant else 0
+        # Пробуем разные способы найти ресторан
+        if place.slug:
+            restaurant = Restaurant.query.get(place.slug)
+
+        if not restaurant and place.id:
+            restaurant = Restaurant.query.get(str(place.id))
+
+        if not restaurant and place.title:
+            restaurant = Restaurant.query.filter_by(name=place.title).first()
+
+        if restaurant and restaurant.total_rating is not None:
+            avg_rating = round(float(restaurant.total_rating), 1)
+            review_count = restaurant.review_count or 0
+        else:
+            avg_rating = 0.0
+            review_count = 0
 
         places_with_ratings.append({
             'place': place,
@@ -1167,9 +1221,11 @@ def category_page(category_en):
             'restaurant_found': bool(restaurant)
         })
 
-    # Поиск фона
+    # УЛУЧШЕННЫЙ ПОИСК ФОНА
     background_place = find_category_background(category_en, category_name)
     background_image = background_place.image_path if background_place else None
+
+    print(f"🎨 Фон для категории {category_en}: {background_image}")
 
     return render_template('category_template.html',
                            places=places,
@@ -1178,29 +1234,69 @@ def category_page(category_en):
                            category_en=category_en,
                            background_image=background_image)
 
+@app.route('/admin/api/update-all-ratings')
+def update_all_ratings():
+    """Принудительное обновление всех рейтингов"""
+    try:
+        places = Place.query.all()
+        updated_count = 0
+
+        for place in places:
+            # Обновляем статистику для каждого места
+            update_restaurant_stats(str(place.id))
+            updated_count += 1
+
+        return jsonify({
+            'success': True,
+            'message': f'Обновлены рейтинги для {updated_count} мест',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 def find_category_background(category_en, category_name):
     """Улучшенный поиск фона для категории"""
     print(f"🔍 Поиск фона для: {category_en} ({category_name})")
 
-    # Способ 1: Точный поиск по category_en
-    background = Place.query.filter_by(category='Фон', category_en=category_en).first()
+    # Нормализуем category_en (убираем множественные формы)
+    category_en_normalized = normalize_category_en(category_en)
+    print(f"🔍 Нормализованный category_en: {category_en_normalized}")
+
+    # Способ 1: Точный поиск по нормализованному category_en
+    background = Place.query.filter_by(
+        category='Фон',
+        category_en=category_en_normalized
+    ).first()
     if background:
         print(f"✅ Найден фон по category_en: {background.image_path}")
         return background
 
-    # Способ 2: Поиск по альтернативным category_en
+    # Способ 2: Поиск по альтернативным названиям
     alt_mappings = {
-        'hotels': 'hotel',  # если hotels не нашли, пробуем hotel
+        'hotels': 'hotel',
+        'cafes': 'cafe',
+        'parks': 'park',
         'museums': 'museum',
-        'libraries': 'library'
+        'libraries': 'library',
+        'theatres': 'theatre',
+        'cinemas': 'cinema',
+        'shops': 'shop',
+        'sports': 'sports',
+        'churches': 'church',
+        'restaurants': 'restaurant'
     }
+
     if category_en in alt_mappings:
-        background = Place.query.filter_by(category='Фон', category_en=alt_mappings[category_en]).first()
+        background = Place.query.filter_by(
+            category='Фон',
+            category_en=alt_mappings[category_en]
+        ).first()
         if background:
             print(f"✅ Найден фон по альтернативному category_en: {background.image_path}")
             return background
 
-    # Способ 3: Поиск по названию категории
+    # Способ 3: Поиск по русскому названию категории
     background = Place.query.filter(
         Place.category == 'Фон',
         Place.title.ilike(f'%{category_name}%')
@@ -1213,17 +1309,20 @@ def find_category_background(category_en, category_name):
     search_terms = [
         category_name,
         category_name.replace('ы', ''),  # Музеи -> Музей
-        category_name.replace('и', '')  # Гостиницы -> Гостиница
+        category_name.replace('и', ''),  # Гостиницы -> Гостиница
+        category_name.replace('а', ''),  # Кафе -> Кафе (без изменений)
+        category_name.replace('ы', 'а')  # Парки -> Парка
     ]
 
     for term in search_terms:
-        background = Place.query.filter(
-            Place.category == 'Фон',
-            Place.title.ilike(f'%{term}%')
-        ).first()
-        if background:
-            print(f"✅ Найден фон по частичному совпадению: {background.image_path}")
-            return background
+        if term and len(term) >= 3:  # Минимальная длина для поиска
+            background = Place.query.filter(
+                Place.category == 'Фон',
+                Place.title.ilike(f'%{term}%')
+            ).first()
+            if background:
+                print(f"✅ Найден фон по частичному совпадению: {background.image_path}")
+                return background
 
     # Способ 5: Дефолтный фон
     background = Place.query.filter_by(category='Фон', category_en='default').first()
@@ -1234,6 +1333,22 @@ def find_category_background(category_en, category_name):
     print("❌ Фон не найден")
     return None
 
+def normalize_category_en(category_en):
+    """Нормализует category_en, убирая множественные формы"""
+    singular_forms = {
+        'hotels': 'hotel',
+        'cafes': 'cafe',
+        'parks': 'park',
+        'museums': 'museum',
+        'libraries': 'library',
+        'theatres': 'theatre',
+        'cinemas': 'cinema',
+        'shops': 'shop',
+        'churches': 'church',
+        'restaurants': 'restaurant'
+    }
+
+    return singular_forms.get(category_en, category_en)
 
 def generate_filename(filename, prefix=""):
     """Генерация читаемого имени файла"""
@@ -2309,7 +2424,6 @@ def add_place():
                                        existing_places=existing_places,
                                        current_user=user)
 
-                # ✅ ПОТОМ определяем category_en
             print(f"🔤 До генерации: category='{category}', category_en='{category_en}'")
 
             if not category_en:
@@ -2333,6 +2447,7 @@ def add_place():
             main_image_path = None
             background_image_path = None
             menu_pdf_path = None
+            additional_images_paths = []  # ✅ ДОБАВЛЕНО: список для дополнительных изображений
 
             # 1. Основное изображение заведения
             if 'image' in request.files:
@@ -2368,6 +2483,20 @@ def add_place():
                     file_path = os.path.join('static/menus', unique_filename)
                     menu_file.save(file_path)
                     menu_pdf_path = f"menus/{unique_filename}"
+
+            # ✅ ДОБАВЛЕНО: Обработка дополнительных изображений
+            if 'additional_images' in request.files:
+                files = request.files.getlist('additional_images')
+                for file in files:
+                    if file and file.filename != '' and allowed_file(file.filename):
+                        original_name = secure_filename(file.filename)
+                        name, ext = os.path.splitext(original_name)
+                        translit_name = transliterate_filename(name)
+                        filename = f"{translit_name}_{uuid.uuid4().hex[:8]}{ext}"
+                        save_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                        file.save(save_path)
+                        additional_images_paths.append(f"Фотки зданий/{filename}")
+                        print(f"✅ Дополнительное изображение сохранено: {filename}")
 
             # === ОСНОВНАЯ ЛОГИКА: Определяем что создаем ===
             is_creating_background = background_image_path is not None
@@ -2461,7 +2590,7 @@ def add_place():
                         category_en='icon',
                         image_path=main_image_path,
                         slug=icon_slug,
-                        description=None,  # ✅ Оставляем пустым - не нужно!
+                        description=None,
                         telephone=None,
                         address=None,
                         latitude=None,
@@ -2519,6 +2648,9 @@ def add_place():
                     db.session.add(new_category_place)
                     print(f"✅ Создана категория: {category} ({category_en})")
 
+                # ✅ ДОБАВЛЕНО: Сохраняем дополнительные изображения в JSON формате
+                additional_images_json = additional_images_paths if additional_images_paths else None
+
                 # Создаем запись ОБЫЧНОГО МЕСТА
                 new_place = Place(
                     title=title,
@@ -2533,7 +2665,8 @@ def add_place():
                     working_hours=working_hours,
                     menu_pdf_path=menu_pdf_path,
                     tags=tags if tags else None,
-                    slug=slug
+                    slug=slug,
+                    additional_images=additional_images_json  # ✅ ДОБАВЛЕНО: дополнительные изображения
                 )
 
                 db.session.add(new_place)
@@ -2560,8 +2693,6 @@ def add_place():
 
 def generate_category_en(category_name_ru):
     """Генерация английского названия категории с правильной транслитерацией"""
-    print(f"🔄 Генерация category_en для: '{category_name_ru}'")
-
     # Специальные случаи
     special_cases = {
         'Ресторан': 'restaurant', 'Рестораны': 'restaurant',
@@ -2581,7 +2712,6 @@ def generate_category_en(category_name_ru):
     # Сначала проверяем специальные случаи
     if category_name_ru in special_cases:
         result = special_cases[category_name_ru]
-        print(f"✅ Использован специальный случай: '{category_name_ru}' -> '{result}'")
         return result
 
     # Транслитерация
@@ -3356,7 +3486,7 @@ def api_search():
         results_data = []
         for place in results:
             restaurant = Restaurant.query.get(str(place.id))
-            avg_rating = round(float(restaurant.total_rating), 1) if restaurant and restaurant.total_rating else 0.0
+            avg_rating = round(float(restaurant.total_rating), 1) if restaurant and restaurant.total_rating else 0
             review_count = restaurant.review_count if restaurant else 0
 
             if place.slug and place.category_en:
@@ -3491,14 +3621,13 @@ def place_page_by_slug(category_en, slug):
 # ПОТОМ маршрут с ОДНИМ параметром
 @app.route('/<category_type>')
 def universal_category_page(category_type):
-    """Универсальный маршрут для ВСЕХ категорий"""
+    """Универсальный маршрут для ВСЕХ категорий кроме специальных"""
 
     # Сначала проверяем, является ли это специальным маршрутом
-    SPECIAL_ROUTES = ['404', '500', 'test', 'admin', 'debug', 'favorites', 'add_place']
+    SPECIAL_ROUTES = ['404', '500', 'test', 'admin', 'debug', 'favorites', 'add_place', 'restaurant', 'cafe', 'shop', 'museum', 'theatre',
+                     'library', 'park', 'cinema', 'sports', 'church', 'hotel']
     if category_type in SPECIAL_ROUTES:
-        return render_template('error.html',
-                               error_code=404,
-                               error_name="Страница не найдена"), 404
+        return redirect(url_for('special_category_page', category_type=category_type))
 
     # Получаем все категории из базы
     all_categories = db.session.query(Place.category, Place.category_en).distinct().all()
@@ -3643,28 +3772,26 @@ def get_average_rating(place_id):
         # Сначала пробуем найти в таблице Restaurant
         restaurant = Restaurant.query.get(str(place_id))
         if restaurant and restaurant.total_rating is not None:
-            return round(float(restaurant.total_rating), 1)
+            return round(float(restaurant.total_rating), 1)  # ✅ Уже форматировано
 
         # Если нет в Restaurant, вычисляем из отзывов
         reviews = Review.query.filter_by(restaurant_id=str(place_id)).all()
         if reviews:
             total_rating = sum(review.rating for review in reviews)
             average_rating = total_rating / len(reviews)
-            return round(average_rating, 1)
+            return round(average_rating, 1)  # ✅ Уже форматировано
 
-        return 0  # Если нет отзывов
+        return 0.0  # ✅ Возвращаем 0.0 вместо 0
 
     except Exception as e:
         print(f"Error calculating average rating for place {place_id}: {e}")
-        return 0
+        return 0.0  # ✅ Возвращаем 0.0 вместо 0
 
 # API endpoint для AJAX загрузки
 @app.route('/api/categories/<category_slug>')
 def api_category_places(category_slug):
     """API для получения мест по категории"""
     try:
-        print(f"🔍 API запрос категории: {category_slug}")
-
         # Ищем категорию так же как в основном маршруте
         category_place = Place.query.filter_by(
             category='Категор',
@@ -3708,11 +3835,30 @@ def api_category_places(category_slug):
 
         print(f"📊 Найдено мест: {len(places)}")
 
-        # Формируем данные
+        # Формируем данные - ИСПРАВЛЕННАЯ ВЕРСИЯ
         places_data = []
         for place in places:
+            # ИСПРАВЛЕНИЕ: Правильный поиск ресторана
+            restaurant = None
+
+            # Способ 1: Поиск по ID места
             restaurant = Restaurant.query.get(str(place.id))
-            avg_rating = round(float(restaurant.total_rating), 1) if restaurant and restaurant.total_rating else 0.0
+
+            # Способ 2: Если не нашли, ищем по slug
+            if not restaurant and place.slug:
+                restaurant = Restaurant.query.get(place.slug)
+
+            # Способ 3: Если все еще не нашли, ищем по названию
+            if not restaurant and place.title:
+                restaurant = Restaurant.query.filter_by(name=place.title).first()
+
+            # Правильное получение рейтинга
+            if restaurant and restaurant.total_rating is not None:
+                avg_rating = round(float(restaurant.total_rating), 1)
+                review_count = restaurant.review_count or 0
+            else:
+                avg_rating = 0.0
+                review_count = 0
 
             places_data.append({
                 'id': place.id,
@@ -3722,7 +3868,8 @@ def api_category_places(category_slug):
                 'address': place.address,
                 'image_path': place.image_path,
                 'slug': place.slug,
-                'avg_rating': avg_rating,
+                'avg_rating': avg_rating,  # ✅ Правильный рейтинг
+                'review_count': review_count,  # ✅ Правильное количество отзывов
                 'latitude': place.latitude,
                 'longitude': place.longitude
             })
@@ -3730,14 +3877,13 @@ def api_category_places(category_slug):
         return jsonify({
             'places': places_data,
             'category_name': category_name,
-            'total_pages': 1,  # Пока без пагинации
+            'total_pages': 1,
             'current_page': 1
         })
 
     except Exception as e:
         print(f"❌ Ошибка API категории: {e}")
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/create-missing-icons')
 def create_missing_icons():
@@ -4460,44 +4606,35 @@ def fix_ratings():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 def find_restaurant_by_any_means(place_id):
-    """Ищет ресторан любыми способами"""
-    # Способ 1: По ID места (правильный способ)
+    """Ищет ресторан любыми способами - УЛУЧШЕННАЯ ВЕРСИЯ"""
+    print(f"🔍 Поиск ресторана для места ID: {place_id}")
+
+    # Способ 1: По ID места (самый надежный)
     restaurant = Restaurant.query.get(str(place_id))
     if restaurant:
+        print(f"✅ Найден ресторан по ID: {restaurant.id}, рейтинг: {restaurant.total_rating}")
         return restaurant
 
-    # Способ 2: Найти место по ID и получить его slug
+    # Способ 2: Найти место и получить его slug
     place = Place.query.get(place_id)
-    if place and place.slug:
-        restaurant = Restaurant.query.get(place.slug)
-        if restaurant:
-            return restaurant
-
-    # Способ 3: Найти по названию места
     if place:
-        restaurant = Restaurant.query.filter_by(name=place.title).first()
-        if restaurant:
-            return restaurant
+        # Пробуем найти по slug
+        if place.slug:
+            restaurant = Restaurant.query.get(place.slug)
+            if restaurant:
+                print(f"✅ Найден ресторан по slug: {restaurant.id}, рейтинг: {restaurant.total_rating}")
+                return restaurant
 
+        # Пробуем найти по названию
+        if place.title:
+            restaurant = Restaurant.query.filter_by(name=place.title).first()
+            if restaurant:
+                print(f"✅ Найден ресторан по названию: {restaurant.id}, рейтинг: {restaurant.total_rating}")
+                return restaurant
+
+    print(f"❌ Ресторан не найден для места ID: {place_id}")
     return None
-
-@app.route('/debug-restaurant-table')
-def debug_restaurant_table():
-    """Показывает все записи в таблице Restaurant"""
-    restaurants = Restaurant.query.all()
-
-    result = []
-    for rest in restaurants:
-        result.append({
-            'id': rest.id,
-            'name': rest.name,
-            'total_rating': rest.total_rating,
-            'review_count': rest.review_count
-        })
-
-    return jsonify(result)
 
 if __name__ == '__main__':
     with app.app_context():

@@ -370,17 +370,16 @@ function renderPopularPlacesScroller(popularPlaces) {
         // Полное описание без обрезки
         const fullDescription = item.place.description || 'Описание отсутствует';
 
-        // ФОРМАТИРУЕМ РЕЙТИНГ: 0.0 → 0 и меняем местами звезду и цифру
+        // ФОРМАТИРУЕМ РЕЙТИНГ: 0 → 0.0, целые числа → с .0, дробные → как есть
         const rating = item.place.avg_rating || 0;
         let formattedRating;
+
         if (rating === 0 || rating === '0' || rating === '0.0') {
-            formattedRating = '0';
+            formattedRating = '0.0'; // ✅ Изменено с '0' на '0.0'
         } else {
             formattedRating = typeof rating === 'number' ? rating.toFixed(1) : rating;
-            // Убираем .0 если рейтинг целый
-            if (formattedRating.endsWith('.0')) {
-                formattedRating = formattedRating.replace('.0', '');
-            }
+            // ✅ УБИРАЕМ логику удаления .0 - оставляем всегда с одной цифрой после запятой
+            // formattedRating остается как есть (например: 4.5, 5.0, 3.0)
         }
 
         card.innerHTML = `
@@ -390,7 +389,7 @@ function renderPopularPlacesScroller(popularPlaces) {
                      alt="${item.place.title}"
                      class="place-image"
                      onerror="this.src='/static/Фотки зданий/default.png'">
-                <!-- ПЛАШКА С РЕЙТИНГОМ - ПОКАЗЫВАЕМ ДЛЯ ВСЕХ, ДАЖЕ С 0 -->
+                <!-- ПЛАШКА С РЕЙТИНГОМ - ПОКАЗЫВАЕМ ДЛЯ ВСЕХ, ДАЖЕ С 0.0 -->
                 <div class="rating-overlay">
                     <span class="rating-badge">${formattedRating}</span>
                 </div>
