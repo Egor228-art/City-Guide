@@ -2838,7 +2838,7 @@ def find_category_icon(category_name):
 
 @app.route('/api/categories')
 def api_categories():
-    """API для получения категорий с правильным поиском иконок"""
+    """API для получения категорий с фильтрацией пустых"""
     try:
         categories_data = []
 
@@ -2849,6 +2849,19 @@ def api_categories():
 
         for place in categories_from_db:
             if place.title and place.category_en:
+                # ✅ ПРОВЕРЯЕМ ЕСТЬ ЛИ ЗАВЕДЕНИЯ В ЭТОЙ КАТЕГОРИИ
+                places_count = Place.query.filter_by(
+                    category=place.title
+                ).filter(
+                    Place.category.notin_(['Фон', 'Иконка', 'Категор']),
+                    ~Place.title.startswith('Иконка')
+                ).count()
+
+                # Пропускаем категории без заведений
+                if places_count == 0:
+                    print(f"⚠️ Пропускаем пустую категорию: {place.title}")
+                    continue
+
                 # ✅ УЛУЧШЕННЫЙ ПОИСК ИКОНКИ
                 icon_place = find_category_icon(place.title)
 
@@ -2866,52 +2879,9 @@ def api_categories():
                     'name': place.title,
                     'slug': place.category_en,
                     'url': f'/{place.category_en}',
-                    'icon_url': icon_url
-                })
-
-                # Если не нашли, пробуем альтернативные названия
-                if not icon_place:
-                    # Для "Кафе" ищем "Иконка Кафе" или "Кофе"
-                    alternative_names = {
-                        'Ресторан': ['Иконка Ресторана', 'Ресторан'],
-                        'Кафе': ['Иконка Кафе', 'Кофе', 'Кафе'],
-                        'Магазин': ['Иконка Магазина', 'Магазин'],
-                        'Музей': ['Иконка Музея', 'Музей'],
-                        'Театр': ['Иконка Театра', 'Театр'],
-                        'Библиотека': ['Иконка Библиотеки', 'Библиотека'],
-                        'Парк': ['Иконка Парка', 'Парк'],
-                        'Кинотеатр': ['Иконка Кинотеатра', 'Кинотеатр'],
-                        'Спортплощадка': ['Иконка Спортплощадки', 'Спорт'],
-                        'Церковь': ['Иконка Церкви', 'Церковь'],
-                        'Гостиница': ['Иконка Гостиницы', 'Гостиница'],
-                        'Культура': ['Иконка Культуры', 'Культура'],
-                        'НеКультура': ['Иконка НеКультуры', 'Культура']
-                    }
-
-                    if place.title in alternative_names:
-                        for alt_name in alternative_names[place.title]:
-                            icon_place = Place.query.filter_by(
-                                category='Иконка',
-                                title=alt_name
-                            ).first()
-                            if icon_place:
-                                break
-
-                # Формируем URL иконки
-                if icon_place and icon_place.image_path:
-                    icon_url = url_for('static', filename=icon_place.image_path)
-                    print(f"✅ Найдена иконка для {place.title}: {icon_place.image_path}")
-                else:
-                    # Fallback иконка
-                    fallback_path = get_fallback_icon(place.title)
-                    icon_url = url_for('static', filename=fallback_path)
-                    print(f"⚠️ Используем fallback иконку для {place.title}: {fallback_path}")
-
-                categories_data.append({
-                    'name': place.title,
-                    'slug': place.category_en,
-                    'url': f'/{place.category_en}',
-                    'icon_url': icon_url
+                    'icon_url': icon_url,
+                    'places_count': places_count,  # Добавляем количество заведений для отладки
+                    'type': 'static'
                 })
 
         # 2. Динамические категории из реальных заведений
@@ -2927,6 +2897,17 @@ def api_categories():
         real_categories = [cat[0] for cat in categories_from_places if cat[0]]
 
         for cat_name in real_categories:
+            # ✅ ПРОВЕРЯЕМ КОЛИЧЕСТВО ЗАВЕДЕНИЙ В КАТЕГОРИИ
+            places_count = Place.query.filter_by(category=cat_name).filter(
+                Place.category.notin_(['Фон', 'Иконка', 'Категор']),
+                ~Place.title.startswith('Иконка')
+            ).count()
+
+            # Пропускаем пустые категории
+            if places_count == 0:
+                print(f"⚠️ Пропускаем пустую динамическую категорию: {cat_name}")
+                continue
+
             # Проверяем, нет ли уже такой категории в статических
             if not any(cat['name'] == cat_name for cat in categories_data):
                 cat_en = generate_category_en(cat_name)
@@ -2975,10 +2956,11 @@ def api_categories():
                     'slug': cat_en,
                     'url': f'/{cat_en}',
                     'icon_url': icon_url,
+                    'places_count': places_count,  # Добавляем количество заведений для отладки
                     'type': 'dynamic'
                 })
 
-        print(f"✅ Найдено {len(categories_data)} категорий с иконками")
+        print(f"✅ Найдено {len(categories_data)} непустых категорий с иконками")
 
         return jsonify({
             'success': True,
@@ -2992,6 +2974,54 @@ def api_categories():
             'error': str(e),
             'categories': []
         })
+
+@app.route('/admin/cleanup-empty-categories')
+@admin_required
+def cleanup_empty_categories():
+    """Очистка пустых категорий из базы (только категории 'Категор')"""
+    try:
+        empty_categories = []
+
+        # Находим все категории типа 'Категор'
+        category_places = Place.query.filter_by(category='Категор').filter(
+            ~Place.title.startswith('Иконка')
+        ).all()
+
+        deleted_count = 0
+
+        for cat_place in category_places:
+            # Проверяем есть ли заведения в этой категории
+            places_count = Place.query.filter_by(
+                category=cat_place.title
+            ).filter(
+                Place.category.notin_(['Фон', 'Иконка', 'Категор']),
+                ~Place.title.startswith('Иконка')
+            ).count()
+
+            if places_count == 0:
+                empty_categories.append({
+                    'id': cat_place.id,
+                    'title': cat_place.title,
+                    'category_en': cat_place.category_en
+                })
+
+                # Удаляем категорию из базы
+                db.session.delete(cat_place)
+                deleted_count += 1
+                print(f"🗑️ Удалена пустая категория: {cat_place.title}")
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'deleted_count': deleted_count,
+            'empty_categories': empty_categories,
+            'message': f'Удалено {deleted_count} пустых категорий'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 def get_fallback_icon(category_name):
     """Получение fallback иконки для категории"""

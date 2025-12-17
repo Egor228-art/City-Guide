@@ -114,7 +114,7 @@ body {
     visibility: visible;
     max-width: 1200px;
     padding: 30px;
-    background-color: rgba(255, 255, 255, 0.95);
+    background-color: var(--white);
     border-radius: 20px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     position: relative;
@@ -124,10 +124,10 @@ body {
 .favorite-item {
     display: flex;
     margin-bottom: 30px;
-    background-color: white;
+    background-color: var(--white);
     border-radius: 15px;
     overflow: hidden;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     cursor: pointer;
     position: relative;
@@ -137,7 +137,7 @@ body {
 
 .favorite-item:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 10px 20px rgba(227, 227, 227, 0.05), 0 5px 15px rgba(74, 74, 74, 0.1);
 }
 
 .favorite-image-wrapper {
@@ -162,6 +162,7 @@ body {
 }
 
 .favorite-info {
+    background-color: var(--white);
     flex: 1;
     padding: 20px;
     display: flex;
@@ -171,7 +172,7 @@ body {
 .favorite-name {
     font-size: 24px;
     margin: 0 0 10px 0;
-    color: #333;
+    color: var(--black);
     display: flex;
     align-items: center;
 }
@@ -186,7 +187,7 @@ body {
 .favorite-description {
     flex: 1;
     margin: 0 0 15px 0;
-    color: #555;
+    color: var(--gray-dark);
     font-size: 16px;
     line-height: 1.5;
 }
@@ -205,6 +206,7 @@ body {
 }
 
 .contact-item {
+    color: var(--black);
     display: flex;
     align-items: center;
     margin-right: 25px;

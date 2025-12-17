@@ -113,6 +113,185 @@ function hideAuthButtons() {
     }, 500);
 }
 
+class ThemeToggleWithChain {
+    constructor() {
+        this.bulbContainer = document.getElementById('themeBulbContainer');
+        this.bulbGlass = document.getElementById('themeBulbGlass');
+        this.chainContainer = document.getElementById('themeChainContainer');
+        this.init();
+    }
+
+    init() {
+        if (!this.bulbContainer) return;
+
+        this.loadTheme();
+        this.createChain();
+        this.addEventListeners();
+    }
+
+    loadTheme() {
+        // ИНВЕРТИРОВАННАЯ ЛОГИКА: по умолчанию light (лампочка горит)
+        const savedTheme = localStorage.getItem('site-theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        // Если нет сохранённой темы, используем системную
+        const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+
+        // Обновляем состояние лампочки
+        this.updateBulbState(theme === 'dark');
+    }
+
+    updateBulbState(isOff) {
+        if (!this.bulbGlass) return;
+
+        if (isOff) {
+            // Лампочка выключена (тёмная тема)
+            this.bulbGlass.style.animation = 'bulbOff 0.5s ease-out forwards';
+            this.bulbGlass.style.opacity = '0.7';
+        } else {
+            // Лампочка горит (светлая тема)
+            this.bulbGlass.style.animation = 'bulbGlow 3s ease-in-out infinite';
+            this.bulbGlass.style.opacity = '1';
+        }
+    }
+
+    createChain() {
+        const container = this.chainContainer;
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        // Основная верёвка
+        const rope = document.createElement('div');
+        rope.className = 'theme-rope-base';
+        container.appendChild(rope);
+
+        // Создаём 4 бусины
+        for (let i = 0; i < 4; i++) {
+            const bead = document.createElement('div');
+            bead.className = 'theme-bead';
+            container.appendChild(bead);
+
+            // Добавляем немного верёвки перед каждой бусиной (кроме первой)
+            if (i > 0) {
+                const ropeSegment = document.createElement('div');
+                ropeSegment.className = 'theme-rope-link';
+                ropeSegment.style.top = `${i * 15 - 7}px`;
+                ropeSegment.style.height = '8px';
+                container.appendChild(ropeSegment);
+            }
+        }
+    }
+
+    addEventListeners() {
+        // Клик по лампочке
+        this.bulbContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.theme-chain-container')) return;
+            this.toggleTheme();
+        });
+
+        // Drag для цепочки
+        if (this.chainContainer) {
+            this.setupChainDrag();
+        }
+    }
+
+    setupChainDrag() {
+        let isDragging = false;
+        let startY = 0;
+        let currentPull = 0;
+        const PULL_THRESHOLD = 30;
+
+        this.chainContainer.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            currentPull = 0;
+            this.chainContainer.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const deltaY = e.clientY - startY;
+            currentPull = Math.max(0, deltaY);
+
+            // Анимация бусин при тяге
+            const beads = this.chainContainer.querySelectorAll('.theme-bead');
+            beads.forEach((bead, index) => {
+                const delay = index * 50;
+                setTimeout(() => {
+                    const offset = Math.min(currentPull / 20, 8);
+                    bead.style.transform = `translateY(${offset}px)`;
+                    bead.style.transition = 'transform 0.2s ease';
+                }, delay);
+            });
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+
+            isDragging = false;
+            this.chainContainer.style.cursor = 'grab';
+
+            // Если потянули достаточно сильно - переключаем тему
+            if (currentPull >= PULL_THRESHOLD) {
+                this.toggleTheme();
+            }
+
+            // Возвращаем бусины на место
+            const beads = this.chainContainer.querySelectorAll('.theme-bead');
+            beads.forEach((bead, index) => {
+                const delay = index * 50;
+                setTimeout(() => {
+                    bead.style.transform = 'translateY(0px)';
+                    bead.style.transition = 'transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+                }, delay);
+            });
+
+            currentPull = 0;
+        });
+    }
+
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+        // ИНВЕРТИРОВАННАЯ ЛОГИКА: light = горит, dark = не горит
+        console.log(`Переключение темы: ${currentTheme} → ${newTheme} (лампочка ${newTheme === 'light' ? 'загорается' : 'гаснет'})`);
+
+        // Применяем новую тему
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('site-theme', newTheme);
+
+        // Обновляем состояние лампочки
+        this.updateBulbState(newTheme === 'dark');
+
+        // Анимация переключения
+        if (this.bulbGlass) {
+            this.bulbGlass.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                this.bulbGlass.style.transform = 'scale(1)';
+            }, 300);
+        }
+
+        // Добавляем вибрацию на мобильных (если поддерживается)
+        if (navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+    }
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+    const themeToggle = new ThemeToggleWithChain();
+
+    // Для отладки
+    console.log('Тема переключения лампочки инициализирована');
+    console.log('Логика: светлая тема = лампочка горит, тёмная тема = лампочка выключена');
+});
+
 // Инициализация кнопок футера
 function initFooterButtons() {
 

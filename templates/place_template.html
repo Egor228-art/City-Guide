@@ -306,7 +306,7 @@
                 <form id="review-form">
                     <label class="review-form-name" for="name">Имя:</label>
                     <input class="pp" type="text" id="name" required><br><br>
-                    <label>Оценка: <span id="rating-error" style="color: red; display: none; font-size: 11px">*Обязательное поле</span></label>
+                    <label class="review-form-revive">Оценка: <span id="rating-error" style="color: red; display: none; font-size: 11px">*Обязательное поле</span></label>
                     <div class="stars" id="review-stars">
                         <span class="star" data-value="1">
                             <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
@@ -324,8 +324,8 @@
                             <img src="{{ url_for('static', filename='Фотки зданий/star.png') }}" alt="★">
                         </span>
                     </div><br>
-                    <label for="comment">Комментарий:</label><br>
-                    <textarea id="comment" rows="4"></textarea><br><br>
+                    <label class="review-form-comment" for="comment">Комментарий:</label><br>
+                    <textarea class="review-textarea" id="comment" rows="4" placeholder="Напишите ваш комментарий..."></textarea><br><br>
                     <button class="review-form-button" type="submit">Отправить</button>
                 </form>
             </div>
@@ -395,7 +395,7 @@
 
                 <div class="form-buttons">
                     <button style="margin-right: 100px;" type="button" class="review-form-button" onclick="closeEditModal()">Отмена</button>
-                    <button type="submit" class="btn-save">Сохранить изменения</button>
+                    <button type="submit" class="btn-save">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -3821,11 +3821,11 @@ function showCustomDeleteConfirmation(reviewId) {
     `;
 
     confirmModal.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 10px; text-align: center; max-width: 400px; width: 90%;">
-            <h3 style="margin-bottom: 20px; color: #333;">Удалить отзыв?</h3>
-            <p style="margin-bottom: 25px; color: #666;">Вы уверены, что хотите удалить этот отзыв? Это действие нельзя отменить.</p>
+        <div style="background: var(--white); padding: 30px; border-radius: 10px; text-align: center; max-width: 400px; width: 90%;">
+            <h3 style="margin-bottom: 20px; color: var(--black);">Удалить отзыв?</h3>
+            <p style="margin-bottom: 25px; color: var(--black);">Вы уверены, что хотите удалить этот отзыв? Это действие нельзя отменить.</p>
             <div style="display: flex; gap: 15px; justify-content: center;">
-                <button id="cancel-delete" style="padding: 10px 25px; border: 1px solid #ddd; background: #f5f5f5; border-radius: 5px; cursor: pointer;">Отмена</button>
+                <button id="cancel-delete" style="padding: 10px 25px; border: 1px solid var(--gray-dark); background: var(--white); border-radius: 5px; cursor: pointer; color: var(--black)">Отмена</button>
                 <button id="confirm-delete" style="padding: 10px 25px; border: none; background: #f44336; color: white; border-radius: 5px; cursor: pointer;">Удалить</button>
             </div>
         </div>

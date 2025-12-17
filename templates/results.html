@@ -35,7 +35,7 @@
     max-width: 1200px;
     margin: 160px auto 30px auto; /* Увеличиваем отступ сверху */
     padding: 20px;
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color: var(--white);
     border-radius: 20px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
     position: relative;
@@ -58,6 +58,9 @@
             padding: 50px 20px;
             color: #666;
         }
+        .no-results h3, p {
+            color: var(--black);
+        }
 
         .loading {
             text-align: center;
@@ -68,17 +71,23 @@
         .search-card {
             display: flex;
             margin-bottom: 25px;
-            background-color: white;
+            background-color: var(--white);
             border-radius: 15px;
             overflow: hidden;
             box-shadow: 0 3px 10px rgba(0,0,0,0.1);
             transition: all 0.3s ease;
             cursor: pointer;
         }
+        [data-theme="dark"] .search-card {
+            box-shadow: 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
 
         .search-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+        [data-theme="dark"] .search-card:hover {
+            box-shadow: 0 10px 20px rgba(232, 232, 232, 0.05), 0 5px 15px rgba(92, 92, 92, 0.1);
         }
 
         .search-card .image-wrapper {
@@ -107,7 +116,7 @@
         .search-card .restaurant-name {
             font-size: 22px;
             margin: 0 0 10px 0;
-            color: #2c3e50;
+            color: var(--black);
         }
 
         .rating-badge {
@@ -166,16 +175,6 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.navbar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    transition: transform 0.3s ease;
-    background: white; /* или ваш цвет */
-}
-
 .filters-container {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
@@ -222,19 +221,9 @@
     flex-wrap: wrap;
 }
 
-.filter-select {
-    padding: 10px 15px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    background: white;
-    font-size: 14px;
-    min-width: 200px;
-    cursor: pointer;
-}
-
 .filter-select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--gray-medium);
 }
 
 .rating-filter {
