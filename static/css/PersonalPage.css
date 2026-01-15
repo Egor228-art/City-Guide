@@ -910,9 +910,18 @@ body.no-scroll {
     cursor: pointer;
     margin-top: 10px;
 }
-[data-theme="dark"] .review-card .avatar, .name, .comment, .expand, .review-rating {
+[data-theme="dark"] .review-card .avatar,
+[data-theme="dark"] .name,
+[data-theme="dark"] .comment,
+[data-theme="dark"] .expand,
+[data-theme="dark"] .review-rating {
     color: var(--white);
     filter: invert(1);
+}
+
+.review-rating {
+    color: var(--black);
+    filter: none; /* Явно сбрасываем инвертирование */
 }
 
 /* Остальные модальные окна */
