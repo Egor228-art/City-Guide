@@ -1120,6 +1120,59 @@ def debug_icons_structure():
         'categories': categories_data
     })
 
+# Добавьте эти обработчики ошибок
+@app.errorhandler(400)
+@app.errorhandler(401)
+@app.errorhandler(403)
+@app.errorhandler(404)
+@app.errorhandler(405)
+@app.errorhandler(408)
+@app.errorhandler(409)
+@app.errorhandler(410)
+@app.errorhandler(429)
+@app.errorhandler(500)
+@app.errorhandler(502)
+@app.errorhandler(503)
+@app.errorhandler(504)
+def handle_error(error):
+    """Универсальный обработчик ошибок"""
+    error_code = getattr(error, 'code', 500)
+    error_name = get_error_name(error_code)
+
+    print(f"🚨 handle_error called!")
+    print(f"   error object: {error}")
+    print(f"   error code: {error_code} (type: {type(error_code)})")
+    print(f"   error name: '{error_name}'")
+
+    return render_template('Error.html',
+                           error_code=error_code,
+                           error_name=error_name), error_code
+
+
+def get_error_name(code):
+    """Возвращает название ошибки по коду"""
+    print(f"🔍 get_error_name called with code={code}, type={type(code)}")
+
+    error_names = {
+        400: "Плохой запрос",
+        401: "Не авторизован",
+        403: "Запрещено",
+        404: "Страница не найдена",
+        405: "Метод не разрешен",
+        408: "Bed signal",
+        409: "Конфликт",
+        410: "Удалено",
+        429: "Слишком много запросов",
+        500: "Внутренняя ошибка сервера",
+        502: "Плохой шлюз",
+        503: "Сервис недоступен",
+        504: "Время ответа шлюза истекло"
+    }
+
+    result = error_names.get(code, f"Ошибка {code}")
+    print(f"🔍 get_error_name returning: '{result}'")
+    return result
+
 @app.route('/<category_en>')
 def category_page(category_en):
     """Универсальный маршрут для категорий с правильным поиском - ИСПРАВЛЕННЫЙ"""
@@ -1180,7 +1233,8 @@ def category_page(category_en):
                 print(f"✅ Найдена динамическая категория: {category_name}")
             else:
                 print(f"❌ Категория '{category_en}' не найдена")
-                return render_template('Error.html', error_code=404), 404
+                # ВАЖНО: вызываем abort(404) чтобы перейти в handle_error
+                abort(404)
 
     # Получаем заведения
     places = Place.query.filter(
@@ -4471,59 +4525,6 @@ def admin_reviews_page():
                            reviews_data=reviews_with_places,
                            pagination=reviews_pagination)
 
-# Добавьте эти обработчики ошибок
-@app.errorhandler(400)
-@app.errorhandler(401)
-@app.errorhandler(403)
-@app.errorhandler(404)
-@app.errorhandler(405)
-@app.errorhandler(408)
-@app.errorhandler(409)
-@app.errorhandler(410)
-@app.errorhandler(429)
-@app.errorhandler(500)
-@app.errorhandler(502)
-@app.errorhandler(503)
-@app.errorhandler(504)
-def handle_error(error):
-    """Универсальный обработчик ошибок"""
-    error_code = getattr(error, 'code', 500)
-    error_name = get_error_name(error_code)
-
-    # Если это AJAX запрос, возвращаем JSON
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({
-            'error': True,
-            'code': error_code,
-            'name': error_name,
-        }), error_code
-
-    # Иначе рендерим HTML страницу
-    return render_template('error.html',
-                           error_code=error_code,
-                           error_name=error_name), error_code
-
-
-def get_error_name(code):
-    """Возвращает название ошибки по коду"""
-    error_names = {
-        400: "Плохой запрос",
-        401: "Не авторизован",
-        403: "Запрещено",
-        404: "Страница не найдена",
-        405: "Метод не разрешен",
-        408: "Bed signal",
-        409: "Конфликт",
-        410: "Удалено",
-        429: "Слишком много запросов",
-        500: "Внутренняя ошибка сервера",
-        502: "Плохой шлюз",
-        503: "Сервис недоступен",
-        504: "Время ответа шлюза истекло"
-    }
-    return error_names.get(code, "Неизвестная ошибка")
-
-
 def migrate_categories_to_english():
     """Мигрирует категории на английские (после обновления структуры БД)"""
     CATEGORY_MAPPING = {
@@ -4665,6 +4666,13 @@ def find_restaurant_by_any_means(place_id):
 
     print(f"❌ Ресторан не найден для места ID: {place_id}")
     return None
+
+@app.route('/test-error')
+def test_error():
+    """Тестовый маршрут для проверки передачи переменных"""
+    return render_template('Error_simple.html',
+                           error_code=404,
+                           error_name='Тестовая ошибка')
 
 if __name__ == '__main__':
     with app.app_context():
