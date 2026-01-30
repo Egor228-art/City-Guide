@@ -35,7 +35,7 @@
     </div>
 
     <div class="footer-bottom">
-        &copy; 2025 Городской Гид | Все права защищены
+        &copy; <span id="current-year"></span> Городской Гид | Все права защищены.
     </div>
 </footer>
 
@@ -56,3 +56,7 @@
         </ul>
     </div>
 </div>
+
+<script>
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+</script>
