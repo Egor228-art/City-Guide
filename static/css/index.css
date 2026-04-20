@@ -642,6 +642,14 @@
     z-index: 1; /* чтобы было над футером */
 }
 
+.yt-icon {
+    margin-bottom: 0;
+    margin-top: 8px;
+    width: 62px;
+    height: auto;
+    transition: all 0.3s ease;
+}
+
 [data-theme="dark"] .skyscrapers {
     filter: invert(0);
     background-color: var(--white);
@@ -942,43 +950,6 @@ body.no-scroll {
 }
 
 /*------------------------------------------ Окна входа/регистрации --------------------------------------------------*/
-/*========================================== Адаптация для мобильных =================================================*/
-
-@media (max-width: 768px) {
-    .nav-container {
-        flex-direction: column;
-        padding: 1rem;
-    }
-
-    .search-box {
-        margin: 1rem 0;
-        width: 100%;
-    }
-
-    .auth-buttons {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .hero h1 {
-        font-size: 2rem;
-    }
-
-    .category-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    .popup-window {
-        width: 90%;
-    }
-}
-
-@media (max-width: 480px) {
-    .category-grid {
-        grid-template-columns: 1fr;
-    }
-}
-/*------------------------------------------ Адаптация для мобильных -------------------------------------------------*/
 
 
 
@@ -1130,37 +1101,6 @@ body.no-scroll {
     margin-top: 10px;
     display: inline-block;
     box-shadow: 0 2px 10px rgba(231, 76, 60, 0.3);
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .popular-card {
-        flex-direction: column;
-        max-width: 500px;
-    }
-
-    .popular-card .image-wrapper {
-        width: 100%;
-        height: 200px;
-    }
-
-    .popular-place {
-        margin: 4rem auto 0 auto;
-        padding: 1.5rem;
-    }
-
-    .popular-place h2 {
-        font-size: 1.5rem;
-    }
-
-    .popular-card .restaurant-contacts {
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .popular-card .metka {
-        margin-left: 0;
-    }
 }
 
 
@@ -1348,30 +1288,6 @@ body.no-scroll {
 [data-theme="dark"] .btn-random:hover {
     background-color: var(--white);
     color: var(--black);
-}
-
-/* Адаптивность для модального окна */
-@media (max-width: 768px) {
-    .catalog-modal {
-        width: 95%;
-        margin: 1rem;
-    }
-
-    .catalog-grid {
-        gap: 1rem;
-        padding: 1rem;
-    }
-
-    .catalog-category {
-        width: 120px;
-        height: 120px;
-        padding: 1rem;
-    }
-
-    .catalog-category img {
-        max-width: 60px;
-        max-height: 60px;
-    }
 }
 
 
@@ -1625,43 +1541,6 @@ body.no-scroll {
 
 .scroller-empty {
     color: #95a5a6;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .popular-place-card {
-        min-width: 300px;
-        height: auto;
-        flex-direction: column;
-    }
-
-    .place-image-container {
-        width: 100%;
-        height: 200px;
-    }
-
-    .section-title {
-        font-size: 1.6rem;
-        margin-bottom: 2rem;
-    }
-
-    .scroller-track {
-        gap: 1.5rem;
-        padding: 1rem;
-    }
-
-    .scroller-nav {
-        width: 40px;
-        height: 40px;
-    }
-
-    .scroller-nav.scroller-prev {
-        left: 10px;
-    }
-
-    .scroller-nav.scroller-next {
-        right: 10px;
-    }
 }
 
 /* Анимация появления карточек */
@@ -1959,4 +1838,1011 @@ body.no-scroll {
 
 [data-theme="dark"] .search-input::placeholder {
     color: var(--text-secondary);
+}
+
+/* ============================================== */
+/* АДАПТАЦИЯ ГЛАВНОЙ СТРАНИЦЫ                     */
+/* ============================================== */
+
+/* По умолчанию цепочка скрыта (покажется только на десктопах) */
+.theme-chain-container {
+    display: none;
+}
+
+/* По умолчанию лампочка в левом верхнем углу (для мобильных) */
+.theme-bulb-container {
+    position: fixed !important;
+    top: 15px !important;
+    left: 15px !important;
+    z-index: 1001 !important;
+    transform: scale(1) !important;
+}
+
+/* На десктопах возвращаем лампочку на место */
+@media (min-width: 993px) {
+    .theme-bulb-container {
+        position: relative !important;
+        top: -35px !important;
+        left: auto !important;
+        transform: scale(1.2) !important;
+    }
+
+    .theme-chain-container {
+        display: block !important;
+    }
+}
+
+/* Планшеты (до 992px) */
+@media (max-width: 992px) {
+    /* Шапка - реорганизация */
+    .navbar .nav-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 0.8rem 5%;
+    }
+
+    .logo {
+        order: 1;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+
+    /* Кнопки входа/регистрации под логотипом, по центру */
+    .auth-buttons {
+        order: 2;
+        width: 100%;
+        justify-content: center;
+        margin: 0 0 15px 0;
+    }
+
+    .favorite-wrapper {
+        order: 3;
+        margin-right: 10px;
+    }
+
+    .search-box {
+        order: 4;
+        min-width: 100%;
+        margin: 0.5rem 0;
+    }
+
+    /* Hero секция - учёт высоты устройства */
+    .hero {
+        min-height: 600px;
+        height: 100vh; /* Ровно на весь экран */
+        max-height: 1370px;
+        padding: 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .hero-content {
+        padding: 1rem;
+        max-width: 600px;
+    }
+
+    .hero h1 {
+        font-size: 2.2rem;
+        line-height: 1.3;
+    }
+
+    .hero p {
+        font-size: 1rem;
+    }
+
+    .hero-buttons {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .btn-explore, .btn-random {
+        width: 100%;
+        max-width: 300px;
+        margin: 0;
+    }
+
+    /* Скроллер популярных мест */
+    .popular-places {
+        padding: 1.5rem 0 3rem 0;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+        padding: 0 15px;
+    }
+
+    .scroller-track {
+        gap: 1rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .popular-place-card {
+        flex-direction: column;
+        height: auto;
+        width: 280px;
+        min-width: 280px;
+    }
+
+    .place-image-container {
+        width: 100%;
+        height: 180px;
+    }
+
+    .place-info {
+        padding: 1rem;
+    }
+
+    .place-info h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .place-description {
+        font-size: 0.85rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .category-badge {
+        top: 10px;
+        left: 10px;
+        font-size: 0.65rem;
+        padding: 0.3rem 0.8rem;
+    }
+
+    .rating-overlay {
+        top: 10px;
+        right: 10px;
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+    /* Кнопки навигации скроллера */
+    .scroller-nav {
+        width: 32px;
+        height: 32px;
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .scroller-nav.scroller-prev {
+        left: 5px;
+    }
+
+    .scroller-nav.scroller-next {
+        right: 5px;
+    }
+
+    .catalog-category {
+        width: 150px !important;
+        height: 150px !important;
+        padding: 1rem !important;
+    }
+
+    .catalog-category img {
+        max-width: 90px !important;
+        max-height: 90px !important;
+    }
+
+    /* Подвал - размер иконок */
+    .socials a img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .yt-icon {
+        width: 52px !important;
+        margin-top: 6px;
+    }
+}
+
+/* Телефоны (до 768px) */
+@media (max-width: 768px) {
+    /* Шапка */
+    body {
+        padding-top: 60px;
+    }
+
+    .navbar .nav-container {
+        padding: 0.5rem 4%;
+    }
+
+    .logo span {
+        font-size: 1.2rem;
+    }
+
+    .logo img {
+        height: 40px;
+        width: 56px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.4rem 1.2rem;
+        font-size: 0.9rem;
+    }
+
+    .auth-buttons {
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .favorite-wrapper {
+        font-size: 24px;
+        margin-right: 5px;
+    }
+
+    .favorites-counter {
+        font-size: 9px;
+    }
+
+    .search-box {
+        height: 38px;
+    }
+
+    .search-input {
+        font-size: 14px;
+        padding: 0.3rem 0.8rem;
+    }
+
+    /* Hero секция - учёт маленькой высоты (iPhone SE) */
+    .hero {
+        min-height: 550px;
+        height: 100vh;
+        max-height: 965px;
+        padding: 0 15px;
+    }
+
+    .hero h1 {
+        font-size: 1.8rem;
+    }
+
+    .hero p {
+        font-size: 0.9rem;
+    }
+
+    .btn-explore, .btn-random {
+        padding: 0.7rem 1.5rem;
+        font-size: 0.9rem;
+    }
+
+    /* Скроллер */
+    .section-title {
+        font-size: 1.5rem;
+    }
+
+    .popular-place-card {
+        width: 260px;
+        min-width: 260px;
+    }
+
+    .place-image-container {
+        height: 160px;
+    }
+
+    .place-info h3 {
+        font-size: 1rem;
+    }
+
+    .place-description {
+        font-size: 0.8rem;
+        -webkit-line-clamp: 3;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .place-address, .place-telephone {
+        font-size: 0.75rem;
+    }
+
+    .place-address svg, .place-telephone svg {
+        width: 12px;
+        height: 12px;
+    }
+
+    /* Модальное окно каталога */
+    .catalog-modal {
+        max-width: 95%;
+        max-height: 85vh;
+    }
+
+    .catalog-modal h2 {
+        font-size: 1.4rem;
+        margin-bottom: 0.8rem;
+        text-align: center;
+    }
+
+    .catalog-grid {
+        grid-template-columns: repeat(2, 1fr) !important;  /* 2 колонки */
+        gap: 1rem !important;
+    }
+
+    .catalog-category {
+        width: 140px !important;
+        height: 140px !important;
+        padding: 0.8rem !important;
+    }
+
+    .catalog-grid::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .catalog-grid::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    .catalog-grid::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 10px;
+    }
+
+    .catalog-category img {
+        max-width: 115px !important;
+        max-height: 115px !important;
+    }
+
+    /* Подвал - размер иконок */
+    .socials a img {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* Футер */
+    .footer {
+        padding: 2rem 4% 1rem;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        text-align: center;
+    }
+
+    .footer-section {
+        margin-bottom: 1rem;
+    }
+
+    .footer-section h3::after {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+    }
+
+    .socials {
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .yt-icon {
+        height: 30px !important;
+        width: 42px !important;
+        margin-top: 4px;
+    }
+
+    .footer-section.contact p {
+        justify-content: center;
+    }
+
+    .footer-bottom {
+        padding-top: 1.5rem;
+        margin-top: 1.5rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* iPhone SE и другие маленькие устройства (до 480px) */
+@media (max-width: 480px) {
+    /* Шапка */
+    .logo span {
+        font-size: 1.1rem;
+    }
+
+    .logo img {
+        height: 35px;
+        width: 49px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .auth-buttons {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    /* Hero - специально для iPhone SE (очень маленькая высота) */
+    .hero {
+        min-height: 500px;
+        height: 100vh;
+        max-height: 835px;
+    }
+
+    .hero h1 {
+        font-size: 1.5rem;
+    }
+
+    .hero p {
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .btn-explore, .btn-random {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.85rem;
+        max-width: 260px;
+    }
+
+    /* Скроллер */
+    .section-title {
+        font-size: 1.3rem;
+    }
+
+    .popular-place-card {
+        width: 240px;
+        min-width: 240px;
+    }
+
+    .place-image-container {
+        height: 150px;
+    }
+
+    .place-info {
+        padding: 0.8rem;
+    }
+
+    .category-badge {
+        font-size: 0.6rem;
+        padding: 0.2rem 0.6rem;
+    }
+
+    .rating-overlay {
+        padding: 3px 6px;
+        font-size: 11px;
+    }
+
+    /* Модальное окно каталога */
+    .catalog-modal {
+        max-width: 95%;
+        max-height: 80vh;
+    }
+
+    .catalog-modal h2 {
+        font-size: 1.2rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .catalog-category {
+        width: 105px !important;
+        height: 105px !important;
+        padding: 0.6rem !important;
+    }
+
+    .catalog-category img {
+        max-width: 100px !important;
+        max-height: 100px !important;
+    }
+
+    /* Кнопки скроллера */
+    .scroller-nav {
+        width: 28px;
+        height: 28px;
+    }
+
+    .scroller-nav svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Подвал - размер иконок для маленьких экранов */
+    .socials a img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .socials {
+        gap: 12px;
+    }
+
+    .yt-icon {
+        height: 27px !important;
+        width: 38px !important;
+        margin-top: 4px;
+    }
+}
+
+/* iPhone SE (375x667) - специальная высота */
+@media (max-width: 380px) and (max-height: 700px) {
+    .hero {
+        min-height: 480px;
+        height: 100vh;
+        max-height: 605px;
+    }
+
+    .hero h1 {
+        font-size: 1.3rem;
+    }
+
+    .hero p {
+        font-size: 0.8rem;
+    }
+
+    .btn-explore, .btn-random {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+
+    .logo span {
+        font-size: 1rem;
+    }
+
+    .logo img {
+        height: 30px;
+        width: 42px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Mobile M 375px и Mobile S 320px */
+@media (max-width: 375px) {
+
+    .catalog-category {
+        width: 95px !important;
+        height: 95px !important;
+        padding: 0.5rem !important;
+    }
+
+    .catalog-category img {
+        max-width: 85px !important;
+        max-height: 85px !important;
+    }
+}
+
+/* Исправление для скроллера - плавная анимация */
+@media (min-width: 993px) {
+    .scroller-track {
+        animation: scroll 40s linear infinite;
+    }
+
+    .scroller-container:hover .scroller-track {
+        animation-play-state: paused;
+    }
+}
+
+@keyframes scroll {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(calc(-320px * 4 - 2rem * 4));
+    }
+}
+
+/* Фикс для лампочки на мобильных */
+@media (max-width: 992px) {
+    .theme-bulb-container {
+        top: -8px !important;
+        left: 13px !important;
+        transform: scale(1.5) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .theme-bulb-container {
+        top: -8px !important;
+        left: 13px !important;
+        transform: scale(1.5) !important;
+    }
+}
+
+/* Базовые стили для десктопа (больше 992px) */
+@media (min-width: 993px) {
+    /* Возвращаем лампочку на место (справа от кнопок) */
+    .theme-bulb-container {
+        position: relative !important;
+        top: -35px !important;
+        left: auto !important;
+        right: auto !important;
+        transform: scale(1.2) !important;
+        margin-left: 10px;
+    }
+
+    /* Показываем цепочку */
+    .theme-chain-container {
+        display: block !important;
+    }
+
+    /* Шапка - стандартное расположение */
+    .navbar .nav-container {
+        justify-content: space-between;
+    }
+
+    .logo {
+        width: auto;
+        justify-content: flex-start;
+        margin-bottom: 0;
+    }
+
+    .auth-buttons {
+        width: auto;
+        justify-content: flex-end;
+        margin: 0;
+    }
+
+    .search-box {
+        min-width: 500px;
+        margin: 0 2rem;
+    }
+
+    /* Hero секция для десктопов */
+    .hero {
+        min-height: 600px;
+        height: 100vh;
+        max-height: 1080px;
+    }
+
+    .hero-buttons {
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .btn-random {
+        margin-left: 1rem;
+    }
+}
+
+/* Laptop 1024px - промежуточная версия */
+@media (min-width: 993px) and (max-width: 1200px) {
+    /* Шапка - компактнее */
+    .navbar .nav-container {
+        padding: 0.6rem 3%;
+    }
+
+    .logo span {
+        font-size: 1.2rem;
+    }
+
+    .logo img {
+        height: 42px;
+        width: 59px;
+    }
+
+    .search-box {
+        min-width: 350px;
+        margin: 0 1rem;
+        height: 36px;
+    }
+
+    .search-input {
+        font-size: 14px;
+        padding: 0.3rem 0.8rem;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .auth-buttons {
+        gap: 0.6rem;
+    }
+
+    .favorite-wrapper {
+        font-size: 26px;
+        margin-right: 8px;
+    }
+
+    /* Hero секция */
+    .hero {
+        min-height: 550px;
+        max-height: 860px;
+    }
+
+    .hero h1 {
+        font-size: 2.3rem;
+    }
+
+    .hero p {
+        font-size: 1rem;
+    }
+
+    .hero-content {
+        max-width: 700px;
+        padding: 1.5rem;
+    }
+
+    .btn-explore, .btn-random {
+        padding: 0.7rem 1.8rem;
+        font-size: 0.95rem;
+    }
+
+    /* Скроллер популярных мест */
+    .section-title {
+        font-size: 1.8rem;
+        margin-bottom: 1.8rem;
+    }
+
+    .popular-place-card .place-description {
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-height: 2.8em !important; /* 2 строки × 1.4em */
+        line-height: 1.4 !important;
+    }
+
+    .popular-place-card {
+        flex-direction: row !important;  /* Было column - меняем на row */
+        height: 200px !important;        /* Фиксированная высота */
+        width: 450px !important;
+        min-width: 450px !important;
+    }
+
+    .place-image-container {
+        width: 180px !important;         /* Фиксированная ширина */
+        height: 100% !important;         /* На всю высоту карточки */
+    }
+
+    .place-info {
+        padding: 0.8rem 1rem !important;
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+    }
+
+    .place-info h3 {
+        font-size: 1rem !important;
+        margin-bottom: 0.3rem !important;
+    }
+
+    .place-description {
+        font-size: 0.8rem !important;
+        -webkit-line-clamp: 2 !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    .place-contacts {
+        margin-top: auto !important;
+    }
+
+    .place-address, .place-telephone {
+        font-size: 0.75rem !important;
+    }
+
+    .scroller-track {
+        gap: 1.2rem;
+        padding: 0.5rem 1.5rem;
+    }
+
+    /* Подвал */
+    .footer {
+        padding: 2.5rem 4% 1rem;
+    }
+
+    .footer-content {
+        gap: 1.5rem;
+    }
+
+    .footer-section h3 {
+        font-size: 1.1rem;
+    }
+
+    .footer-section p, .footer-section a {
+        font-size: 0.9rem;
+    }
+
+    .socials a img {
+        width: 38px;
+        height: 38px;
+    }
+
+    .yt-icon {
+        height: 30px !important;
+        width: 42px !important;
+        margin-top: 5px;
+    }
+
+    /* Лампочка */
+    .theme-bulb-container {
+        transform: scale(1.15) !important;
+    }
+}
+
+/* Laptop L 1440px */
+@media (min-width: 1440px) and (max-width: 2559px) {
+    .hero {
+        max-height: 1000px;
+    }
+
+    .hero h1 {
+        font-size: 3.2rem;
+    }
+
+    .hero p {
+        font-size: 1.3rem;
+    }
+
+    .hero-content {
+        max-width: 900px;
+    }
+
+    /* Скроллер */
+    .popular-place-card .place-description {
+        display: -webkit-box !important;
+        -webkit-line-clamp: 3 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-height: 4.2em !important; /* 3 строки × 1.4em */
+        line-height: 1.4 !important;
+    }
+
+    .popular-place-card {
+        flex-direction: row !important;  /* Горизонтально */
+        height: 220px !important;
+        width: 500px !important;
+        min-width: 500px !important;
+    }
+
+    .place-image-container {
+        width: 200px !important;
+        height: 100% !important;
+    }
+
+    .place-info {
+        padding: 1rem 1.2rem !important;
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+    }
+
+    .place-info h3 {
+        font-size: 1.15rem !important;
+        margin-bottom: 0.4rem !important;
+    }
+
+    .place-description {
+        font-size: 0.9rem !important;
+        -webkit-line-clamp: 2 !important;
+        margin-bottom: 0.6rem !important;
+    }
+
+    .place-contacts {
+        margin-top: auto !important;
+    }
+
+    .place-address, .place-telephone {
+        font-size: 0.85rem !important;
+    }
+
+    .section-title {
+        font-size: 2.2rem;
+    }
+
+    /* Подвал */
+    .footer-content {
+        max-width: 1300px;
+    }
+}
+
+/* 4K 2560px */
+@media (min-width: 2560px) {
+    .hero {
+        max-height: 1565px;
+    }
+
+    .hero h1 {
+        font-size: 4rem;
+    }
+
+    .hero p {
+        font-size: 1.6rem;
+    }
+
+    .hero-content {
+        max-width: 1200px;
+    }
+
+    .btn-explore, .btn-random {
+        padding: 1rem 2.5rem;
+        font-size: 1.3rem;
+    }
+
+    /* Шапка */
+    .nav-container {
+        max-width: 1800px;
+    }
+
+    .logo span {
+        font-size: 2rem;
+    }
+
+    .logo img {
+        height: 70px;
+        width: 98px;
+    }
+
+    .search-box {
+        min-width: 700px;
+        height: 50px;
+    }
+
+    .search-input {
+        font-size: 1.2rem;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.7rem 2rem;
+        font-size: 1.2rem;
+    }
+
+    .section-title {
+        font-size: 2.8rem;
+    }
+
+    /* Каталог */
+    .catalog-category {
+        width: 180px;
+        height: 180px;
+    }
+
+    .catalog-category img {
+        max-width: 100px;
+        max-height: 100px;
+    }
+
+    /* Подвал */
+    .footer {
+        padding: 4rem 5% 2rem;
+    }
+
+    .footer-content {
+        max-width: 1800px;
+    }
+
+    .footer-section h3 {
+        font-size: 1.5rem;
+    }
+
+    .footer-section p, .footer-section a {
+        font-size: 1.1rem;
+    }
+
+    .socials a img {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+/* Фикс для лампочки на Laptop */
+@media (min-width: 1024px) {
+    .theme-bulb-container {
+        transform: scale(1.3) !important;
+    }
+}
+
+@media (min-width: 1440px) {
+    .theme-bulb-container {
+        transform: scale(1.4) !important;
+    }
+}
+
+@media (min-width: 2560px) {
+    .theme-bulb-container {
+        transform: scale(1.6) !important;
+    }
 }

@@ -1139,11 +1139,6 @@ def handle_error(error):
     error_code = getattr(error, 'code', 500)
     error_name = get_error_name(error_code)
 
-    print(f"🚨 handle_error called!")
-    print(f"   error object: {error}")
-    print(f"   error code: {error_code} (type: {type(error_code)})")
-    print(f"   error name: '{error_name}'")
-
     return render_template('Error.html',
                            error_code=error_code,
                            error_name=error_name), error_code
@@ -3408,10 +3403,6 @@ def handle_new_category(category_name):
 
     return True
 
-@app.route("/test", methods=['GET', 'POST'])
-def test():
-    return render_template("ЛичныеСтраницы/test.html", title="Городской гид")
-
 @app.route("/search", methods=["GET", "POST"])
 def search():
     """Улучшенный поиск по базе данных с поддержкой тегов и улицы"""
@@ -4666,13 +4657,6 @@ def find_restaurant_by_any_means(place_id):
 
     print(f"❌ Ресторан не найден для места ID: {place_id}")
     return None
-
-@app.route('/test-error')
-def test_error():
-    """Тестовый маршрут для проверки передачи переменных"""
-    return render_template('Error_simple.html',
-                           error_code=404,
-                           error_name='Тестовая ошибка')
 
 if __name__ == '__main__':
     with app.app_context():

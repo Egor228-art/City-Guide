@@ -1289,3 +1289,890 @@ body.no-scroll {
 [data-theme="dark"] .search-input::placeholder {
     color: var(--text-secondary);
 }
+
+/* ============================================== */
+/* АДАПТАЦИЯ КАТАЛОГА - УМНАЯ ПАГИНАЦИЯ v3        */
+/* ============================================== */
+
+/* Планшеты и телефоны (до 992px) */
+@media (max-width: 992px) {
+    /* Шапка с пагинацией - фиксированная снизу ТОЛЬКО на мобильных */
+    .smart-pagination {
+        position: fixed;
+        top: auto !important;
+        bottom: 20px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: auto !important;
+        max-width: calc(100% - 30px) !important;
+        background: var(--white);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        padding: 8px 16px !important;
+        border-radius: 50px !important;
+        z-index: 998;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid var(--border-color);
+    }
+
+    [data-theme="dark"] .smart-pagination {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Скрываем filters-container-left */
+    .filters-container-left {
+        display: none;
+    }
+
+    /* Контейнер пагинации - компактный */
+    .pagination-container {
+        padding-right: 0;
+        flex: 0 1 auto;
+    }
+
+    .pagination {
+        flex-wrap: nowrap;
+        gap: 5px;
+        margin: 0;
+    }
+
+    /* Кнопка бургера - справа от пагинации */
+    .filter-burger-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: var(--white);
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .burger-icon {
+        color: var(--black);
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    [data-theme="dark"] .filter-burger-btn {
+        background: var(--white);
+        color: var(--black);
+    }
+
+    [data-theme="dark"] .burger-icon {
+        color: var(--black);
+    }
+
+    .filter-burger-btn:hover {
+        transform: scale(1.05);
+    }
+
+    .filter-burger-btn:active {
+        transform: scale(0.95);
+    }
+
+    /* Бургер-меню с фильтрами (выдвигается справа) */
+    .filter-sidebar {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 300px;
+        max-width: 85%;
+        height: 100vh;
+        background: var(--white);
+        box-shadow: -2px 0 20px rgba(0, 0, 0, 0.2);
+        z-index: 1002;
+        transition: right 0.3s ease-in-out;
+        overflow-y: auto;
+        padding: 20px 18px;
+    }
+
+    .filter-sidebar.open {
+        right: 0;
+    }
+
+    /* Заголовок бургер-меню */
+    .filter-sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .filter-sidebar-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--black);
+    }
+
+    .filter-sidebar-close {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        color: var(--black);
+        padding: 0;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background 0.2s;
+    }
+
+    .filter-sidebar-close:hover {
+        background: var(--gray-light);
+    }
+
+    /* Фильтры внутри бургер-меню */
+    .filter-sidebar .filter-options {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .filter-sidebar .filter-select {
+        width: 100%;
+        padding: 14px 16px;
+        font-size: 16px;
+        border-radius: 12px;
+        border: 2px solid var(--border-color);
+        background: var(--white);
+        color: var(--black);
+        cursor: pointer;
+    }
+
+    .filter-sidebar .filter-select:focus {
+        border-color: var(--black);
+        outline: none;
+    }
+
+    /* Оверлей для бургер-меню */
+    .filter-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(3px);
+        z-index: 1001;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .filter-overlay.open {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* Отступ для контента (чтобы не перекрывался пагинацией) */
+    .restaurants-container {
+        margin: 190px auto 10px !important;
+        padding-bottom: 10px;
+    }
+
+    /* Карточки */
+    .restaurant-card {
+        flex-direction: row !important;
+        height: 180px !important;
+        margin-bottom: 15px;
+    }
+
+    .image-wrapper {
+        width: 200px !important;
+        height: 100% !important;
+        flex-shrink: 0;
+    }
+
+    .restaurant-info {
+        padding: 12px 15px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .restaurant-name {
+        font-size: 17px;
+        margin-bottom: 5px;
+    }
+
+    .restaurant-description {
+        font-size: 13px;
+        -webkit-line-clamp: 2;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+
+    .restaurant-contacts {
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    .restaurant-contacts svg {
+        width: 12px;
+        height: 12px;
+    }
+
+    /* Пагинация - кнопки */
+    .page-link {
+        width: 38px;
+        height: 38px;
+        font-size: 15px;
+        border-radius: 50% !important;
+        font-weight: 500;
+    }
+
+    .page-item.active .page-link {
+        background: var(--black);
+        color: var(--white);
+    }
+
+    /* Скрываем стрелки "в начало/конец" на мобильных */
+    .page-link.first-last {
+        display: none;
+    }
+
+    /* Индикатор свайпа */
+    .swipe-indicator {
+        text-align: center;
+        padding: 8px;
+        color: var(--gray-dark);
+        font-size: 13px;
+        opacity: 0.5;
+        margin-top: 5px;
+    }
+
+    .swipe-indicator i {
+        font-style: normal;
+        animation: swipeHint 2s ease-in-out infinite;
+    }
+}
+
+/* Телефоны (до 768px) */
+@media (max-width: 768px) {
+    .smart-pagination {
+        bottom: 15px !important;
+        padding: 6px 12px !important;
+        gap: 8px;
+    }
+
+    .filter-burger-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .filter-sidebar {
+        width: 280px;
+        padding: 18px 15px;
+    }
+
+    .filter-sidebar-header h3 {
+        font-size: 17px;
+    }
+
+    .filter-sidebar .filter-select {
+        padding: 12px 14px;
+        font-size: 15px;
+    }
+
+    .restaurants-container {
+        margin: 180px auto 10px !important;
+    }
+
+    .restaurant-card {
+        height: 160px !important;
+    }
+
+    .image-wrapper {
+        width: 170px !important;
+    }
+
+    .restaurant-info {
+        padding: 10px 12px;
+    }
+
+    .restaurant-name {
+        font-size: 16px;
+    }
+
+    .restaurant-description {
+        font-size: 12px;
+    }
+
+    .restaurant-contacts {
+        font-size: 11px;
+    }
+
+    .page-link {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+    }
+
+    .swipe-indicator {
+        font-size: 12px;
+    }
+}
+
+/* Маленькие устройства (до 480px) */
+@media (max-width: 480px) {
+    .smart-pagination {
+        bottom: 12px !important;
+        padding: 5px 10px !important;
+        gap: 6px;
+        max-width: calc(100% - 20px) !important;
+    }
+
+    .filter-burger-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
+    .filter-sidebar {
+        width: 260px;
+        padding: 15px 12px;
+    }
+
+    .filter-sidebar-header {
+        margin-bottom: 15px;
+        padding-bottom: 12px;
+    }
+
+    .filter-sidebar-header h3 {
+        font-size: 16px;
+    }
+
+    .filter-sidebar-close {
+        font-size: 24px;
+        width: 30px;
+        height: 30px;
+    }
+
+    .filter-sidebar .filter-select {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .restaurants-container {
+        margin: 175px auto 10px !important;
+    }
+
+    /* На очень маленьких - вертикальные карточки */
+    .restaurant-card {
+        flex-direction: column !important;
+        height: auto !important;
+    }
+
+    .image-wrapper {
+        width: 100% !important;
+        height: 170px !important;
+    }
+
+    .restaurant-info {
+        padding: 12px;
+    }
+
+    .restaurant-name {
+        font-size: 16px;
+    }
+
+    .page-link {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+
+    .pagination {
+        gap: 3px;
+    }
+}
+
+/* Сверхмаленькие (до 375px) */
+@media (max-width: 375px) {
+    .smart-pagination {
+        bottom: 10px !important;
+        padding: 4px 8px !important;
+    }
+
+    .filter-burger-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 15px;
+    }
+
+    .restaurants-container {
+        margin: 170px auto 10px !important;
+    }
+
+    .image-wrapper {
+        height: 150px !important;
+    }
+
+    .page-link {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+
+    .pagination {
+        gap: 2px;
+    }
+}
+
+/* Анимация для подсказки свайпа */
+@keyframes swipeHint {
+    0%, 100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* ===== ДЕСКТОП - ВОЗВРАЩАЕМ СТАНДАРТ (НЕ ФИКСИРОВАННАЯ) ===== */
+@media (min-width: 993px) {
+
+    .filters-container-left {
+        display: block;
+    }
+
+    .filter-burger-btn {
+        display: none;
+    }
+
+    .filter-sidebar {
+        display: none;
+    }
+
+    .filter-overlay {
+        display: none;
+    }
+
+    .restaurants-container {
+        margin: 130px auto 10px !important;
+    }
+
+    .page-link.first-last {
+        display: flex;
+    }
+
+    .swipe-indicator {
+        display: none;
+    }
+}
+
+/* ===== ШАПКА (ТОЧНО КАК В index.css) ===== */
+
+/* По умолчанию цепочка скрыта (покажется только на десктопах) */
+.theme-chain-container {
+    display: none;
+}
+
+/* По умолчанию лампочка в левом верхнем углу (для мобильных) */
+.theme-bulb-container {
+    position: fixed !important;
+    top: 15px !important;
+    left: 15px !important;
+    z-index: 1001 !important;
+    transform: scale(1) !important;
+}
+
+/* На десктопах возвращаем лампочку на место */
+@media (min-width: 993px) {
+    .theme-bulb-container {
+        position: relative !important;
+        top: -35px !important;
+        left: auto !important;
+        transform: scale(1.2) !important;
+    }
+
+    .theme-chain-container {
+        display: block !important;
+    }
+}
+
+/* Планшеты (до 992px) - ШАПКА */
+@media (max-width: 992px) {
+    .navbar .nav-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 0.8rem 5%;
+    }
+
+    .logo {
+        order: 1;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+
+    .auth-buttons {
+        order: 2;
+        width: 100%;
+        justify-content: center;
+        margin: 0 0 15px 0;
+    }
+
+    .favorite-wrapper {
+        order: 3;
+        margin-right: 10px;
+    }
+
+    .search-box {
+        order: 4;
+        min-width: 100%;
+        margin: 0.5rem 0;
+    }
+
+    .yt-icon {
+        width: 52px !important;
+        margin-top: 6px !important;
+    }
+}
+
+/* Телефоны (до 768px) - ШАПКА */
+@media (max-width: 768px) {
+    body {
+        padding-top: 60px;
+    }
+
+    .navbar .nav-container {
+        padding: 0.5rem 4%;
+    }
+
+    .logo span {
+        font-size: 1.2rem;
+    }
+
+    .logo img {
+        height: 40px;
+        width: 56px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.4rem 1.2rem;
+        font-size: 0.9rem;
+    }
+
+    .auth-buttons {
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .favorite-wrapper {
+        font-size: 24px;
+        margin-right: 5px;
+    }
+
+    .favorites-counter {
+        font-size: 9px;
+    }
+
+    .search-box {
+        height: 38px;
+    }
+
+    .search-input {
+        font-size: 14px;
+        padding: 0.3rem 0.8rem;
+    }
+}
+
+/* Маленькие устройства (до 480px) - ШАПКА */
+@media (max-width: 480px) {
+    .logo span {
+        font-size: 1.1rem;
+    }
+
+    .logo img {
+        height: 35px;
+        width: 49px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .auth-buttons {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    .yt-icon {
+        height: 27px !important;
+        width: 38px !important;
+        margin-top: 4px !important;
+    }
+}
+
+/* iPhone SE */
+@media (max-width: 380px) and (max-height: 700px) {
+    .logo span {
+        font-size: 1rem;
+    }
+
+    .logo img {
+        height: 30px;
+        width: 42px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Десктоп - стандартная шапка */
+@media (min-width: 993px) {
+    .navbar .nav-container {
+        justify-content: space-between;
+    }
+
+    .logo {
+        width: auto;
+        justify-content: flex-start;
+        margin-bottom: 0;
+    }
+
+    .auth-buttons {
+        width: auto;
+        justify-content: flex-end;
+        margin: 0;
+    }
+
+    .search-box {
+        min-width: 500px;
+        margin: 0 2rem;
+    }
+}
+
+/* Laptop 1024px */
+@media (min-width: 993px) and (max-width: 1200px) {
+    .navbar .nav-container {
+        padding: 0.6rem 3%;
+    }
+
+    .logo span {
+        font-size: 1.2rem;
+    }
+
+    .logo img {
+        height: 42px;
+        width: 59px;
+    }
+
+    .search-box {
+        min-width: 350px;
+        margin: 0 1rem;
+        height: 36px;
+    }
+
+    .search-input {
+        font-size: 14px;
+        padding: 0.3rem 0.8rem;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .auth-buttons {
+        gap: 0.6rem;
+    }
+
+    .favorite-wrapper {
+        font-size: 26px;
+        margin-right: 8px;
+    }
+}
+
+/* ===== ПОДВАЛ (ТОЧНО КАК В index.css) ===== */
+
+/* Планшеты (до 992px) - ПОДВАЛ */
+@media (max-width: 992px) {
+    .socials a img {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/* Телефоны (до 768px) - ПОДВАЛ */
+@media (max-width: 768px) {
+    .footer {
+        padding: 2rem 4% 1rem;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        text-align: center;
+    }
+
+    .footer-section {
+        margin-bottom: 1rem;
+    }
+
+    .footer-section h3::after {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+    }
+
+    .socials {
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .socials a img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .yt-icon {
+        height: 27px !important;
+        width: 38px !important;
+        margin-top: 4px !important;
+    }
+
+    .footer-section.contact p {
+        justify-content: center;
+    }
+
+    .footer-bottom {
+        padding-top: 1.5rem;
+        margin-top: 1.5rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Маленькие устройства (до 480px) - ПОДВАЛ */
+@media (max-width: 480px) {
+    .socials a img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .socials {
+        gap: 12px;
+    }
+}
+
+/* Laptop L 1440px - ПОДВАЛ */
+@media (min-width: 1440px) and (max-width: 2559px) {
+    .footer-content {
+        max-width: 1300px;
+    }
+}
+
+/* 4K 2560px - ПОДВАЛ */
+@media (min-width: 2560px) {
+    .footer {
+        padding: 4rem 5% 2rem;
+    }
+
+    .footer-content {
+        max-width: 1800px;
+    }
+
+    .footer-section h3 {
+        font-size: 1.5rem;
+    }
+
+    .footer-section p, .footer-section a {
+        font-size: 1.1rem;
+    }
+
+    .socials a img {
+        width: 50px;
+        height: 50px;
+    }
+}
+
+/* ===== ФИКС ДЛЯ ЛАМПОЧКИ ===== */
+@media (max-width: 992px) {
+    .theme-bulb-container {
+        top: -8px !important;
+        left: 13px !important;
+        transform: scale(1.3) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .theme-bulb-container {
+        top: -13px !important;
+        left: 10px !important;
+        transform: scale(1.2) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .theme-bulb-container {
+        top: -13px !important;
+        left: 8px !important;
+        transform: scale(1.1) !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .theme-bulb-container {
+        transform: scale(1.3) !important;
+    }
+}
+
+@media (min-width: 1440px) {
+    .theme-bulb-container {
+        transform: scale(1.4) !important;
+    }
+}
+
+@media (min-width: 2560px) {
+    .theme-bulb-container {
+        transform: scale(1.6) !important;
+    }
+}
+
+/* ===== АНИМАЦИИ ДЛЯ КАРТОЧЕК ===== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.restaurant-card {
+    animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.restaurant-card:nth-child(1) { animation-delay: 0.05s; }
+.restaurant-card:nth-child(2) { animation-delay: 0.1s; }
+.restaurant-card:nth-child(3) { animation-delay: 0.15s; }
+.restaurant-card:nth-child(4) { animation-delay: 0.2s; }
+.restaurant-card:nth-child(5) { animation-delay: 0.25s; }
+.restaurant-card:nth-child(6) { animation-delay: 0.3s; }
+.restaurant-card:nth-child(7) { animation-delay: 0.35s; }
+.restaurant-card:nth-child(8) { animation-delay: 0.4s; }
+.restaurant-card:nth-child(9) { animation-delay: 0.45s; }
+.restaurant-card:nth-child(10) { animation-delay: 0.5s; }
+

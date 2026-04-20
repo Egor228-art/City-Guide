@@ -95,7 +95,8 @@ async function loadAllPlaces() {
         }
 
         allPlaces = allPlacesData;
-        totalPages = data.total_pages || 1;
+        const perPage = 10; // Столько же заведений на странице как на сервере
+        totalPages = Math.ceil(allPlacesData.length / perPage);
 
         console.log(`✅ Итог: ${allPlaces.length} заведений в категории ${currentCategory}`);
 
