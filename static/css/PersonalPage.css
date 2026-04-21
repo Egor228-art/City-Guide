@@ -244,7 +244,7 @@ body {
     padding: 5px 10px;
     border-radius: 20px;
     background: white;
-    box-shadow: 0 0 0 2px #f8f8f8, 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 2px #f8f8f8, 0 0 0 2px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     transform-style: preserve-3d;
     cursor: pointer;
@@ -253,7 +253,7 @@ body {
 [data-theme="dark"] .btn-admin {
     background-color: var(--white);
     color: var(--black);
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1), 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1), 0 0 0 2px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 #avatar {
@@ -1055,19 +1055,6 @@ body.no-scroll {
     border-color: #007bff;
     background: #007bff;
     color: white;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .filter-controls {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .reaction-filters {
-        margin-left: 0;
-        margin-top: 10px;
-    }
 }
 
 /* Модальное окно для деталей отзыва */
@@ -2380,169 +2367,6 @@ body.no-scroll {
 }
 
 /*------------------------------------------ Окна входа/регистрации --------------------------------------------------*/
-/*====================================== Адаптация для мобильных и прочее ============================================*/
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-}
-
-@keyframes modalContentSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -60%) !important;
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%) !important;
-    }
-}
-
-/* Анимации для лайков/дизлайков */
-@keyframes likePulse {
-    0% {
-        color: #00a820;
-        transform: scale(1);
-    }
-    50% {
-        color: #00a820;
-        transform: scale(1.1);
-    }
-    100% {
-        color: #00a820;
-        transform: scale(1);
-    }
-}
-
-@keyframes dislikePulse {
-    0% {
-        color: red;
-        transform: scale(1);
-    }
-    50% {
-        color: red;
-        transform: scale(1.1);
-    }
-    100% {
-        color: red;
-        transform: scale(1);
-    }
-}
-
-@keyframes cancelPulse {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(0.9);
-        opacity: 0.7;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
-}
-
-@keyframes clickAnimation {
-    0% { transform: scale(1); }
-    50% { transform: scale(0.9); }
-    100% { transform: scale(1); }
-}
-
-.like-btn.highlight {
-    color: #00a820;
-    border: 2px solid #4CAF50;
-    animation: likePulse 0.5s ease;
-}
-
-.dislike-btn.highlight {
-    color: #ff0000;
-    border: 2px solid #f44336;
-    animation: dislikePulse 0.5s ease;
-}
-
-.like-btn.cancel, .dislike-btn.cancel {
-    animation: cancelPulse 0.5s;
-}
-
-.like-btn.highlight img {
-    filter: brightness(0) saturate(100%) invert(48%) sepia(90%) saturate(1300%) hue-rotate(80deg) brightness(95%) contrast(105%);
-}
-
-.dislike-btn.highlight img {
-    filter: brightness(0) saturate(100%) invert(27%) sepia(85%) saturate(7400%) hue-rotate(355deg) brightness(95%) contrast(120%);
-}
-
-.like-btn:focus,
-.dislike-btn:focus,
-.like-btn:active,
-.dislike-btn:active {
-    outline: none;
-    box-shadow: none;
-    border-color: transparent;
-}
-
-.click-animation {
-    animation: clickAnimation 0.3s ease;
-}
-/* Анимации */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Задержки для анимации карточек */
-.restaurant-card:nth-child(1) { animation-delay: 0.1s; }
-.restaurant-card:nth-child(2) { animation-delay: 0.2s; }
-.restaurant-card:nth-child(3) { animation-delay: 0.3s; }
-.restaurant-card:nth-child(4) { animation-delay: 0.4s; }
-
-@media (max-width: 768px) {
-    .restaurant-card {
-        flex-direction: column;
-    }
-
-    .image-wrapper {
-        width: 100%;
-        height: 200px;
-    }
-}
-/*-------------------------------------- Адаптация для мобильных и прочее --------------------------------------------*/
 
 
 
@@ -2551,7 +2375,7 @@ body.no-scroll {
 
 /* Стили для тегов заведения */
 .tags-section {
-    width: 83%;
+    width: 97%;
     margin-top: 10px;
     padding: 15px 0;
     border-top: 1px solid #eee;
@@ -2571,7 +2395,7 @@ body.no-scroll {
     position: relative;
     display: flex;
     align-items: center;
-    max-width: 900px;
+    max-width: 1100px;
 }
 
 .tags-scroller {
@@ -2925,24 +2749,6 @@ body.no-scroll {
     height: 100%;
     object-fit: cover;
 }
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .gallery-main {
-        height: 300px;
-    }
-
-    .thumbnail {
-        width: 60px;
-        height: 45px;
-    }
-
-    .gallery-nav-btn {
-        padding: 10px 5px;
-        font-size: 16px;
-    }
-}
-
 /* =========================================== ЛАМПОЧКА ТЁМНОГО РЕЖИМА ============================================== */
 
 .theme-bulb-container {
@@ -3159,4 +2965,1354 @@ body.no-scroll {
 
 [data-theme="dark"] .search-input::placeholder {
     color: var(--text-secondary);
+}
+
+/* ============================================== */
+/* АДАПТАЦИЯ ЛИЧНОЙ СТРАНИЦЫ ТОВАРА               */
+/* ВКЛЮЧАЯ СТИЛИ ШАПКИ, ПОДВАЛА, МОДАЛОК           */
+/* ВЕРСИЯ 2.0 - ЧИСТАЯ СТРУКТУРА                   */
+/* ============================================== */
+
+.favorites-wrapper {
+    display: contents;
+}
+
+/* ============================================== */
+/* ФИКС: МОДАЛЬНЫЕ ОКНА СКРЫТЫ ПО УМОЛЧАНИЮ        */
+/* ============================================== */
+
+/* Все модальные окна скрыты при загрузке */
+.modal,
+#review-modal,
+#full-review-modal,
+#edit-review-modal,
+#menu-modal {
+    display: none !important;
+}
+
+/* НО! Когда есть класс show или inline style display: flex - показываем */
+.modal[style*="display: flex"],
+.modal[style*="display: block"],
+.modal.show,
+#review-modal[style*="display: flex"],
+#review-modal[style*="display: block"],
+#review-modal.show,
+#full-review-modal[style*="display: flex"],
+#full-review-modal[style*="display: block"],
+#full-review-modal.show,
+#edit-review-modal[style*="display: flex"],
+#edit-review-modal[style*="display: block"],
+#edit-review-modal.show,
+#menu-modal[style*="display: flex"],
+#menu-modal[style*="display: block"],
+#menu-modal.show {
+    display: flex !important;
+}
+
+/* ========== БАЗОВЫЕ СТИЛИ (ВНЕ МЕДИА-ЗАПРОСОВ) ========== */
+
+.theme-chain-container {
+    display: none;
+}
+
+.theme-bulb-container {
+    position: fixed !important;
+    top: 15px !important;
+    left: 15px !important;
+    z-index: 1001 !important;
+    transform: scale(1) !important;
+}
+
+#edit-review-modal {
+    z-index: 10000 !important;
+}
+
+#edit-review-modal .close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    transition: color 0.3s ease;
+    z-index: 10001;
+}
+
+#edit-review-modal .close:hover {
+    color: #000;
+}
+
+[data-theme="dark"] #edit-review-modal .close {
+    color: #aaa;
+}
+
+[data-theme="dark"] #edit-review-modal .close:hover {
+    color: #fff;
+}
+
+.socials a img[alt="YouTube"],
+.socials a img[src*="YT.png"] {
+    width: 46px !important;
+    height: auto !important;
+    margin-top: 5px !important;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* ========== ТАЧ-УСТРОЙСТВА ========== */
+@media (hover: none) and (pointer: coarse) {
+    .image-section .favorite-btn,
+    .image-section .expand-btn,
+    .image-section .map-btn,
+    .image-section .menu-btn,
+    .image-section .schedule-btn {
+        opacity: 0.8;
+    }
+
+    .image-section .favorite-btn,
+    .image-section .expand-btn {
+        display: flex !important;
+    }
+
+    .image-section .map-btn,
+    .image-section .schedule-btn {
+        display: block !important;
+    }
+}
+
+/* ========== ДЕСКТОПЫ (от 993px) ========== */
+@media (min-width: 993px) {
+    /* Лампочка */
+    .theme-bulb-container {
+        position: relative !important;
+        top: -35px !important;
+        left: auto !important;
+        right: auto !important;
+        transform: scale(1.2) !important;
+        margin-left: 10px;
+    }
+
+    .theme-chain-container {
+        display: block !important;
+    }
+
+    /* Шапка */
+    .navbar .nav-container {
+        justify-content: space-between;
+    }
+
+    .logo {
+        width: auto;
+        justify-content: flex-start;
+        margin-bottom: 0;
+    }
+
+    .auth-buttons {
+        width: auto;
+        justify-content: flex-end;
+        margin: 0;
+    }
+
+    .search-box {
+        min-width: 500px;
+        margin: 0 2rem;
+    }
+
+    .favorite-wrapper {
+        order: 3;
+    }
+
+    /* Личная страница */
+    .box {
+        margin-top: 105px;
+        margin-bottom: 30px;
+        width: fit-content;
+        max-width: 1200px;
+        padding: 20px 30px;
+    }
+
+    .container {
+        flex-direction: row;
+        gap: 30px;
+    }
+
+    .image-section {
+        width: 500px;
+        padding-left: 0;
+    }
+
+    .image-flip-container {
+        height: 420px;
+    }
+
+    .gallery-main {
+        height: 420px;
+    }
+
+    .details-section {
+        width: 500px;
+        padding-right: 20px;
+    }
+
+    .reviews {
+        width: 100%;
+        max-width: 1100px;
+        margin: 30px 0 10px;
+    }
+
+    /* Фильтры */
+    .filter-controls {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 15px !important;
+    }
+
+    #filter-stars {
+        order: 1 !important;
+    }
+
+    .reaction-filters {
+        display: flex !important;
+        flex-direction: row !important;
+        order: 2 !important;
+        gap: 10px !important;
+    }
+
+    .review-filter {
+        display: flex;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .filter-btn[data-type="likes"] {
+        order: 1 !important;
+    }
+
+    .filter-btn[data-type="dislikes"] {
+        order: 2 !important;
+    }
+}
+
+/* ========== LAPTOP 1024-1200px ========== */
+@media (min-width: 993px) and (max-width: 1200px) {
+    .navbar .nav-container {
+        padding: 0.6rem 3%;
+    }
+
+    .logo span {
+        font-size: 1.2rem;
+    }
+
+    .logo img {
+        height: 42px;
+        width: 59px;
+    }
+
+    .search-box {
+        min-width: 350px;
+        margin: 0 1rem;
+        height: 36px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .auth-buttons {
+        gap: 0.6rem;
+    }
+
+    .box {
+        max-width: 900px;
+    }
+
+    .image-section {
+        width: 420px;
+    }
+
+    .image-flip-container {
+        height: 360px;
+    }
+
+    .details-section {
+        width: 420px;
+    }
+
+    .footer {
+        padding: 2.5rem 4% 1rem;
+    }
+
+    .footer-content {
+        gap: 1.5rem;
+    }
+
+    .socials a img {
+        width: 38px;
+        height: 38px;
+    }
+
+    .theme-bulb-container {
+        transform: scale(1.15) !important;
+    }
+}
+
+/* ========== 1440-2559px ========== */
+@media (min-width: 1440px) and (max-width: 2559px) {
+    .box {
+        max-width: 1300px;
+    }
+
+    .image-section {
+        width: 600px;
+    }
+
+    .image-flip-container {
+        height: 480px;
+    }
+
+    .details-section {
+        width: 600px;
+    }
+
+    .footer-content {
+        max-width: 1300px;
+    }
+
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 54px !important;
+        margin-top: 6px !important;
+    }
+
+    .theme-bulb-container {
+        transform: scale(1.4) !important;
+    }
+}
+
+/* ========== 4K (от 2560px) ========== */
+@media (min-width: 2560px) {
+    .nav-container {
+        max-width: 1800px;
+    }
+
+    .logo span {
+        font-size: 2rem;
+    }
+
+    .logo img {
+        height: 70px;
+        width: 98px;
+    }
+
+    .search-box {
+        min-width: 700px;
+        height: 50px;
+    }
+
+    .box {
+        max-width: 1600px;
+    }
+
+    .image-section {
+        width: 750px;
+    }
+
+    .image-flip-container {
+        height: 600px;
+    }
+
+    .details-section {
+        width: 750px;
+    }
+
+    .footer {
+        padding: 4rem 5% 2rem;
+    }
+
+    .footer-content {
+        max-width: 1800px;
+    }
+
+    .footer-section h3 {
+        font-size: 1.5rem;
+    }
+
+    .socials a img {
+        width: 50px;
+        height: 50px;
+    }
+
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 65px !important;
+        margin-top: 8px !important;
+    }
+
+    .theme-bulb-container {
+        transform: scale(1.6) !important;
+    }
+}
+
+/* ========== ПЛАНШЕТЫ (до 992px) ========== */
+@media (max-width: 992px) {
+    .menu-btn {
+        display: block !important;
+        opacity: 0.8;
+        bottom: 60px !important;  /* Поднимаем выше, чтобы не перекрывала кнопку карты */
+        left: 10px !important;
+        transform: none !important;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 14px;
+    }
+
+    /* Шапка */
+    .navbar .nav-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        align-items: center;
+        padding: 0.8rem 5%;
+    }
+
+    /* Логотип - слева */
+    .logo {
+        order: 1 !important;
+        width: auto;
+        justify-content: flex-start;
+        margin-bottom: 0;
+    }
+
+    /* Кнопка избранного - справа */
+    .favorite-wrapper {
+        order: 2 !important;
+        margin-right: 0;
+        margin-left: 0;
+    }
+
+    /* Кнопки входа - на новой строке */
+    .auth-buttons {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin: 15px 0 15px 0;
+    }
+
+    /* Поиск - на новой строке */
+    .search-box {
+        order: 4;
+        min-width: 100%;
+        margin: 0.5rem 0;
+    }
+
+    .theme-bulb-container {
+        top: -8px !important;
+        left: 13px !important;
+        transform: scale(1.5) !important;
+    }
+
+    /* Личная страница */
+    .box {
+        margin-top: 185px;
+        margin-bottom: 30px;
+        width: 95%;
+        padding: 20px 15px;
+    }
+
+    .container {
+        flex-direction: column;
+        align-items: center;
+        gap: 25px;
+    }
+
+    .image-section {
+        width: 100%;
+        max-width: 550px;
+        padding-left: 0;
+        margin: 0 auto;
+    }
+
+    .image-flip-container {
+        height: 380px;
+    }
+
+    .gallery-main {
+        height: 380px;
+    }
+
+    .details-section {
+        width: 100%;
+        max-width: 600px;
+        padding-right: 0;
+        text-align: left;
+    }
+
+    .details-section h1 {
+        font-size: 28px;
+        margin-bottom: 15px;
+    }
+
+    .details-section p {
+        font-size: 16px;
+        line-height: 1.5;
+    }
+
+    .reviews {
+        width: 100%;
+        max-width: 100%;
+        margin: 30px 0 20px;
+        padding: 25px 0;
+    }
+
+    .review-container-button {
+        transform: translate(0, 0);
+        margin: 20px auto;
+        display: block;
+        width: fit-content;
+    }
+
+    .review-form-button {
+        margin-right: 0 !important;
+        margin-left: 0;
+        transform: translate(0, 0);
+        display: block;
+        width: 100%;
+        text-align: center;
+    }
+
+    /* Фильтры (мобильный порядок) */
+    .filter-controls {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 12px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .review-filter > label {
+        display: block !important;
+        width: 100% !important;
+        margin-bottom: 8px !important;
+    }
+
+    #filter-stars {
+        display: flex !important;
+        flex-direction: row !important;
+        order: 2 !important;
+        margin-bottom: 0 !important;
+        gap: 2px !important;
+    }
+
+    .reaction-filters {
+        display: contents !important;
+    }
+
+    .filter-btn[data-type="likes"] {
+        order: 1 !important;
+        margin-right: 5px !important;
+    }
+
+    .filter-btn[data-type="dislikes"] {
+        order: 3 !important;
+        margin-left: 5px !important;
+    }
+
+    .filter-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    #filter-stars .star img {
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    .filter-btn img {
+        width: 24px !important;
+        height: 24px !important;
+    }
+
+    /* Свайп отзывов */
+    .review-list {
+        -webkit-overflow-scrolling: touch !important;
+        scroll-snap-type: x mandatory !important;
+        cursor: grab !important;
+        scrollbar-width: none !important;
+        -ms-overflow-style: none !important;
+    }
+
+    .review-list::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .review-list:active {
+        cursor: grabbing !important;
+    }
+
+    .review-card {
+        scroll-snap-align: start !important;
+    }
+
+    .scroll-button.left,
+    .scroll-button.right {
+        display: none !important;
+    }
+
+    /* Модалка редактирования */
+    .form-buttons {
+        transform: none;
+    }
+
+    .modal {
+        display: flex;
+        flex-wrap: wrap;
+        align-content: center;
+    }
+
+    #edit-review-modal .modal-content {
+        width: 85%;
+        padding: 22px;
+    }
+
+    #edit-review-modal h2 {
+        font-size: 20px;
+    }
+
+    #edit-review-modal #edit-comment {
+        width: 100%;
+        max-width: 440px;
+        min-height: 110px;
+        font-size: 14px;
+    }
+
+    #edit-stars .star img {
+        width: 30px;
+        height: 30px;
+    }
+
+    #edit-review-modal .btn-cancel,
+    #edit-review-modal .btn-save {
+        padding: 9px 20px;
+        font-size: 14px;
+    }
+
+    /* YouTube */
+    .socials a img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 50px !important;
+        margin-top: 4px !important;
+    }
+}
+
+/* ========== ТЕЛЕФОНЫ (до 768px) ========== */
+@media (max-width: 768px) {
+    .menu-btn {
+        bottom: 0 !important;
+        left: 0 !important;
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+
+    /* Шапка */
+    body {
+        padding-top: 60px;
+    }
+
+    .navbar .nav-container {
+        padding: 0.5rem 4%;
+        gap: 10px;
+        justify-content: center;
+    }
+
+    .logo {
+        order: 1 !important;
+        width: auto;
+    }
+
+    .logo span {
+        font-size: 1.2rem;
+    }
+
+    .logo img {
+        height: 40px;
+        width: 56px;
+    }
+
+    .favorite-wrapper {
+        order: 2 !important;
+        font-size: 24px;
+        margin-right: 0;
+        margin-left: 0;
+    }
+
+    .auth-buttons {
+        order: 3;
+        width: 100%;
+        gap: 12px;
+        margin: 12px 0 12px 0;
+    }
+
+    .search-box {
+        order: 4;
+        height: 38px;
+    }
+
+    .search-input {
+        font-size: 14px;
+    }
+
+    /* Личная страница */
+    .box {
+        margin-top: 200px;
+        padding: 15px 12px;
+        width: 92%;
+    }
+
+    .image-section {
+        max-width: 480px;
+    }
+
+    .image-flip-container {
+        height: 320px;
+    }
+
+    .gallery-main {
+        height: 320px;
+    }
+
+    .gallery-thumbnails {
+        gap: 8px;
+        margin-top: 10px;
+    }
+
+    .thumbnail {
+        width: 65px;
+        height: 50px;
+    }
+
+    .favorite-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
+    .expand-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+    }
+
+    .map-btn, .menu-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    .details-section {
+        max-width: 100%;
+    }
+
+    .details-section h1 {
+        font-size: 24px;
+    }
+
+    .details-section p {
+        font-size: 15px;
+    }
+
+    .contact-info, .address-info {
+        font-size: 14px;
+    }
+
+    .tags-section {
+        width: 97%;
+        margin-top: 20px;
+        padding: 15px 0;
+    }
+
+    .tags-section h3 {
+        font-size: 18px;
+    }
+
+    .tags-container {
+        max-width: 100%;
+    }
+
+    .tag {
+        font-size: 12px;
+        padding: 5px 12px;
+    }
+
+    .tags-scroll-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .reviews {
+        margin: 20px 0 15px;
+        padding: 20px 0;
+    }
+
+    .reviews h2 {
+        font-size: 20px;
+    }
+
+    .review-container {
+        max-width: 100%;
+    }
+
+    .review-list {
+        gap: 12px;
+        padding: 10px 5px;
+    }
+
+    .review-card {
+        min-width: 270px;
+        width: 270px;
+        padding: 12px;
+    }
+
+    .review-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .avatar {
+        width: 38px;
+        height: 38px;
+    }
+
+    .name {
+        font-size: 14px;
+    }
+
+    .review-rating img {
+        width: 16px;
+        height: 16px;
+    }
+
+    .comment-text {
+        font-size: 13px;
+    }
+
+    .scroll-button {
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+    }
+
+    .scroll-button.left {
+        left: -12px;
+    }
+
+    .scroll-button.right {
+        right: -12px;
+    }
+
+    /* Модалки */
+    .modal-content {
+        max-height: 90vh;
+        border-radius: 20px 20px 0 0;
+        animation: slideUp 0.3s ease-out;
+    }
+
+    #full-review-modal .modal-content {
+        width: 95%;
+        padding: 18px;
+    }
+
+    #review-modal.show .modal-content,
+    #full-review-modal.show .modal-content,
+    #edit-review-modal.show .modal-content {
+        animation: slideUp 0.3s ease-out;
+    }
+
+    /* Модалка редактирования */
+    .form-buttons {
+        transform: none;
+    }
+
+    .modal {
+        display: flex;
+        flex-wrap: wrap;
+        align-content: center;
+    }
+
+    #edit-review-modal {
+        align-items: flex-end !important;
+    }
+
+    #edit-review-modal .modal-content {
+        padding: 20px 16px;
+        border-radius: 20px 20px 0 0;
+    }
+
+    #edit-review-modal h2 {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+
+    #edit-review-modal .form-group {
+        margin-bottom: 15px;
+    }
+
+    #edit-review-modal .form-group label {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+
+    #edit-review-modal #edit-comment {
+        width: 100%;
+        max-width: 465px !important;
+        padding: 10px;
+        font-size: 13px;
+        min-height: 100px;
+        border-radius: 6px;
+    }
+
+    #edit-stars {
+        gap: 6px;
+    }
+
+    #edit-stars .star img {
+        width: 28px;
+        height: 28px;
+    }
+
+    #edit-review-modal .form-buttons {
+        flex-direction: row;
+        gap: 45px;
+        margin-top: 20px;
+    }
+
+    #edit-review-modal .btn-cancel,
+    #edit-review-modal .btn-save {
+        flex: 1;
+        padding: 12px 60px;
+        font-size: 14px;
+        text-align: center;
+        border-radius: 8px;
+    }
+
+    /* Фильтры */
+    .filter-controls {
+        gap: 8px !important;
+    }
+
+    #filter-stars .star img {
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    .filter-btn img {
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    /* Подвал */
+    .footer {
+        padding: 2rem 4% 1rem;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        text-align: center;
+    }
+
+    .footer-section {
+        margin-bottom: 1rem;
+    }
+
+    .footer-section h3::after {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+    }
+
+    .socials {
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .socials a img {
+        width: 36px;
+        height: 36px;
+    }
+
+    .footer-section.contact p {
+        justify-content: center;
+    }
+
+    .footer-bottom {
+        padding-top: 1.5rem;
+        margin-top: 1.5rem;
+        font-size: 0.8rem;
+    }
+
+    /* YouTube */
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 44px !important;
+        margin-top: 3px !important;
+    }
+}
+
+/* ========== ОЧЕНЬ МАЛЕНЬКИЕ УСТРОЙСТВА (до 480px) ========== */
+@media (max-width: 480px) {
+    .menu-btn {
+        bottom: 0 !important;
+        left: 0 !important;
+        font-size: 11px;
+        padding: 5px 10px;
+    }
+
+    /* Шапка */
+    .logo span {
+        font-size: 1.1rem;
+    }
+
+    .logo img {
+        height: 35px;
+        width: 49px;
+    }
+
+    .favorite-wrapper {
+        order: 2 !important;
+        font-size: 22px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .auth-buttons {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .theme-bulb-container {
+        top: -8px !important;
+        left: 13px !important;
+        transform: scale(1.5) !important;
+    }
+
+    /* Личная страница */
+    .box {
+        margin-top: 200px;
+        padding: 12px 8px;
+        width: 95%;
+    }
+
+    .image-section {
+        max-width: 100%;
+    }
+
+    .image-flip-container {
+        height: 260px;
+    }
+
+    .gallery-main {
+        height: 260px;
+    }
+
+    .thumbnail {
+        width: 55px;
+        height: 42px;
+    }
+
+    .favorite-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+
+    .expand-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 16px;
+    }
+
+    .schedule-content {
+        min-width: 150px;
+        font-size: 11px;
+        padding: 8px 10px;
+    }
+
+    .details-section h1 {
+        font-size: 20px;
+    }
+
+    .details-section p {
+        font-size: 14px;
+    }
+
+    .contact-info, .address-info {
+        font-size: 13px;
+    }
+
+    .tags-section h3 {
+        font-size: 16px;
+    }
+
+    .tag {
+        font-size: 11px;
+        padding: 4px 10px;
+    }
+
+    .reviews h2 {
+        font-size: 18px;
+    }
+
+    .review-card {
+        min-width: 240px;
+        width: 240px;
+        padding: 10px;
+    }
+
+    .avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .review-rating img {
+        width: 14px;
+        height: 14px;
+    }
+
+    .comment-text {
+        font-size: 12px;
+    }
+
+    .scroll-button {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+
+    .scroll-button.left {
+        left: -8px;
+    }
+
+    .scroll-button.right {
+        right: -8px;
+    }
+
+    #yandex-map {
+        height: 250px !important;
+    }
+
+    .back-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    /* Фильтры */
+    .filter-controls {
+        gap: 5px !important;
+    }
+
+    #filter-stars .star img {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .filter-btn img {
+        width: 20px !important;
+        height: 20px !important;
+    }
+
+    /* Модалка редактирования */
+    .form-buttons {
+        transform: none;
+    }
+
+    .modal {
+        display: flex;
+        flex-wrap: wrap;
+        align-content: center;
+    }
+
+    #edit-review-modal .modal-content {
+        padding: 18px 14px;
+    }
+
+    #edit-review-modal h2 {
+        font-size: 16px;
+        margin-bottom: 12px;
+    }
+
+    #edit-review-modal .form-group label {
+        font-size: 13px;
+    }
+
+    #edit-review-modal #edit-comment {
+        width: 100%;
+        min-width: 245px !important;
+        padding: 8px;
+        font-size: 12px;
+        min-height: 90px;
+    }
+
+    #edit-stars {
+        gap: 4px;
+    }
+
+    #edit-stars .star img {
+        width: 26px;
+        height: 26px;
+    }
+
+    #edit-review-modal .form-buttons {
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    #edit-review-modal .btn-cancel,
+    #edit-review-modal .btn-save {
+        padding: 10px 30px;
+        font-size: 13px;
+    }
+
+    /* Подвал */
+    .socials a img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .socials {
+        gap: 12px;
+    }
+
+    /* YouTube */
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 40px !important;
+        margin-top: 3px !important;
+    }
+}
+
+/* ========== iPhone SE и подобные (до 380px и высота до 700px) ========== */
+@media (max-width: 380px) and (max-height: 700px) {
+    .box {
+        margin-top: 210px;
+        padding: 10px 8px;
+    }
+
+    .image-flip-container {
+        height: 230px;
+    }
+
+    .gallery-main {
+        height: 230px;
+    }
+
+    .details-section h1 {
+        font-size: 18px;
+    }
+
+    .review-card {
+        min-width: 220px;
+        width: 220px;
+    }
+
+    .logo span {
+        font-size: 1rem;
+    }
+
+    .logo img {
+        height: 30px;
+        width: 42px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    /* Модалка */
+    .form-buttons {
+        transform: none;
+    }
+
+    .modal {
+        display: flex;
+        flex-wrap: wrap;
+        align-content: center;
+    }
+
+    #edit-review-modal .modal-content {
+        padding: 15px 12px;
+    }
+
+    #edit-stars .star img {
+        width: 24px;
+        height: 24px;
+    }
+
+    #edit-review-modal #edit-comment {
+        width: 100%;
+        min-height: 80px;
+    }
+
+    #edit-review-modal .btn-cancel,
+    #edit-review-modal .btn-save {
+        padding: 8px 60px;
+        font-size: 12px;
+    }
+}
+
+/* ========== 1024px (iPad Pro) ========== */
+@media (max-width: 1024px) {
+    #edit-comment {
+        width: 100% !important;
+        max-width: 440px !important;
+    }
+}
+
+/* ========== 425px ========== */
+@media (max-width: 425px) {
+    .btn-save {
+        padding: 10px 40px;
+    }
+
+    #edit-comment {
+        width: 100% !important;
+    }
+}
+
+/* ========== 375px ========== */
+@media (max-width: 375px) {
+    #edit-comment {
+        width: 100% !important;
+    }
+}
+
+/* ========== 320px ========== */
+@media (max-width: 320px) {
+    #edit-comment {
+        width: 100% !important;
+    }
 }

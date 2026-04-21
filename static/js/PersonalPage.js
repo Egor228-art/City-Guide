@@ -466,3 +466,199 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// ==============================================
+// МОБИЛЬНЫЙ ПОРЯДОК ФИЛЬТРОВ + СВАЙП
+// ==============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Применяем мобильный порядок только если нужно
+    applyMobileFilterOrder();
+
+    // Отслеживаем изменение размера окна
+    window.addEventListener('resize', function() {
+        applyMobileFilterOrder();
+    });
+
+    // Добавляем свайп для отзывов
+    initReviewSwipe();
+});
+
+// Функция применения мобильного порядка фильтров
+function applyMobileFilterOrder() {
+    const isMobile = window.innerWidth <= 992;
+
+    if (!isMobile) {
+        // На десктопе ничего не меняем
+        return;
+    }
+
+    const filterControls = document.querySelector('.filter-controls');
+    if (!filterControls) return;
+
+    // Проверяем, не применили ли мы уже изменения
+    if (filterControls.hasAttribute('data-mobile-order')) {
+        return; // Уже применено
+    }
+
+    // Получаем элементы
+    const starsFilter = document.getElementById('filter-stars');
+    const reactionFilters = document.querySelector('.reaction-filters');
+    const label = filterControls.querySelector('label');
+
+    if (!starsFilter || !reactionFilters) return;
+
+    // Получаем кнопки
+    const likeBtn = reactionFilters.querySelector('.filter-btn[data-type="likes"]');
+    const dislikeBtn = reactionFilters.querySelector('.filter-btn[data-type="dislikes"]');
+
+    if (!likeBtn || !dislikeBtn) return;
+
+    // Очищаем контейнер
+    filterControls.innerHTML = '';
+
+    // Добавляем label если есть
+    if (label) {
+        filterControls.appendChild(label.cloneNode(true));
+    }
+
+    // 1. Лайк
+    const likeClone = likeBtn.cloneNode(true);
+    filterControls.appendChild(likeClone);
+
+    // 2. Звёзды
+    const starsClone = starsFilter.cloneNode(true);
+    starsClone.id = 'filter-stars';
+    filterControls.appendChild(starsClone);
+
+    // 3. Дизлайк
+    const dislikeClone = dislikeBtn.cloneNode(true);
+    filterControls.appendChild(dislikeClone);
+
+    // Отмечаем что применили
+    filterControls.setAttribute('data-mobile-order', 'true');
+
+    // Перепривязываем обработчики
+    rebindMobileFilters(starsClone, likeClone, dislikeClone);
+
+    console.log('✅ Мобильный порядок фильтров: лайк → звёзды → дизлайк');
+}
+
+// Перепривязка обработчиков для мобильной версии
+function rebindMobileFilters(starsContainer, likeBtn, dislikeBtn) {
+    // Звёзды
+    const stars = starsContainer.querySelectorAll('.star');
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const value = parseInt(this.getAttribute('data-value'));
+
+            if (typeof currentFilter !== 'undefined') {
+                if (currentFilter === value) {
+                    currentFilter = 0;
+                    stars.forEach(s => {
+                        const img = s.querySelector('img');
+                        if (img) img.src = PATHS.starInactive;
+                    });
+                } else {
+                    currentFilter = value;
+                    stars.forEach((s, index) => {
+                        const starValue = index + 1;
+                        const img = s.querySelector('img');
+                        if (img) {
+                            img.src = starValue <= value ? PATHS.starActive : PATHS.starInactive;
+                        }
+                    });
+                }
+            }
+
+            if (typeof filterReviewsByRating === 'function') {
+                filterReviewsByRating(currentFilter);
+            }
+        });
+    });
+
+    // Лайк
+    likeBtn.addEventListener('click', function() {
+        handleReactionFilter('likes', this);
+    });
+
+    // Дизлайк
+    dislikeBtn.addEventListener('click', function() {
+        handleReactionFilter('dislikes', this);
+    });
+}
+
+// Обработчик фильтра реакций
+function handleReactionFilter(type, btn) {
+    const allReactionBtns = document.querySelectorAll('.filter-btn[data-type]');
+
+    allReactionBtns.forEach(b => b.classList.remove('active'));
+
+    if (typeof currentFilters !== 'undefined') {
+        if (currentFilters.reaction === type) {
+            currentFilters.reaction = 'none';
+        } else {
+            currentFilters.reaction = type;
+            btn.classList.add('active');
+        }
+    } else {
+        btn.classList.add('active');
+    }
+
+    if (typeof applyFilters === 'function') {
+        applyFilters();
+    }
+}
+
+// ========== СВАЙП ДЛЯ ОТЗЫВОВ ==========
+function initReviewSwipe() {
+    const reviewList = document.getElementById('review-list');
+    if (!reviewList) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isScrolling = false;
+
+    reviewList.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+        isScrolling = false;
+    }, { passive: true });
+
+    reviewList.addEventListener('touchmove', function(e) {
+        if (!touchStartX || !touchStartY) return;
+
+        const deltaX = Math.abs(e.changedTouches[0].screenX - touchStartX);
+        const deltaY = Math.abs(e.changedTouches[0].screenY - touchStartY);
+
+        if (deltaY > deltaX && deltaY > 10) {
+            isScrolling = true;
+        }
+    }, { passive: true });
+
+    reviewList.addEventListener('touchend', function(e) {
+        if (!touchStartX || !touchStartY || isScrolling) {
+            touchStartX = 0;
+            touchStartY = 0;
+            return;
+        }
+
+        const touchEndX = e.changedTouches[0].screenX;
+        const deltaX = touchEndX - touchStartX;
+
+        if (Math.abs(deltaX) > 50) {
+            const scrollAmount = 300;
+
+            if (deltaX > 0) {
+                reviewList.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            } else {
+                reviewList.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            }
+        }
+
+        touchStartX = 0;
+        touchStartY = 0;
+    });
+
+    console.log('✅ Свайп для отзывов активирован');
+}

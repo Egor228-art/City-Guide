@@ -384,11 +384,11 @@ body {
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 5px 10px;
+    padding: 4px 10px;
     border-radius: 20px;
     background: white;
     /* 3D-эффект как в category-grid, но с акцентом */
-    box-shadow: 0 0 0 2px #f8f8f8, 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 2px #f8f8f8, 0 0 0 2px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     transform-style: preserve-3d;
     cursor: pointer;
@@ -397,7 +397,7 @@ body {
 [data-theme="dark"] .btn-admin {
     background-color: var(--white);
     color: var(--black);
-    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1), 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1), 0 0 0 2px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 /* Дополнительный акцент для аватара */
@@ -1717,7 +1717,7 @@ body.no-scroll {
     }
 
     .restaurants-container {
-        margin: 170px auto 10px !important;
+        margin: 210px auto 10px !important;
     }
 
     .image-wrapper {
