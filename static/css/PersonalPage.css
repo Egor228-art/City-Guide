@@ -2752,6 +2752,7 @@ body.no-scroll {
 /* =========================================== ЛАМПОЧКА ТЁМНОГО РЕЖИМА ============================================== */
 
 .theme-bulb-container {
+    left: 60px;
     top: -35px;
     position: relative;
     height: 60px;
@@ -3018,7 +3019,7 @@ body.no-scroll {
 .theme-bulb-container {
     position: fixed !important;
     top: 15px !important;
-    left: 15px !important;
+    left: 60px !important;
     z-index: 1001 !important;
     transform: scale(1) !important;
 }
@@ -3095,7 +3096,7 @@ body.no-scroll {
     .theme-bulb-container {
         position: relative !important;
         top: -35px !important;
-        left: auto !important;
+        left: 60px !important;
         right: auto !important;
         transform: scale(1.2) !important;
         margin-left: 10px;
@@ -3128,7 +3129,7 @@ body.no-scroll {
     }
 
     .favorite-wrapper {
-        order: 3;
+        margin-left: 0 !important;
     }
 
     /* Личная страница */

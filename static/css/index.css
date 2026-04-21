@@ -1625,6 +1625,7 @@ body.no-scroll {
 /* =========================================== ЛАМПОЧКА ТЁМНОГО РЕЖИМА ============================================== */
 
 .theme-bulb-container {
+    left: 60px;
     top: -35px;
     position: relative;
     height: 60px;
@@ -1844,6 +1845,10 @@ body.no-scroll {
 /* АДАПТАЦИЯ ГЛАВНОЙ СТРАНИЦЫ                     */
 /* ============================================== */
 
+.favorites-wrapper {
+    display: contents;
+}
+
 /* По умолчанию цепочка скрыта (покажется только на десктопах) */
 .theme-chain-container {
     display: none;
@@ -1853,7 +1858,7 @@ body.no-scroll {
 .theme-bulb-container {
     position: fixed !important;
     top: 15px !important;
-    left: 15px !important;
+    left: 60px !important;
     z-index: 1001 !important;
     transform: scale(1) !important;
 }
@@ -1863,7 +1868,7 @@ body.no-scroll {
     .theme-bulb-container {
         position: relative !important;
         top: -35px !important;
-        left: auto !important;
+        left: 60px !important;
         transform: scale(1.2) !important;
     }
 
@@ -1883,23 +1888,25 @@ body.no-scroll {
     }
 
     .logo {
-        order: 1;
-        width: 100%;
-        justify-content: center;
-        margin-bottom: 10px;
+        order: 1 !important;
+        width: auto !important;
+        justify-content: flex-start !important;
+        margin-bottom: 0 !important;
+        flex: 0 1 auto !important;
     }
 
     /* Кнопки входа/регистрации под логотипом, по центру */
     .auth-buttons {
-        order: 2;
+        order: 3;
         width: 100%;
         justify-content: center;
         margin: 0 0 15px 0;
     }
 
     .favorite-wrapper {
-        order: 3;
-        margin-right: 10px;
+        order: 2 !important;
+        margin-right: 0 !important;
+        margin-left: 0 !important;
     }
 
     .search-box {
@@ -2050,6 +2057,22 @@ body.no-scroll {
 
     .navbar .nav-container {
         padding: 0.5rem 4%;
+        gap: 8px;
+    }
+
+    .logo {
+        order: 1 !important;
+        width: auto !important;
+        justify-content: flex-start !important;
+        margin-bottom: 0 !important;
+        flex: 0 1 auto !important;
+    }
+
+    .favorite-wrapper {
+        order: 2 !important;
+        font-size: 24px;
+        margin-right: 0 !important;
+        margin-left: 0 !important;
     }
 
     .logo span {
