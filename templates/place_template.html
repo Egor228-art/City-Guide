@@ -77,6 +77,78 @@
                               ❤
                             </button>
 
+                        <script>
+// Инициализация кнопки избранного на странице заведения
+document.addEventListener('DOMContentLoaded', function() {
+    // Находим кнопку избранного
+    const favoriteBtn = document.querySelector('.favorite-btn, .js-favorite-btn');
+
+    if (favoriteBtn) {
+        const itemId = favoriteBtn.dataset.itemId;
+
+        // Проверяем состояние из localStorage
+        if (typeof checkSingleFavoriteButton === 'function') {
+            const isFavorite = checkSingleFavoriteButton(itemId);
+
+            if (isFavorite) {
+                favoriteBtn.classList.add('active');
+                console.log('✅ Заведение в избранном');
+            } else {
+                favoriteBtn.classList.remove('active');
+                console.log('❌ Заведение не в избранном');
+            }
+        } else {
+            // Fallback если функция не найдена
+            const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+            const isFavorite = favorites.some(fav => fav.id === itemId);
+
+            if (isFavorite) {
+                favoriteBtn.classList.add('active');
+            }
+        }
+    }
+
+    // Переопределяем функцию toggleFavorite для обновления UI
+    const originalToggle = window.toggleFavorite;
+    if (originalToggle) {
+        window.toggleFavorite = function(itemId, itemData, buttonElement) {
+            // Вызываем оригинальную функцию
+            originalToggle(itemId, itemData, buttonElement);
+
+            // Обновляем состояние кнопки
+            if (buttonElement) {
+                const favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+                const isFavorite = favorites.some(fav => fav.id === itemId);
+
+                if (isFavorite) {
+                    buttonElement.classList.add('active');
+                } else {
+                    buttonElement.classList.remove('active');
+                }
+            }
+        };
+    }
+});
+
+// Слушаем изменения в localStorage (если открыто несколько вкладок)
+window.addEventListener('storage', function(e) {
+    if (e.key === 'favorites') {
+        const favoriteBtn = document.querySelector('.favorite-btn, .js-favorite-btn');
+        if (favoriteBtn) {
+            const itemId = favoriteBtn.dataset.itemId;
+            const favorites = JSON.parse(e.newValue) || [];
+            const isFavorite = favorites.some(fav => fav.id === itemId);
+
+            if (isFavorite) {
+                favoriteBtn.classList.add('active');
+            } else {
+                favoriteBtn.classList.remove('active');
+            }
+        }
+    }
+});
+</script>
+
                             <!-- Кнопка развернуть галерею -->
                             <button class="expand-btn" onclick="expandGallery()">↗</button>
 

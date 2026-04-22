@@ -1,3 +1,10 @@
+// Проверяем, не на странице ли ошибки мы находимся
+if (document.querySelector('.error-page')) {
+    console.log('🛑 Detected error page - disabling header scroll');
+    // Заменяем initHeaderScroll на пустую функцию
+    window.initHeaderScroll = function() {};
+}
+
 // ==================== ОСНОВНЫЕ ПЕРЕМЕННЫЕ ====================
 let currentCategory = window.currentCategory;
 let currentPage = window.currentPage || 1;

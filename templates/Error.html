@@ -8,7 +8,7 @@
     <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/Error.css') }}">
 </head>
-<body>
+<body class="error-page">
 <!-- Объединенная навигация -->
 <nav class="navbar">
     <div class="nav-container">
@@ -154,9 +154,6 @@
     <script>
 // Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', function() {
-    // Добавляем класс для тела страницы
-    document.body.classList.add('error-page');
-
     // Обработчик для кнопки помощи
     const helpCircle = document.getElementById('helpCircle');
     const helpTooltip = document.getElementById('helpTooltip');

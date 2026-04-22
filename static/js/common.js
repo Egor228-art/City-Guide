@@ -938,3 +938,39 @@ window.addEventListener('storage', function(event) {
         }
     }
 });
+
+// ==============================================
+// ПРОВЕРКА СОСТОЯНИЯ КНОПКИ ИЗБРАННОГО
+// ==============================================
+
+function checkSingleFavoriteButton(itemId) {
+    try {
+        const favorites = getFavorites();
+        const isFavorite = favorites.some(fav => fav.id === itemId);
+
+        console.log(`🔍 Проверка избранного для ${itemId}: ${isFavorite}`);
+
+        return isFavorite;
+    } catch (error) {
+        console.error('Error checking favorite:', error);
+        return false;
+    }
+}
+
+function updateFavoriteButtonState(buttonElement, itemId) {
+    if (!buttonElement) return;
+
+    const isFavorite = checkSingleFavoriteButton(itemId);
+
+    if (isFavorite) {
+        buttonElement.classList.add('active');
+        console.log(`✅ Кнопка ${itemId} отмечена как избранное`);
+    } else {
+        buttonElement.classList.remove('active');
+        console.log(`❌ Кнопка ${itemId} не в избранном`);
+    }
+}
+
+// Экспортируем в глобальную область
+window.checkSingleFavoriteButton = checkSingleFavoriteButton;
+window.updateFavoriteButtonState = updateFavoriteButtonState;

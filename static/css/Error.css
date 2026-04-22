@@ -182,10 +182,10 @@ body {
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 5px 10px;
+    padding: 2px 9px;
     border-radius: 20px;
     background: rgba(255,255,255,0.1);
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.1), 0 5px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 0 0 0 rgba(255,255,255,0.1), 0 5px 15px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
     transform-style: preserve-3d;
     cursor: pointer;
@@ -414,30 +414,6 @@ body {
     }
 }
 
-/* Адаптивность для мобильных устройств */
-@media (max-width: 768px) {
-    .nav-container {
-        padding: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .search-box {
-        min-width: 200px;
-        margin: 1rem 0;
-        order: 3;
-        width: 100%;
-    }
-
-    .auth-buttons {
-        gap: 0.5rem;
-    }
-
-    .btn-login, .btn-register, .btn-logout {
-        padding: 0.4rem 1rem;
-        font-size: 14px;
-    }
-}
-
         @keyframes glow {
             from {
                 text-shadow:
@@ -625,6 +601,7 @@ body {
 .footer-section.contact p {
     display: flex;
     align-items: center;
+    flex-direction: column;
     margin-bottom: 1rem;
 }
 
@@ -1037,16 +1014,6 @@ body.no-scroll {
 .restaurant-card:nth-child(3) { animation-delay: 0.3s; }
 .restaurant-card:nth-child(4) { animation-delay: 0.4s; }
 
-@media (max-width: 768px) {
-    .restaurant-card {
-        flex-direction: column;
-    }
-
-    .image-wrapper {
-        width: 100%;
-        height: 200px;
-    }
-}
 /*-------------------------------------- Адаптация для мобильных и прочее --------------------------------------------*/
 
 
@@ -1324,38 +1291,6 @@ body.no-scroll {
     }
 }
 
-/* Адаптивность для страницы ошибки */
-@media (max-width: 768px) {
-    .error-code {
-        font-size: 5rem;
-        transform: rotate(1deg); /* Меньший поворот на мобильных */
-    }
-
-    .error-name {
-        font-size: 1.5rem;
-        transform: rotate(0.8deg); /* Меньший поворот на мобильных */
-    }
-
-    .error-content {
-        padding: 30px 20px;
-        margin: 20px;
-    }
-
-    .help-tooltip {
-        max-width: 280px;
-        right: 10px;
-        left: 10px;
-        margin: 0 auto;
-        transform: rotate(0.3deg); /* Меньший поворот на мобильных */
-    }
-
-    .help-tooltip::before {
-        right: 50%;
-        transform: translateX(50%) rotate(45deg);
-    }
-}
-
-
 
 
 
@@ -1517,7 +1452,7 @@ body.no-scroll {
     justify-content: center;
     cursor: pointer;
     font-weight: bold;
-    font-size: 1.5rem;
+    font-size: 1rem;
     z-index: 6;
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
     transition: all 0.3s ease;
@@ -1562,4 +1497,812 @@ body.no-scroll {
 .help-circle:hover + .help-tooltip,
 .help-tooltip:hover {
     display: block;
+}
+
+/* ============================================== */
+/* ИСПРАВЛЕННЫЙ ПОРЯДОК (DESKTOP-FIRST)           */
+/* ============================================== */
+
+/* 1. БАЗОВЫЕ СТИЛИ (ДЕСКТОП - САМЫЕ ПЕРВЫЕ) */
+.error-code {
+    top: 33%;
+    left: 33.5%;
+    font-size: 10rem;
+}
+
+.error-name {
+    top: 57%;
+    left: 60%;
+    font-size: 3rem;
+    transform: translate(-50%, -50%) rotate(11deg);
+}
+
+/* 2. ЭКРАНЫ ДО 1440px */
+@media (max-width: 1440px) {
+    .error-page {
+        min-height: 78vh;
+    }
+
+    .error-code {
+        top: 27%;
+        font-size: 8.8rem;
+    }
+
+    .error-name {
+        top: 47%;
+        left: 64%;
+        transform: translateX(-50%) rotate(12deg);
+        font-size: 2.8rem;
+    }
+
+    .help-circle {
+        top: 30%;
+    }
+
+    .help-tooltip {
+        top: 33%;
+    }
+}
+
+/* 3. ЭКРАНЫ ДО 1024px */
+@media (max-width: 1024px) {
+    .navbar {
+        font-size: 12.08px;
+    }
+
+    .error-page {
+        min-height: 48vh;
+    }
+
+    .error-code {
+        top: 19%;
+        font-size: 6.6rem;
+    }
+
+    .error-name {
+        top: 34%;
+        left: 64%;
+        transform: translateX(-50%) rotate(12deg);
+        font-size: 1.8rem;
+    }
+
+    .help-circle {
+        top: 22%;
+        width: 23px;
+        height: 23px;
+    }
+
+    .help-tooltip {
+        font-size: 13px;
+        display: none;
+        position: absolute;
+        top: 21.8%;
+        right: 41.2%;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        z-index: 7;
+        max-width: 350px;
+        text-align: left;
+        color: #333;
+        backdrop-filter: blur(10px);
+    }
+}
+
+/* 4. ПЛАНШЕТЫ (768px - 992px) */
+@media (min-width: 768px) and (max-width: 992px) {
+    .navbar .nav-container {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.8rem 5%;
+        gap: 10px;
+    }
+
+    .logo {
+        order: 1;
+        width: auto;
+        justify-content: flex-start;
+        margin-bottom: 0;
+        flex: 1;
+    }
+
+    .favorite-wrapper {
+        order: 2;
+        margin-right: 0;
+    }
+
+    .auth-buttons {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin: 10px 0 10px 0;
+    }
+
+    .search-box {
+        order: 4;
+        min-width: 100%;
+        margin: 0.5rem 0;
+    }
+
+
+    .socials a img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .error-page {
+        margin-top: 77px;
+        min-height: 29vh;
+    }
+
+    .error-code {
+        top: 15%;
+        font-size: 4.4rem;
+    }
+
+    .error-name {
+        top: 25%;
+        left: 48%;
+        font-size: 1.6rem;
+        transform: rotate(12deg);
+    }
+
+    .help-circle {
+        top: 17%;
+        width: 20px;
+        height: 20px;
+        font-size: 1rem;
+    }
+
+    .help-tooltip {
+        font-size: 13px;
+        display: none;
+        position: absolute;
+        top: 17%;
+        right: 30.1%;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        z-index: 7;
+        max-width: 350px;
+        text-align: left;
+        color: #333;
+        backdrop-filter: blur(10px);
+    }
+}
+
+/* 5. ТЕЛЕФОНЫ (до 767px) */
+@media (max-width: 767px) {
+    body {
+        padding-top: 60px;
+    }
+
+    .navbar .nav-container {
+        padding: 0.5rem 4%;
+        gap: 8px;
+    }
+
+    .logo {
+        order: 1;
+        width: auto;
+        justify-content: flex-start;
+        margin-bottom: 0;
+        flex: 1;
+    }
+
+    .logo span {
+        font-size: 1.2rem;
+    }
+
+    .logo img {
+        height: 40px;
+        width: 56px;
+    }
+
+    .favorite-wrapper {
+        order: 2;
+        font-size: 24px;
+        margin-right: 0;
+    }
+
+    .auth-buttons {
+        order: 3;
+        width: 100%;
+        gap: 12px;
+        margin: 8px 0 10px 0;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.4rem 1.2rem;
+        font-size: 0.9rem;
+    }
+
+    .search-box {
+        order: 4;
+        height: 38px;
+        min-width: 100%;
+    }
+
+    /* Страница ошибки - НЕ фиксированная */
+    .error-page {
+        overflow: visible;
+        background: #000;
+    }
+
+    /* Контейнер фона - absolute внутри relative родителя */
+    .error-page {
+        position: relative;
+    }
+
+    .background-container {
+        position: absolute !important;
+        top: 0;
+        left: 0;
+        width: 110% !important;
+        height: 85vh !important;
+        z-index: 1;
+        overflow: hidden !important;
+    }
+
+    /* Изображение - растягиваем и центрируем */
+    .background-img {
+        content: url('/static/Фотки зданий/404mob.png');
+        object-fit: cover !important;
+        object-position: center center !important;
+        width: 120% !important;
+        height: 120% !important;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    /* Затемнение */
+    .background-container::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Контейнер ошибки - относительное позиционирование */
+    .error-container {
+        position: relative !important;
+        width: 100%;
+        height: 60vh !important;  /* ← Такое же значение! */
+        min-height: auto !important;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+
+    /* Текст ошибки - абсолютное позиционирование внутри .error-container */
+    .error-code {
+        position: absolute !important;
+        top: 46% !important;
+        left: 55% !important;
+        transform: translate(-50%, -50%) !important;
+        font-size: 5.8rem !important;
+        z-index: 3;
+    }
+
+    .error-name {
+        position: absolute !important;
+        top: 53% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        font-size: 1.6rem !important;
+        white-space: nowrap;
+        z-index: 3;
+    }
+
+    .help-circle {
+        position: absolute !important;
+        top: 36% !important;
+        left: 37% !important;
+        right: auto !important;
+        transform: translateX(-50%) !important;
+        pointer-events: auto !important;
+        z-index: 3;
+    }
+
+    /* Тултип */
+    .help-tooltip {
+        position: fixed;
+        top: auto !important;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-width: 100%;
+        margin: 0;
+        padding: 25px 20px;
+        border-radius: 20px 20px 0 0;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.3);
+        transform: translateY(100%);
+        transition: transform 0.3s ease-out;
+        z-index: 1000;
+    }
+    .help-tooltip.show {
+        transform: translateY(0) !important;
+    }
+    .help-tooltip:not(.show) {
+        display: none !important;
+        transform: translateY(100%) !important;
+    }
+
+    .help-tooltip.show {
+        transform: translateY(0);
+    }
+
+    /* Дождь */
+    .rain-drop {
+        height: 20px;
+        opacity: 0.25;
+    }
+
+    /* Подвал - обычный поток */
+    .footer {
+        position: relative;
+        z-index: 10;
+        margin-top: 0;
+    }
+
+    .skyscrapers {
+        position: relative;
+        z-index: 9;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        text-align: center;
+    }
+
+    .footer-section h3::after {
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+    }
+
+    .socials {
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .socials a img {
+        width: 36px;
+        height: 36px;
+    }
+}
+
+/* 6. МАЛЕНЬКИЕ ТЕЛЕФОНЫ (до 480px) */
+@media (max-width: 480px) {
+    .logo span {
+        font-size: 1rem;
+    }
+
+    .logo img {
+        height: 35px;
+        width: 49px;
+    }
+
+    .favorite-wrapper {
+        font-size: 22px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .auth-buttons {
+        gap: 8px;
+    }
+
+    .socials a img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .error-code {
+        font-size: 4.5rem;
+    }
+
+    .error-name {
+        font-size: 1.5rem;
+    }
+
+    .help-circle {
+        width: 25px;
+        height: 25px;
+        font-size: 1rem;
+    }
+
+    .help-tooltip {
+        padding: 20px 16px;
+    }
+
+    .help-tooltip h4 {
+        font-size: 16px;
+    }
+
+    .help-tooltip li {
+        font-size: 13px;
+    }
+}
+
+/* 7. ДО 425px */
+@media (max-width: 425px) {
+    .error-page {
+        margin-top: 50px;
+        min-height: 40vh;
+    }
+
+    .error-code {
+        top: 27%;
+        position: fixed;
+        font-size: 8.8rem;
+    }
+
+    .error-name {
+        top: 64% !important;
+        left: 55% !important;
+        position: fixed;
+        transform: translateX(-50%) rotate(12deg);
+        font-size: 2.8rem;
+    }
+
+    .help-circle {
+        position: fixed;
+        top: 30%;
+    }
+
+    .help-tooltip {
+        position: absolute;
+        top: auto !important;
+        bottom: -40px;
+        left: 0;
+        right: -42px;
+        max-width: 100%;
+        margin: 0 30px;
+        padding: 25px 20px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.3);
+        transform: translateY(100%);
+        transition: transform 0.3s ease-out;
+        z-index: 1000;
+    }
+    .help-tooltip.show {
+        transform: translateY(0) !important;
+    }
+    .help-tooltip:not(.show) {
+        display: none !important;
+        transform: translateY(100%) !important;
+    }
+
+    .footer, .skyscrapers {
+        width: 110% !important;
+    }
+}
+
+/* 8. iPhone SE (до 380px) */
+@media (max-width: 380px) {
+    .error-code {
+        font-size: 3.5rem;
+    }
+
+    .error-name {
+        font-size: 1.3rem;
+    }
+
+    .help-circle {
+        top: 34% !important;
+        left: 36% !important;
+        font-size: 1rem;
+    }
+
+    .help-tooltip {
+        padding: 18px 14px;
+    }
+
+    .help-tooltip li {
+        font-size: 12px;
+    }
+}
+
+/* 9. ОЧЕНЬ МАЛЕНЬКИЕ (до 320px) */
+@media (max-width: 320px) {
+    .error-code {
+        font-size: 3rem;
+    }
+
+    .error-name {
+        font-size: 1.1rem;
+    }
+
+    .help-circle {
+        top: 35% !important;
+        left: 32% !important;
+    }
+}
+
+/* 11. БОЛЬШИЕ ЭКРАНЫ (≥ 1441px) */
+@media (min-width: 1441px) {
+    .error-code {
+        font-size: 10rem;
+    }
+
+    .error-name {
+        font-size: 3.5rem;
+    }
+
+    .help-circle {
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+    }
+
+    .help-tooltip {
+        max-width: 400px;
+        padding: 25px 30px;
+    }
+}
+
+/* ============================================== */
+/* ШАПКА И ПОДВАЛ (ТОЧНО КАК В PERSONALPAGE.CSS)  */
+/* ============================================== */
+
+.favorites-wrapper {
+    display: contents;
+}
+
+/* ========== ДЕСКТОПЫ (от 993px) ========== */
+@media (min-width: 993px) {
+    .navbar .nav-container {
+        justify-content: space-between;
+    }
+
+    .logo {
+        width: auto;
+        justify-content: flex-start;
+        margin-bottom: 0;
+    }
+
+    .auth-buttons {
+        width: auto;
+        justify-content: flex-end;
+        margin: 0;
+    }
+
+    .search-box {
+        min-width: 500px;
+        margin: 0 2rem;
+    }
+
+    .favorite-wrapper {
+        margin-left: 0 !important;
+    }
+}
+
+/* ========== LAPTOP 1024-1200px ========== */
+@media (min-width: 993px) and (max-width: 1200px) {
+    .navbar .nav-container {
+        padding: 0.6rem 3%;
+    }
+
+    .logo span {
+        font-size: 1.2rem;
+    }
+
+    .logo img {
+        height: 42px;
+        width: 59px;
+    }
+
+    .search-box {
+        min-width: 350px;
+        margin: 0 1rem;
+        height: 36px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.35rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .auth-buttons {
+        gap: 0.6rem;
+    }
+
+    .footer {
+        padding: 2.5rem 4% 1rem;
+    }
+
+    .footer-content {
+        gap: 1.5rem;
+    }
+
+    .socials a img {
+        width: 38px;
+        height: 38px;
+    }
+}
+
+/* ========== 1440-2559px ========== */
+@media (min-width: 1440px) and (max-width: 2559px) {
+    .footer-content {
+        max-width: 1300px;
+    }
+
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 54px !important;
+        margin-top: 6px !important;
+    }
+}
+
+/* ========== 4K (от 2560px) ========== */
+@media (min-width: 2560px) {
+    .nav-container {
+        max-width: 1800px;
+    }
+
+    .logo span {
+        font-size: 2rem;
+    }
+
+    .logo img {
+        height: 70px;
+        width: 98px;
+    }
+
+    .search-box {
+        min-width: 700px;
+        height: 50px;
+    }
+
+    .footer {
+        padding: 4rem 5% 2rem;
+    }
+
+    .footer-content {
+        max-width: 1800px;
+    }
+
+    .footer-section h3 {
+        font-size: 1.5rem;
+    }
+
+    .socials a img {
+        width: 50px;
+        height: 50px;
+    }
+
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 65px !important;
+        margin-top: 8px !important;
+    }
+}
+
+/* ========== ПЛАНШЕТЫ (до 992px) ========== */
+@media (max-width: 992px) {
+    .navbar .nav-container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        padding: 0.8rem 5%;
+        gap: 10px;
+    }
+
+    .logo {
+        order: 1 !important;
+        width: auto !important;
+        justify-content: flex-start !important;
+        margin-bottom: 0 !important;
+        flex: 0 1 auto !important;
+    }
+
+    .favorite-wrapper {
+        order: 2 !important;
+        margin-right: 0 !important;
+        margin-left: 0 !important;
+    }
+
+    .auth-buttons {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin: 15px 0 15px 0;
+    }
+
+    .search-box {
+        order: 4;
+        min-width: 100%;
+        margin: 0.5rem 0;
+    }
+
+    .socials a img {
+        width: 40px;
+        height: 40px;
+    }
+
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 50px !important;
+        margin-top: 4px !important;
+    }
+}
+/* ========== ОЧЕНЬ МАЛЕНЬКИЕ УСТРОЙСТВА (до 480px) ========== */
+@media (max-width: 480px) {
+    .logo span {
+        font-size: 1rem;
+    }
+
+    .logo img {
+        height: 35px;
+        width: 49px;
+    }
+
+    .favorite-wrapper {
+        font-size: 22px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.3rem 0.8rem;
+        font-size: 0.8rem;
+    }
+
+    .auth-buttons {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .socials a img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .socials {
+        gap: 12px;
+    }
+
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 40px !important;
+        margin-top: 3px !important;
+    }
+}
+
+/* ========== iPhone SE и подобные (до 380px) ========== */
+@media (max-width: 380px) {
+    .logo span {
+        font-size: 0.9rem;
+    }
+
+    .logo img {
+        height: 30px;
+        width: 42px;
+    }
+
+    .favorite-wrapper {
+        font-size: 20px;
+    }
+
+    .btn-login, .btn-register {
+        padding: 0.25rem 0.6rem;
+        font-size: 0.75rem;
+    }
 }

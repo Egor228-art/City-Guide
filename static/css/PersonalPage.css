@@ -3017,7 +3017,7 @@ body.no-scroll {
 }
 
 .theme-bulb-container {
-    position: fixed !important;
+    position: absolute !important;
     top: 15px !important;
     left: 60px !important;
     z-index: 1001 !important;
@@ -4315,5 +4315,772 @@ body.no-scroll {
 @media (max-width: 320px) {
     #edit-comment {
         width: 100% !important;
+    }
+}
+
+/* ============================================== */
+/* АДАПТАЦИЯ СТРАНИЦЫ ИЗБРАННОГО                  */
+/* ============================================== */
+
+/* Заголовок */
+.header {
+    margin-top: 30px;
+    text-align: center;
+    position: relative;
+}
+
+.header h1 {
+    color: var(--black);
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    position: relative;
+    display: inline-block;
+}
+
+.header h1::after {
+    content: "❤";
+    color: #ff4757;
+    margin-left: 10px;
+    font-size: 2rem;
+    animation: pulse 2s infinite;
+}
+
+.header p {
+    color: var(--gray-dark);
+    font-size: 1.1rem;
+}
+
+/* Карточка избранного */
+.favorite-item {
+    display: flex;
+    margin-bottom: 25px;
+    background-color: var(--white);
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #f8f8f8, 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    animation: fadeIn 0.5s ease forwards;
+    opacity: 0;
+}
+
+[data-theme="dark"] .favorite-item {
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1), 0 0 0 4px #cbcbcb0d, 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.favorite-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Изображение */
+.favorite-image-wrapper {
+    width: 300px;
+    height: 250px;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.favorite-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: all 0.5s ease;
+}
+
+.favorite-item:hover .favorite-image {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+}
+
+/* Информация */
+.favorite-info {
+    flex: 1;
+    padding: 20px 25px;
+    display: flex;
+    flex-direction: column;
+}
+
+.favorite-name {
+    font-size: 24px;
+    margin: 0 0 10px 0;
+    color: var(--black);
+    display: flex;
+    align-items: center;
+}
+
+.favorite-name::before {
+    content: "❤";
+    color: #ff4757;
+    margin-right: 10px;
+    font-size: 20px;
+}
+
+.favorite-description {
+    flex: 1;
+    margin: 0 0 15px 0;
+    color: var(--gray-dark);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+/* Контакты */
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.contact-item svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* Кнопка удаления */
+.remove-btn {
+    background: #ff4757;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 15px;
+    transition: all 0.3s ease;
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.remove-btn::before {
+    content: "×";
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.remove-btn:hover {
+    background: #ff6b81;
+    transform: scale(1.02);
+}
+
+/* Пустое состояние */
+.empty-state {
+    text-align: center;
+    padding: 50px 0;
+    color: var(--gray-dark);
+}
+
+.empty-state .icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    color: #ff4757;
+    animation: pulse 2s infinite;
+}
+
+.empty-state h2 {
+    font-size: 24px;
+    margin-bottom: 15px;
+    color: var(--black);
+}
+
+.empty-state p {
+    font-size: 16px;
+    max-width: 500px;
+    margin: 0 auto 20px;
+    line-height: 1.6;
+}
+
+.favorites-btn {
+    display: inline-block;
+    background-color: #ff4757;
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 12px 25px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.favorites-btn:hover {
+    background-color: #ff6b81;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Фон с сердечками */
+.hearts-background {
+    background-color: mistyrose;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+[data-theme="dark"] .hearts-background {
+    background-color: #1a0a0a;
+}
+
+.heart {
+    position: absolute;
+    color: #ff4757;
+    font-size: 40px;
+    animation: float 15s infinite linear;
+    opacity: 0.3;
+}
+
+[data-theme="dark"] .heart {
+    opacity: 0.15;
+}
+
+/* ============================================== */
+/* ПЛАНШЕТЫ (до 992px)                            */
+/* ============================================== */
+@media (max-width: 992px) {
+    .favorites-container {
+        margin: 140px auto 30px;
+        padding: 20px;
+        width: 95%;
+    }
+
+    .header h1 {
+        font-size: 2rem;
+    }
+
+    .header h1::after {
+        font-size: 1.6rem;
+    }
+
+    .header p {
+        font-size: 1rem;
+    }
+
+    .favorite-item {
+        flex-direction: row;
+        height: 200px;
+    }
+
+    .favorite-image-wrapper {
+        width: 250px;
+        height: 100%;
+    }
+
+    .favorite-info {
+        padding: 15px 20px;
+    }
+
+    .favorite-name {
+        font-size: 20px;
+    }
+
+    .favorite-name::before {
+        font-size: 18px;
+    }
+
+    .favorite-description {
+        font-size: 14px;
+        -webkit-line-clamp: 2;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .favorite-contacts {
+        font-size: 13px;
+        gap: 15px;
+    }
+
+    .contact-item svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .remove-btn {
+        padding: 8px 16px;
+        font-size: 13px;
+        margin-top: 10px;
+    }
+
+    .empty-state .icon {
+        font-size: 70px;
+    }
+
+    .empty-state h2 {
+        font-size: 22px;
+    }
+
+    .empty-state p {
+        font-size: 15px;
+    }
+}
+
+/* ============================================== */
+/* ТЕЛЕФОНЫ (до 768px)                            */
+/* ============================================== */
+@media (max-width: 768px) {
+    .favorites-container {
+        margin: 0 auto 25px;
+        padding: 15px;
+        width: 92%;
+    }
+
+    .header {
+        margin-top: 20px;
+    }
+
+    .header h1 {
+        font-size: 1.6rem;
+    }
+
+    .header h1::after {
+        font-size: 1.3rem;
+        margin-left: 6px;
+    }
+
+    .header p {
+        font-size: 0.9rem;
+    }
+
+    /* Карточки становятся вертикальными */
+    .favorite-item {
+        flex-direction: column !important;
+        height: auto !important;
+        margin-bottom: 20px;
+    }
+
+    .favorite-image-wrapper {
+        width: 100% !important;
+        height: 200px !important;
+    }
+
+    .favorite-info {
+        padding: 15px;
+    }
+
+    .favorite-name {
+        font-size: 18px;
+        margin-bottom: 8px;
+    }
+
+    .favorite-name::before {
+        font-size: 16px;
+        margin-right: 8px;
+    }
+
+    .favorite-description {
+        font-size: 13px;
+        margin-bottom: 12px;
+        -webkit-line-clamp: 3;
+    }
+
+    .favorite-contacts {
+        font-size: 12px;
+        gap: 10px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .contact-item {
+        gap: 6px;
+    }
+
+    .contact-item svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .remove-btn {
+        padding: 8px 14px;
+        font-size: 12px;
+        margin-top: 12px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .remove-btn::before {
+        font-size: 16px;
+    }
+
+    .empty-state {
+        padding: 30px 0;
+    }
+
+    .empty-state .icon {
+        font-size: 60px;
+        margin-bottom: 15px;
+    }
+
+    .empty-state h2 {
+        font-size: 20px;
+    }
+
+    .empty-state p {
+        font-size: 14px;
+        padding: 0 15px;
+    }
+
+    .favorites-btn {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+
+    /* Сердечки на фоне - меньше размер */
+    .heart {
+        font-size: 30px;
+    }
+}
+
+/* ============================================== */
+/* ОЧЕНЬ МАЛЕНЬКИЕ УСТРОЙСТВА (до 480px)          */
+/* ============================================== */
+@media (max-width: 480px) {
+    .favorites-container {
+        margin: 0 auto 20px;
+        padding: 12px;
+        width: 95%;
+    }
+
+    .header h1 {
+        font-size: 1.4rem;
+    }
+
+    .header h1::after {
+        font-size: 1.1rem;
+    }
+
+    .header p {
+        font-size: 0.85rem;
+    }
+
+    .favorite-image-wrapper {
+        height: 180px !important;
+    }
+
+    .favorite-info {
+        padding: 12px;
+    }
+
+    .favorite-name {
+        font-size: 16px;
+    }
+
+    .favorite-name::before {
+        font-size: 14px;
+    }
+
+    .favorite-description {
+        font-size: 12px;
+        -webkit-line-clamp: 2;
+    }
+
+    .favorite-contacts {
+        display: none !important;
+        font-size: 11px;
+        gap: 8px;
+    }
+
+    .contact-item svg {
+        width: 12px;
+        height: 12px;
+    }
+
+    .remove-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    .empty-state .icon {
+        font-size: 50px;
+    }
+
+    .empty-state h2 {
+        font-size: 18px;
+    }
+
+    .empty-state p {
+        font-size: 13px;
+    }
+
+    .favorites-btn {
+        padding: 8px 18px;
+        font-size: 13px;
+    }
+
+    .heart {
+        font-size: 25px;
+    }
+}
+
+/* ============================================== */
+/* iPhone SE и подобные (до 380px)                */
+/* ============================================== */
+@media (max-width: 380px) {
+    .favorites-container {
+        margin: 0 auto 15px;
+        padding: 10px;
+    }
+
+    .header h1 {
+        font-size: 1.3rem;
+    }
+
+    .header h1::after {
+        font-size: 1rem;
+    }
+
+    .favorite-image-wrapper {
+        height: 160px !important;
+    }
+
+    .favorite-name {
+        font-size: 15px;
+    }
+
+    .favorite-description {
+        font-size: 11px;
+    }
+
+    .favorite-contacts {
+        display: none !important;
+        font-size: 10px;
+    }
+
+    .remove-btn {
+        padding: 5px 10px;
+        font-size: 10px;
+    }
+
+    .heart {
+        font-size: 20px;
+    }
+}
+
+/* ============================================== */
+/* АНИМАЦИИ                                       */
+/* ============================================== */
+@keyframes float {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.3;
+    }
+    90% {
+        opacity: 0.3;
+    }
+    100% {
+        transform: translateY(-100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+[data-theme="dark"] @keyframes float {
+    10% {
+        opacity: 0.15;
+    }
+    90% {
+        opacity: 0.15;
+    }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Задержки для анимации карточек */
+.favorite-item:nth-child(1) { animation-delay: 0.1s; }
+.favorite-item:nth-child(2) { animation-delay: 0.2s; }
+.favorite-item:nth-child(3) { animation-delay: 0.3s; }
+.favorite-item:nth-child(4) { animation-delay: 0.4s; }
+.favorite-item:nth-child(5) { animation-delay: 0.5s; }
+.favorite-item:nth-child(6) { animation-delay: 0.6s; }
+.favorite-item:nth-child(7) { animation-delay: 0.7s; }
+.favorite-item:nth-child(8) { animation-delay: 0.8s; }
+.favorite-item:nth-child(9) { animation-delay: 0.9s; }
+.favorite-item:nth-child(10) { animation-delay: 1.0s; }
+
+/* ============================================== */
+/* ДЕСКТОПЫ (от 993px) - ВОССТАНОВЛЕНИЕ           */
+/* ============================================== */
+@media (min-width: 993px) {
+    .favorite-item {
+        flex-direction: row;
+        height: 250px;
+    }
+
+    .favorite-image-wrapper {
+        width: 300px;
+        height: 100%;
+    }
+
+    .favorite-info {
+        padding: 20px 25px;
+    }
+
+    .favorite-description {
+        -webkit-line-clamp: unset;
+        display: block;
+        overflow: visible;
+    }
+}
+
+/* ============================================== */
+/* LAPTOP (993px - 1200px)                        */
+/* ============================================== */
+@media (min-width: 993px) and (max-width: 1200px) {
+    .favorites-container {
+        max-width: 950px;
+    }
+
+    .favorite-item {
+        height: 220px;
+    }
+
+    .favorite-image-wrapper {
+        width: 260px;
+    }
+
+    .favorite-info {
+        padding: 18px 20px;
+    }
+
+    .favorite-name {
+        font-size: 22px;
+    }
+
+    .favorite-description {
+        font-size: 15px;
+    }
+}
+
+/* ============================================== */
+/* 1440px +                                        */
+/* ============================================== */
+@media (min-width: 1440px) {
+    .favorites-container {
+        max-width: 1300px;
+    }
+
+    .favorite-item {
+        height: 270px;
+    }
+
+    .favorite-image-wrapper {
+        width: 330px;
+    }
+
+    .favorite-name {
+        font-size: 26px;
+    }
+
+    .favorite-description {
+        font-size: 17px;
+    }
+
+    .favorite-contacts {
+        font-size: 16px;
+    }
+}
+
+/* ============================================== */
+/* 4K (2560px+)                                   */
+/* ============================================== */
+@media (min-width: 2560px) {
+    .favorites-container {
+        max-width: 1600px;
+    }
+
+    .header h1 {
+        font-size: 3.5rem;
+    }
+
+    .header p {
+        font-size: 1.5rem;
+    }
+
+    .favorite-item {
+        height: 350px;
+        margin-bottom: 35px;
+    }
+
+    .favorite-image-wrapper {
+        width: 450px;
+    }
+
+    .favorite-info {
+        padding: 30px 35px;
+    }
+
+    .favorite-name {
+        font-size: 32px;
+    }
+
+    .favorite-name::before {
+        font-size: 28px;
+    }
+
+    .favorite-description {
+        font-size: 20px;
+    }
+
+    .favorite-contacts {
+        font-size: 18px;
+        gap: 30px;
+    }
+
+    .contact-item svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .remove-btn {
+        padding: 14px 28px;
+        font-size: 18px;
+        margin-top: 20px;
+    }
+
+    .empty-state .icon {
+        font-size: 120px;
+    }
+
+    .empty-state h2 {
+        font-size: 36px;
+    }
+
+    .empty-state p {
+        font-size: 22px;
+    }
+
+    .favorites-btn {
+        padding: 18px 40px;
+        font-size: 20px;
+    }
+
+    .heart {
+        font-size: 60px;
     }
 }
