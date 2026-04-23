@@ -11,7 +11,30 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* ============================================== */
+/* ============================================== */
+/* ФИКС КАРТЫ В ADD_PLACE                          */
+/* ============================================== */
+.map-container {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+    min-height: 400px !important;
+}
+
+#map {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    height: 400px !important;
+    z-index: 1 !important;
+    position: relative !important;
+}
+
+/* Яндекс карта */
+.ymaps-2-1-79-map {
+    z-index: 1 !important;
+}
+/* ============================================== */
 /* ФИКС: КОНТЕНТ ПОВЕРХ MATRIX-OVERLAY             */
 /* ============================================== */
 
@@ -515,7 +538,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Проверяем доступность создания категорий
     const newCategoryInput = document.getElementById('newCategory');
     if (!newCategoryInput) {
-        newCategoryInput.addEventListener('input', toggleRequiredFields);
+        if (typeof toggleRequiredFields === 'function') {
+            newCategoryInput.addEventListener('input', toggleRequiredFields);
+        }
         console.log('🔒 Пользователь не имеет прав для создания новых категорий');
         // Делаем выбор категории обязательным для стажеров
         document.getElementById('existingCategory').required = true;
@@ -568,6 +593,17 @@ function initEventListeners() {
         }, 100);
     }
 }
+
+// Принудительно показываем карту
+document.addEventListener('DOMContentLoaded', function() {
+    const mapContainer = document.getElementById('map');
+    if (mapContainer) {
+        mapContainer.style.display = 'block';
+        mapContainer.style.visibility = 'visible';
+        mapContainer.style.zIndex = '1';
+        mapContainer.style.position = 'relative';
+    }
+});
 
 // ========== ГЕОКОДИРОВАНИЕ ==========
 function geocodeAddress() {
@@ -1428,6 +1464,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Создаем фон
     new MatrixBackground();
+});
+</script>
+<script>
+// ==============================================
+// ФИКС: ОТСУТСТВУЮЩАЯ ФУНКЦИЯ И ИНИЦИАЛИЗАЦИЯ КАРТЫ
+// ==============================================
+
+// Заглушка для отсутствующей функции
+function toggleRequiredFields() {
+    console.log('toggleRequiredFields called');
+    // Здесь может быть логика переключения обязательных полей
+}
+
+// Принудительная инициализация карты
+document.addEventListener('DOMContentLoaded', function() {
+    // Проверяем наличие контейнера карты
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) {
+        // Если контейнера нет — создаём его
+        const mapSection = document.querySelector('.map-container');
+        if (mapSection) {
+            const mapDiv = document.createElement('div');
+            mapDiv.id = 'map';
+            mapDiv.style.width = '100%';
+            mapDiv.style.height = '400px';
+            mapSection.appendChild(mapDiv);
+            console.log('✅ Контейнер карты создан');
+        }
+    }
+
+    // Переинициализируем карту если нужно
+    if (typeof ymaps !== 'undefined' && document.getElementById('map')) {
+        setTimeout(function() {
+            ymaps.ready(function() {
+                if (!window.map) {
+                    window.map = new ymaps.Map('map', {
+                        center: [58.5211, 31.2758],
+                        zoom: 13
+                    });
+
+                    window.map.events.add('click', function(e) {
+                        var coords = e.get('coords');
+                        setCoordinates(coords[0], coords[1]);
+                    });
+
+                    console.log('✅ Карта переинициализирована');
+                }
+            });
+        }, 500);
+    }
 });
 </script>
 </body>
