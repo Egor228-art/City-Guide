@@ -518,7 +518,7 @@ body {
     top: 180px; /* убираем фиксированный top */
     background-color: #1a1a1a;
     color: var(--white);
-    padding: 3rem 5% 1rem;
+    padding: 0 5% 1rem;
     position: relative;
     margin-top: 0;
 }
@@ -538,7 +538,7 @@ body {
 }
 
 .footer-section {
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
 }
 
 .footer-section h3 {
@@ -601,7 +601,6 @@ body {
 .footer-section.contact p {
     display: flex;
     align-items: center;
-    flex-direction: column;
     margin-bottom: 1rem;
 }
 
@@ -1742,7 +1741,7 @@ body.no-scroll {
         position: absolute !important;
         top: 0;
         left: 0;
-        width: 110% !important;
+        width: 100% !important;
         height: 85vh !important;
         z-index: 1;
         overflow: hidden !important;
@@ -1753,8 +1752,8 @@ body.no-scroll {
         content: url('/static/Фотки зданий/404mob.png');
         object-fit: cover !important;
         object-position: center center !important;
-        width: 120% !important;
-        height: 120% !important;
+        width: 100% !important;
+        height: 100% !important;
         position: absolute;
         top: 50%;
         left: 50%;
@@ -1775,7 +1774,7 @@ body.no-scroll {
     .error-container {
         position: relative !important;
         width: 100%;
-        height: 60vh !important;  /* ← Такое же значение! */
+        height: 54vh !important;  /* ← Такое же значение! */
         min-height: auto !important;
         z-index: 2;
         display: flex;
@@ -1788,27 +1787,27 @@ body.no-scroll {
     /* Текст ошибки - абсолютное позиционирование внутри .error-container */
     .error-code {
         position: absolute !important;
-        top: 46% !important;
-        left: 55% !important;
+        top: 46%;
+        left: 55%;
         transform: translate(-50%, -50%) !important;
-        font-size: 5.8rem !important;
+        font-size: 5.8rem;
         z-index: 3;
     }
 
     .error-name {
         position: absolute !important;
-        top: 53% !important;
-        left: 50% !important;
+        top: 53%;
+        left: 50%;
         transform: translate(-50%, -50%) !important;
-        font-size: 1.6rem !important;
+        font-size: 1.6rem;
         white-space: nowrap;
         z-index: 3;
     }
 
     .help-circle {
         position: absolute !important;
-        top: 36% !important;
-        left: 37% !important;
+        top: 36%;
+        left: 37%;
         right: auto !important;
         transform: translateX(-50%) !important;
         pointer-events: auto !important;
@@ -1923,9 +1922,9 @@ body.no-scroll {
     }
 
     .help-circle {
-        width: 25px;
-        height: 25px;
-        font-size: 1rem;
+        width: 22px;
+        height: 22px;
+        font-size: 0.8rem;
     }
 
     .help-tooltip {
@@ -1949,30 +1948,32 @@ body.no-scroll {
     }
 
     .error-code {
-        top: 27%;
+        left: 51%;
+        top: 56%;
         position: fixed;
-        font-size: 8.8rem;
+        font-size: 4.8rem;
     }
 
     .error-name {
-        top: 64% !important;
-        left: 55% !important;
+        top: 72% !important;
+        left: 48% !important;
         position: fixed;
         transform: translateX(-50%) rotate(12deg);
-        font-size: 2.8rem;
+        font-size: 1.5rem;
     }
 
     .help-circle {
         position: fixed;
-        top: 30%;
+        top: 47%;
+        left: 35%;
     }
 
     .help-tooltip {
         position: absolute;
         top: auto !important;
-        bottom: -40px;
+        bottom: -80px;
         left: 0;
-        right: -42px;
+        right: 0;
         max-width: 100%;
         margin: 0 30px;
         padding: 25px 20px;
@@ -1992,23 +1993,23 @@ body.no-scroll {
     }
 
     .footer, .skyscrapers {
-        width: 110% !important;
+        width: 100% !important;
+    }
+
+    .footer-section.contact p {
+        flex-direction: column;
     }
 }
 
 /* 8. iPhone SE (до 380px) */
 @media (max-width: 380px) {
-    .error-code {
-        font-size: 3.5rem;
-    }
-
     .error-name {
         font-size: 1.3rem;
     }
 
     .help-circle {
-        top: 34% !important;
-        left: 36% !important;
+        top: 46%;
+        left: 33%;
         font-size: 1rem;
     }
 
@@ -2024,16 +2025,16 @@ body.no-scroll {
 /* 9. ОЧЕНЬ МАЛЕНЬКИЕ (до 320px) */
 @media (max-width: 320px) {
     .error-code {
-        font-size: 3rem;
+        font-size: 4.6rem;
     }
 
     .error-name {
-        font-size: 1.1rem;
+        font-size: 1.2rem;
     }
 
     .help-circle {
-        top: 35% !important;
-        left: 32% !important;
+        top: 47%;
+        left: 30%;
     }
 }
 
@@ -2137,6 +2138,12 @@ body.no-scroll {
         width: 38px;
         height: 38px;
     }
+    .socials a img[alt="YouTube"],
+    .socials a img[src*="YT.png"] {
+        width: 40px;
+        margin-top: 5px !important;
+        height: 30px;
+    }
 }
 
 /* ========== 1440-2559px ========== */
@@ -2147,7 +2154,7 @@ body.no-scroll {
 
     .socials a img[alt="YouTube"],
     .socials a img[src*="YT.png"] {
-        width: 54px !important;
+        width: 40px;
         margin-top: 6px !important;
     }
 }
@@ -2241,8 +2248,9 @@ body.no-scroll {
 
     .socials a img[alt="YouTube"],
     .socials a img[src*="YT.png"] {
-        width: 50px !important;
-        margin-top: 4px !important;
+        width: 45px;
+        margin-top: 5px !important;
+        height: 32px;
     }
 }
 /* ========== ОЧЕНЬ МАЛЕНЬКИЕ УСТРОЙСТВА (до 480px) ========== */
@@ -2281,8 +2289,9 @@ body.no-scroll {
 
     .socials a img[alt="YouTube"],
     .socials a img[src*="YT.png"] {
-        width: 40px !important;
-        margin-top: 3px !important;
+        width: 40px;
+        height: 28px;
+        margin-top: 3px;
     }
 }
 

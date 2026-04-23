@@ -4,116 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Админ-панель{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='Фотки зданий/лого.png') }}" type="image/png">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Admin.css') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .sidebar {
-            width: 200px;
-            min-height: calc(100vh - 56px);
-            background: #2c3e50;
-        }
-        .sidebar .nav-link {
-            color: #ecf0f1;
-            padding: 12px 20px;
-            border-left: 4px solid transparent;
-        }
-        .sidebar .nav-link:hover {
-            background: #34495e;
-            border-left-color: #3498db;
-        }
-        .sidebar .nav-link.active {
-            background: #34495e;
-            border-left-color: #3498db;
-            color: #3498db;
-        }
-        .role-badge {
-            font-size: 0.7em;
-            padding: 3px 8px;
-        }
-        .stat-card {
-            transition: transform 0.2s;
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-        }
-        .col-md-9 {
-            margin-left: 60px !important;
-        }
-
-        /* Стили для тултипа возможностей */
-.role-tooltip-container {
-    position: relative;
-    display: inline-block;
-    cursor: pointer;
-}
-
-.role-tooltip {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1000;
-    min-width: 280px;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    margin-top: 10px;
-}
-
-.role-tooltip.show {
-    opacity: 1;
-    visibility: visible;
-    margin-top: 5px;
-}
-
-.role-tooltip::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 8px solid transparent;
-    border-bottom-color: white;
-}
-
-.role-tooltip-header {
-    font-weight: bold;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #eee;
-    color: #333;
-}
-
-.role-permissions-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.role-permission-item {
-    padding: 5px 0;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-}
-
-.role-permission-item::before {
-    content: '✓';
-    color: #28a745;
-    font-weight: bold;
-    flex-shrink: 0;
-}
-
-.role-badge {
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-    </style>
 </head>
 <body>
     <!-- Навбар -->
@@ -278,6 +172,462 @@ document.addEventListener('DOMContentLoaded', function() {
             roleTooltip.classList.remove('show');
         }
     });
+});
+</script>
+<script>
+// ==============================================
+// АНИМИРОВАННЫЙ ФОН "МАТРИЦА" ДЛЯ АДМИН-ПАНЕЛИ
+// ==============================================
+
+class MatrixBackground {
+    constructor() {
+        this.canvas = document.getElementById('matrixCanvas');
+        if (!this.canvas) {
+            this.canvas = document.createElement('canvas');
+            this.canvas.id = 'matrixCanvas';
+            document.body.prepend(this.canvas);
+        }
+
+        this.ctx = this.canvas.getContext('2d');
+        this.drops = [];
+        this.trails = [];
+        this.mouseX = -1000;
+        this.mouseY = -1000;
+        this.mouseRadius = 120;
+        this.maxSpeed = 3;
+        this.dpr = window.devicePixelRatio || 1;
+
+        this.init();
+        this.bindEvents();
+        this.animate();
+    }
+
+    init() {
+        this.resize();
+
+        // Создаем капли
+        const fontSize = 14;
+        const columns = Math.floor(this.canvas.width / fontSize);
+
+        for (let i = 0; i < columns * 0.6; i++) {
+            this.drops.push({
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height * -1,
+                speed: 1 + Math.random() * this.maxSpeed,
+                fontSize: fontSize,
+                value: Math.random() > 0.5 ? '0' : '1',
+                opacity: 0.3 + Math.random() * 0.7,
+                color: `hsl(${140 + Math.random() * 40}, 80%, ${50 + Math.random() * 30}%)`,
+                trailLength: 10 + Math.random() * 20,
+                vx: 0,
+                vy: 0
+            });
+        }
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth * this.dpr;
+        this.canvas.height = window.innerHeight * this.dpr;
+        this.canvas.style.width = window.innerWidth + 'px';
+        this.canvas.style.height = window.innerHeight + 'px';
+        this.ctx.scale(this.dpr, this.dpr);
+    }
+
+    bindEvents() {
+        window.addEventListener('resize', () => this.resize());
+
+        // Десктоп — мышь
+        document.addEventListener('mousemove', (e) => {
+            this.mouseX = e.clientX;
+            this.mouseY = e.clientY;
+        });
+
+        document.addEventListener('mouseleave', () => {
+            this.mouseX = -1000;
+            this.mouseY = -1000;
+        });
+
+        // Мобильные — касание
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            this.mouseX = e.touches[0].clientX;
+            this.mouseY = e.touches[0].clientY;
+        }, { passive: false });
+
+        document.addEventListener('touchstart', (e) => {
+            this.mouseX = e.touches[0].clientX;
+            this.mouseY = e.touches[0].clientY;
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            this.mouseX = -1000;
+            this.mouseY = -1000;
+        });
+    }
+
+    pushFromMouse(drop) {
+        const dx = drop.x - this.mouseX;
+        const dy = drop.y - this.mouseY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < this.mouseRadius && distance > 0) {
+            const force = (this.mouseRadius - distance) / this.mouseRadius;
+            const angle = Math.atan2(dy, dx);
+
+            drop.vx += Math.cos(angle) * force * 2;
+            drop.vy += Math.sin(angle) * force * 2;
+
+            // Ограничение скорости
+            const speed = Math.sqrt(drop.vx * drop.vx + drop.vy * drop.vy);
+            if (speed > this.maxSpeed * 3) {
+                drop.vx = (drop.vx / speed) * this.maxSpeed * 3;
+                drop.vy = (drop.vy / speed) * this.maxSpeed * 3;
+            }
+        }
+    }
+
+    update() {
+        this.drops.forEach(drop => {
+            // Отталкивание от мыши
+            this.pushFromMouse(drop);
+
+            // Применяем скорость
+            drop.x += drop.vx;
+            drop.y += drop.vy + drop.speed;
+
+            // Затухание скорости
+            drop.vx *= 0.95;
+            drop.vy *= 0.95;
+
+            // Сохраняем след
+            this.trails.push({
+                x: drop.x,
+                y: drop.y,
+                value: drop.value,
+                opacity: drop.opacity,
+                color: drop.color,
+                fontSize: drop.fontSize,
+                life: 1
+            });
+
+            // Сброс позиции если вышла за экран
+            if (drop.y > this.canvas.height / this.dpr + 100) {
+                drop.y = Math.random() * -200;
+                drop.x = Math.random() * this.canvas.width / this.dpr;
+                drop.vx = 0;
+                drop.vy = 0;
+            }
+
+            if (drop.x > this.canvas.width / this.dpr + 100) drop.x = -50;
+            if (drop.x < -100) drop.x = this.canvas.width / this.dpr + 50;
+
+            // Меняем цифру с малой вероятностью
+            if (Math.random() < 0.02) {
+                drop.value = Math.random() > 0.5 ? '0' : '1';
+            }
+        });
+
+        // Обновляем следы
+        this.trails.forEach(trail => {
+            trail.life -= 0.02;
+        });
+
+        // Удаляем старые следы
+        this.trails = this.trails.filter(trail => trail.life > 0);
+
+        // Ограничиваем количество следов
+        if (this.trails.length > 500) {
+            this.trails = this.trails.slice(-500);
+        }
+    }
+
+    draw() {
+        const width = this.canvas.width / this.dpr;
+        const height = this.canvas.height / this.dpr;
+
+        // Очищаем холст с полупрозрачным фоном для эффекта шлейфа
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        this.ctx.fillRect(0, 0, width, height);
+
+        // Рисуем следы
+        this.trails.forEach(trail => {
+            this.ctx.font = `${trail.fontSize}px monospace`;
+            this.ctx.fillStyle = trail.color.replace(')', `, ${trail.opacity * trail.life})`).replace('hsl', 'hsla');
+            this.ctx.fillText(trail.value, trail.x, trail.y);
+        });
+
+        // Рисуем капли
+        this.drops.forEach(drop => {
+            this.ctx.font = `bold ${drop.fontSize}px monospace`;
+            this.ctx.fillStyle = drop.color;
+            this.ctx.shadowColor = drop.color;
+            this.ctx.shadowBlur = 10;
+            this.ctx.fillText(drop.value, drop.x, drop.y);
+            this.ctx.shadowBlur = 0;
+        });
+    }
+
+    animate() {
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.animate());
+    }
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+    // Создаем оверлей если его нет
+    if (!document.querySelector('.matrix-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.className = 'matrix-overlay';
+        document.body.appendChild(overlay);
+    }
+
+    // Добавляем класс для основного контента
+    const mainContent = document.querySelector('main') || document.querySelector('.col-md-9');
+    if (mainContent) {
+        mainContent.classList.add('admin-content');
+    }
+
+    // Создаем фон
+    new MatrixBackground();
+});
+</script>
+<script>
+// ==============================================
+// ФИКС МОДАЛЬНЫХ ОКОН С СОХРАНЕНИЕМ ИНТЕРАКТИВНОСТИ
+// ==============================================
+(function() {
+    function fixModals() {
+        document.querySelectorAll('.modal').forEach(function(modal) {
+            // Перемещаем в конец body
+            document.body.appendChild(modal);
+
+            // Поднимаем z-index
+            modal.style.zIndex = '99999';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+
+            // ВАЖНО: разрешаем взаимодействие
+            modal.style.pointerEvents = 'auto';
+
+            // Убираем блокировку с дочерних элементов
+            modal.querySelectorAll('*').forEach(function(el) {
+                el.style.pointerEvents = 'auto';
+            });
+        });
+
+        // Исправляем backdrop
+        document.querySelectorAll('.modal-backdrop').forEach(function(backdrop) {
+            backdrop.style.zIndex = '99990';
+            backdrop.style.pointerEvents = 'auto';
+        });
+    }
+
+    // Фикс при загрузке
+    fixModals();
+
+    // Фикс при каждом открытии модалки
+    document.addEventListener('show.bs.modal', function(e) {
+        setTimeout(fixModals, 50);
+    });
+
+    document.addEventListener('shown.bs.modal', function(e) {
+        setTimeout(fixModals, 50);
+        // Убираем инертный фон у body если есть
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    });
+
+    // Без интервалов — только по событиям
+})();
+</script>
+<script>
+// ==============================================
+// ТУЛТИП РОЛИ — ПОВЕРХ ВСЕГО (ФИКС)
+// ==============================================
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.querySelector('.role-tooltip-container');
+    const tooltip = document.querySelector('.role-tooltip');
+
+    if (container && tooltip) {
+        // Перемещаем тултип в конец body (вне всех контейнеров)
+        document.body.appendChild(tooltip);
+
+        // Показываем при наведении
+        container.addEventListener('mouseenter', function() {
+            const rect = container.getBoundingClientRect();
+            tooltip.style.position = 'fixed';
+            tooltip.style.top = (rect.bottom + 10) + 'px';
+            tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+            tooltip.style.transform = 'translateX(-50%)';
+            tooltip.style.zIndex = '99999';
+            tooltip.style.opacity = '1';
+            tooltip.style.visibility = 'visible';
+        });
+
+        // Скрываем при уходе мыши
+        container.addEventListener('mouseleave', function() {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+        });
+
+        // Также скрываем при уходе с самого тултипа
+        tooltip.addEventListener('mouseleave', function() {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+        });
+
+        // И показываем если навели на тултип
+        tooltip.addEventListener('mouseenter', function() {
+            tooltip.style.opacity = '1';
+            tooltip.style.visibility = 'visible';
+        });
+    }
+});
+</script>
+<script>
+// ==============================================
+// БУРГЕР-МЕНЮ + ФИКС МОДАЛОК (БЕЗ КОНФЛИКТОВ)
+// ==============================================
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ========== БУРГЕР-МЕНЮ ==========
+    const toggle = document.createElement('button');
+    toggle.className = 'sidebar-toggle';
+    toggle.innerHTML = '<span></span><span></span><span></span>';
+
+    const navbarBrand = document.querySelector('.navbar .navbar-brand');
+    if (navbarBrand && navbarBrand.parentNode) {
+        navbarBrand.parentNode.insertBefore(toggle, navbarBrand);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'sidebar-overlay';
+    document.body.appendChild(overlay);
+
+    const sidebar = document.querySelector('.sidebar');
+    let isOpen = false;
+
+    function openMenu() {
+        isOpen = true;
+        sidebar.classList.add('open');
+        toggle.classList.add('active');
+        overlay.classList.add('show');
+    }
+
+    function closeMenu() {
+        isOpen = false;
+        sidebar.classList.remove('open');
+        toggle.classList.remove('active');
+        overlay.classList.remove('show');
+    }
+
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (isOpen) closeMenu();
+        else openMenu();
+    });
+
+    // Закрытие по клику на оверлей
+    overlay.addEventListener('click', function(e) {
+        e.stopPropagation();
+        closeMenu();
+    });
+
+    // Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isOpen) closeMenu();
+    });
+
+    // Закрытие при клике на пункт меню
+    sidebar.querySelectorAll('.nav-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 992) setTimeout(closeMenu, 300);
+        });
+    });
+
+    function updateToggleVisibility() {
+        if (window.innerWidth <= 992) {
+            toggle.style.display = 'flex';
+        } else {
+            toggle.style.display = 'none';
+            closeMenu();
+        }
+    }
+
+    window.addEventListener('resize', updateToggleVisibility);
+    updateToggleVisibility();
+
+
+    // ========== ФИКС МОДАЛЬНЫХ ОКОН ==========
+    function fixModals() {
+        document.querySelectorAll('.modal').forEach(function(modal) {
+            document.body.appendChild(modal);
+            modal.style.zIndex = '99999';
+            modal.style.position = 'fixed';
+            modal.style.pointerEvents = 'auto';
+            modal.querySelectorAll('*').forEach(function(el) {
+                el.style.pointerEvents = 'auto';
+            });
+        });
+
+        document.querySelectorAll('.modal-backdrop').forEach(function(backdrop) {
+            backdrop.style.zIndex = '99990';
+            backdrop.style.pointerEvents = 'auto';
+        });
+    }
+
+    fixModals();
+
+    document.addEventListener('show.bs.modal', function() {
+        setTimeout(fixModals, 100);
+    });
+
+    document.addEventListener('shown.bs.modal', function() {
+        setTimeout(fixModals, 100);
+    });
+
+
+    // ========== ТУЛТИП РОЛИ ==========
+    const tooltipContainer = document.querySelector('.role-tooltip-container');
+    const roleTooltip = document.querySelector('.role-tooltip');
+
+    if (tooltipContainer && roleTooltip) {
+        document.body.appendChild(roleTooltip);
+
+        function showTooltip() {
+            const rect = tooltipContainer.getBoundingClientRect();
+            roleTooltip.style.position = 'fixed';
+            roleTooltip.style.top = (rect.bottom + 10) + 'px';
+            roleTooltip.style.left = (rect.left + rect.width / 2) + 'px';
+            roleTooltip.style.transform = 'translateX(-50%)';
+            roleTooltip.style.zIndex = '99999';
+            roleTooltip.style.opacity = '1';
+            roleTooltip.style.visibility = 'visible';
+        }
+
+        function hideTooltip() {
+            roleTooltip.style.opacity = '0';
+            roleTooltip.style.visibility = 'hidden';
+        }
+
+        tooltipContainer.addEventListener('mouseenter', showTooltip);
+        tooltipContainer.addEventListener('mouseleave', hideTooltip);
+        roleTooltip.addEventListener('mouseenter', showTooltip);
+        roleTooltip.addEventListener('mouseleave', hideTooltip);
+
+        // Для мобильных — показ по клику
+        tooltipContainer.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (roleTooltip.style.visibility === 'visible') {
+                hideTooltip();
+            } else {
+                showTooltip();
+            }
+        });
+    }
 });
 </script>
 </body>
