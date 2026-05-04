@@ -231,34 +231,6 @@ main.col-md-9,
             </div>
         </div>
     </div>
-    <script>
-    // Обработчик для аккордеона методички
-    document.addEventListener('DOMContentLoaded', function() {
-        const methodologyHeader = document.getElementById('methodologyHeader');
-        const methodologyContent = document.getElementById('methodologyContent');
-        const methodologyChevron = document.getElementById('methodologyChevron');
-
-        if (methodologyHeader && methodologyContent) {
-            methodologyHeader.addEventListener('click', function() {
-                const isVisible = methodologyContent.style.display === 'block';
-
-                if (isVisible) {
-                    methodologyContent.style.display = 'none';
-                    methodologyChevron.className = 'fas fa-chevron-down';
-                } else {
-                    methodologyContent.style.display = 'block';
-                    methodologyChevron.className = 'fas fa-chevron-up';
-                }
-            });
-
-            // Автоматически разворачиваем для стажёров (можно добавить проверку роли)
-            // if (userRole === 'trainee') {
-            //     methodologyHeader.click();
-            // }
-        }
-    });
-    </script>
-
     <div class="container-fluid mt-4">
         <div class="row">
             <div class="col-12">
@@ -531,38 +503,58 @@ document.addEventListener('DOMContentLoaded', function() {
     initEventListeners();
     addTimeSlot();
 
+    // ====== ИСПРАВЛЕННАЯ МЕТОДИЧКА (только один обработчик) ======
     const methodologyHeader = document.getElementById('methodologyHeader');
     const methodologyContent = document.getElementById('methodologyContent');
     const methodologyChevron = document.getElementById('methodologyChevron');
 
-    // Проверяем доступность создания категорий
-    const newCategoryInput = document.getElementById('newCategory');
-    if (!newCategoryInput) {
-        if (typeof toggleRequiredFields === 'function') {
-            newCategoryInput.addEventListener('input', toggleRequiredFields);
-        }
-        console.log('🔒 Пользователь не имеет прав для создания новых категорий');
-        // Делаем выбор категории обязательным для стажеров
-        document.getElementById('existingCategory').required = true;
-    }
-
-    const existingCategory = document.getElementById('existingCategory');
-    if (existingCategory) {
-        existingCategory.addEventListener('change', toggleRequiredFields);
-    }
-
     if (methodologyHeader && methodologyContent) {
+        // Проверяем, был ли контент открыт ранее
+        const wasOpen = localStorage.getItem('methodologyOpen') === 'true';
+        if (wasOpen) {
+            methodologyContent.style.display = 'block';
+            if (methodologyChevron) {
+                methodologyChevron.className = 'fas fa-chevron-up';
+            }
+        }
+
+        // ЕДИНСТВЕННЫЙ обработчик клика
         methodologyHeader.addEventListener('click', function() {
             const isVisible = methodologyContent.style.display === 'block';
 
             if (isVisible) {
                 methodologyContent.style.display = 'none';
-                methodologyChevron.className = 'fas fa-chevron-down';
+                if (methodologyChevron) {
+                    methodologyChevron.className = 'fas fa-chevron-down';
+                }
+                localStorage.setItem('methodologyOpen', 'false');
             } else {
                 methodologyContent.style.display = 'block';
-                methodologyChevron.className = 'fas fa-chevron-up';
+                if (methodologyChevron) {
+                    methodologyChevron.className = 'fas fa-chevron-up';
+                }
+                localStorage.setItem('methodologyOpen', 'true');
             }
         });
+
+        console.log('✅ Методичка готова к работе');
+    } else {
+        console.warn('⚠️ Методичка: элементы не найдены');
+    }
+
+    // Проверяем доступность создания категорий
+    const newCategoryInput = document.getElementById('newCategory');
+    const existingCategory = document.getElementById('existingCategory');
+
+    if (existingCategory) {
+        existingCategory.addEventListener('change', toggleRequiredFields);
+    }
+
+    if (!newCategoryInput) {
+        console.log('🔒 Пользователь не имеет прав для создания новых категорий');
+        if (existingCategory) {
+            existingCategory.required = true;
+        }
     }
 });
 
